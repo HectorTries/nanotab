@@ -11,8 +11,14 @@ function flag(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const cmd = process.argv[2];
+  if (cmd === 'protect') {
+    require('../../cli/protect.js');
+    return;
+  }
   if (cmd !== 'init') {
-    console.log('Usage: nanotab init --budget \'$1.00\' --per-call \'$0.10\' [--allowlist host1,host2] [--calls-per-min 20]');
+    console.log('Usage:');
+    console.log('  nanotab init --budget \'$1.00\' --per-call \'$0.10\' [--allowlist host1,host2] [--calls-per-min 20]');
+    console.log('  nanotab protect --price <usd> --wallet <0x..> [--route "<glob>"] [--yes] <file.js>');
     process.exit(1);
   }
   const existing = loadConfig();

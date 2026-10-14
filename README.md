@@ -36,6 +36,21 @@ npx nanotab init --budget '$1.00' --per-call '$0.10'
 # creates mock wallet, prints Base Sepolia onramp link, writes nanotab.config.json
 ```
 
+Merchant CLI — paywall an existing Express server in one command:
+
+```bash
+npx nanotab protect --price 0.02 --wallet 0xMERCHANT [--route "/keyword/*"] [--yes] ./server.js
+```
+
+What it does:
+
+1. Installs `@nanotab/merchant` into the target project if missing (skipped when resolvable from the monorepo).
+2. Inserts the `require('@nanotab/merchant')` import + wraps matching routes with `nanotabCharge({ price, wallet })`.
+3. Prints a `diff -u` preview and asks `Y/n` before writing (`--yes` skips the prompt).
+4. Default wraps all `app.get` routes with string-literal paths; `--route "<glob>"` (`*` wildcard, `:params` count as wildcards) limits to matches. `app.post`/`app.use` are only wrapped when they match `--route`.
+
+Regex-based MVP, no babel: variable/template-literal paths, `app.all`/`app.route`, routers, and already-wrapped routes are flagged and left untouched — never mis-edited.
+
 ## Next steps for mainnet
 
 1. Replace `wallet.ts` mock with viem + Coinbase Smart Wallet (ERC-4337) on Base.
