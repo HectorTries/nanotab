@@ -1,0 +1,15 @@
+name = "nanotab-gateway"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+# --- NanoTab config: override with `wrangler secret put` or [vars] ---
+[vars]
+ORIGIN_URL = "https://api.example.com"   # <-- your origin API base (no trailing slash)
+PRICE_USD_CENTS = "2"                    # <-- "2" = $0.02/call
+MERCHANT_WALLET = "0xMERCHANT00000000000000000000000000000001"
+NANOTAB_FEE_BPS = "50"                   # 50 = 0.5%
+NETWORK = "base-sepolia"
+ASSET = "USDC"
+
+[dev]
+port = 8787
