@@ -1,0 +1,19 @@
+{
+  "name": "nanotab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NanoTab MVP — agent-side wallet + merchant middleware on x402-style HTTP 402 payments (USDC on Base)",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "demo:api": "node demo/keyword-api.js",
+    "demo:buy": "node demo/agent-buys.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}

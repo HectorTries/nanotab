@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.log
+spend.log
+nanotab-spend.log
+nanotab.config.json
+.env

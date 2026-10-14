@@ -1,0 +1,18 @@
+{
+  "name": "@nanotab/agent-sdk",
+  "version": "0.1.0",
+  "description": "NanoTab agent SDK — x402-style fetch with policy-checked mock USDC payments",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "nanotab": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
