@@ -3,16 +3,24 @@
 //
 // Mainnet flow (Base, USDC 0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5):
 //  1. No X-Payment → 402 challenge (network=base, payTo=MERCHANT_WALLET).
-//  2. With X-Payment → structural checks (amount >= price, to == payTo,
-//     asset == USDC mainnet contract, network == base) + EIP-191 signature
-//     recovery: signature must recover to `from`. Underpays → 402.
-//     NOTE: this proves the payer AUTHORIZED the payment off-chain. Full
-//     on-chain confirmation (tx hash lookup) happens when the payer submits
-//     the transfer; settlement below moves funds merchant-side.
-//  3. Settlement → settles on-chain: merchant net transfer when a settler key
-//     is configured (SETTLER_KEY secret + FUNDED payer flow), else logs the
-//     merchant-net + NanoTab-fee accounting with tx-hash when available.
+//  2. With X-Payment carrying txHash → gateway fetches the tx receipt via a
+//     Base public client and verifies it contains EXACTLY the atomic legs
+//     [transfer(merchant,net), transfer(FEE_WALLET,fee)] from the USDC
+//     contract, with correct amounts for PRICE_USD_CENTS and status=success.
+//     Valid → proxy to origin (x-nanotab: settled-onchain). Anything else → 402.
+//     This is the buyer-UserOp path: the buyer submits the batched UserOp
+//     on-chain FIRST, then calls the gateway with the tx hash.
+//  3. With X-Payment WITHOUT txHash → EIP-191 intent fallback (back-compat):
+//     structural checks + signature recovery prove the payer AUTHORIZED the
+//     payment off-chain; gateway proxies with x-nanotab: authorized-logged.
+//  4. Merchant-side settlement via SETTLER_KEY is DEPRECATED now the buyer
+//     pays on-chain directly; kept only as a legacy fallback.
 //     Fee = NANOTAB_FEE_BPS (default 50 = 0.5%).
+//
+// PRICE: the gateway is price-agnostic — PRICE_USD_CENTS sets the per-call
+// price for whatever origin it fronts. SaveShare ($0.05/call) = deploy this
+// gateway with PRICE_USD_CENTS="5" and ORIGIN_URL=<saveshare-api>. No code
+// change needed; one gateway instance per price point.
 
 import {
   createPublicClient,
@@ -164,6 +172,61 @@ function split(amountCents: string, feeBps: number): { feeUnits: bigint; netUnit
   return { feeUnits, netUnits: gross - feeUnits };
 }
 
+const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+function topicToAddress(topic: Hex): string {
+  return '0x' + topic.slice(-40);
+}
+
+/**
+ * Buyer-UserOp confirmation: fetch the tx receipt and verify it holds EXACTLY
+ * the atomic fee-split legs from the USDC contract —
+ *   transfer(payer → MERCHANT_WALLET, netUnits)
+ *   transfer(payer → FEE_WALLET, feeUnits)
+ * with status=success. Extra USDC transfers in the same tx → reject (keeps
+ * the "exact legs" invariant tight). Returns the payer address.
+ */
+async function verifyBuyerTx(
+  env: Env, txHash: string, amountCents: string,
+): Promise<{ payer: string }> {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error('invalid txHash format');
+  if (!env.FEE_WALLET) throw new Error('txHash settlement requires FEE_WALLET to be set');
+  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '50');
+  const gross = centsToUnits(amountCents);
+  const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
+  const netUnits = gross - feeUnits;
+  const rpc = env.BASE_RPC_URL ?? 'https://mainnet.base.org';
+  const client = createPublicClient({ chain: base, transport: http(rpc) });
+  const receipt = await client.getTransactionReceipt({ hash: txHash as Hex }).catch(() => null);
+  if (!receipt) throw new Error('tx not found or not yet mined (retry after confirmation)');
+  if (receipt.status !== 'success') throw new Error('tx failed on-chain');
+  const legs = receipt.logs.filter(
+    (l) =>
+      l.address.toLowerCase() === USDC_BASE_MAINNET.toLowerCase() &&
+      l.topics[0]?.toLowerCase() === ERC20_TRANSFER_TOPIC,
+  );
+  if (legs.length !== 2) throw new Error(`tx must contain exactly 2 USDC transfers (got ${legs.length})`);
+  const seen = new Map<string, bigint>();
+  let payer: string | null = null;
+  for (const l of legs) {
+    const from = topicToAddress(l.topics[1] as Hex).toLowerCase();
+    const to = topicToAddress(l.topics[2] as Hex).toLowerCase();
+    const value = BigInt(l.data as Hex);
+    if (payer === null) payer = from;
+    else if (payer !== from) throw new Error('transfer legs have different senders');
+    seen.set(to, value);
+  }
+  const gotNet = seen.get(env.MERCHANT_WALLET.toLowerCase());
+  const gotFee = seen.get((env.FEE_WALLET as string).toLowerCase());
+  if (gotNet !== netUnits) {
+    throw new Error(`merchant leg wrong (need ${netUnits} units to ${env.MERCHANT_WALLET}, got ${gotNet ?? 'missing'})`);
+  }
+  if (gotFee !== feeUnits) {
+    throw new Error(`fee leg wrong (need ${feeUnits} units to ${env.FEE_WALLET}, got ${gotFee ?? 'missing'})`);
+  }
+  return { payer: payer as string };
+}
+
 /**
  * On-chain settlement: transfers merchant net (gross − fee) in USDC on Base
  * from the configured settler key to MERCHANT_WALLET. Returns tx hash.
@@ -252,11 +315,21 @@ export default {
       return Response.json({ error: (e as Error).message }, { status: 402 });
     }
 
-    // Settlement (feeUnits/netUnits already enforced by verifyFeeSplit above).
+    // Buyer-UserOp path: txHash present → confirm receipt on-chain FIRST.
     const gross = Number(env.PRICE_USD_CENTS) / 100;
     const fee = (gross * feeBps) / 10_000;
     let settleNote: string;
-    if (env.SETTLER_KEY) {
+    let nanotabHeader: string;
+    if (proof.txHash) {
+      try {
+        const v = await verifyBuyerTx(env, proof.txHash, env.PRICE_USD_CENTS);
+        settleNote = `buyer UserOp ${proof.txHash} confirmed on-chain (net ${netUnits} → ${env.MERCHANT_WALLET}, fee ${feeUnits} → ${env.FEE_WALLET}, payer ${v.payer})`;
+        nanotabHeader = 'settled-onchain';
+        console.log(`[nanotab-gw] settled $${gross.toFixed(2)}: ${settleNote}`);
+      } catch (e) {
+        return Response.json({ error: (e as Error).message }, { status: 402 });
+      }
+    } else if (env.SETTLER_KEY) {
       try {
         const s = await settleOnChain(env, env.PRICE_USD_CENTS);
         settleNote = `on-chain merchant transfer ${s.txHash} (net ${s.net} units; fee ${s.fee} units to ${env.FEE_WALLET ?? 'fee-ledger (unset FEE_WALLET, swept in batch)'})`;
@@ -284,7 +357,7 @@ export default {
     const proxied = await fetch(target.toString(), init);
     const out = new Headers(proxied.headers);
     out.set('access-control-allow-origin', '*');
-    out.set('x-nanotab', env.SETTLER_KEY ? 'settled-onchain' : 'authorized-logged');
+    out.set('x-nanotab', proof.txHash ? nanotabHeader! : env.SETTLER_KEY ? 'settled-onchain' : 'authorized-logged');
     out.set('x-nanotab-settle', settleNote);
     return new Response(proxied.body, { status: proxied.status, headers: out });
   },
