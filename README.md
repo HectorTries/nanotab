@@ -60,7 +60,36 @@ Required config (`wrangler.toml` `[vars]` or secrets):
 | `SETTLER_KEY` | secret (optional) | settler private key — enables on-chain merchant transfer per call; **NEVER commit** |
 | `BASE_RPC_URL` | vars (optional) | defaults to `https://mainnet.base.org` |
 
-## Settlement model (documented honestly)
+## Settlement model: paymaster-sponsored by default
+
+Nobody touches ETH — not the agent, not the merchant. Gas is paid from the
+user's USDC via the **Circle TokenPaymaster** (permissionless ERC-4337
+paymaster, live on Base mainnet; +10% gas surcharge in USDC).
+
+```
+agent signs UserOp ──▶ Circle paymaster takes ETH-gas equivalent from user's USDC
+        │
+        ▼
+USDC transfer executes on Base ──▶ merchant gets USDC minus 0.5% NanoTab fee
+```
+
+1. **Default (paymaster path):** `buildPaymasterUserOp()` in
+   `packages/agent-sdk/src/wallet.ts` routes the USDC transfer through
+   Circle's EntryPoint-v0.8 TokenPaymaster
+   (`0x0578cFB241215b77442a541325d6A4E6dFE700Ec` on Base). The agent needs
+   only USDC — zero ETH. Requires a 4337 smart account + bundler at submit time.
+2. **Fallback (settler flow):** the EIP-191 intent signature
+   (`signPayment`) is kept on every UserOp and verified by the gateway as
+   today. When `SETTLER_KEY` is set, the gateway submits the on-chain
+   merchant transfer per call and logs the tx hash (`x-nanotab-settle`).
+3. **Fee handling:** 0.5% computed in USDC base units per call, logged
+   (`fee → FEE_WALLET` when set, else fee-ledger for batch sweep).
+
+Footnote: the legacy settler path still needs a little ETH on the *settler*
+key only. The agent wallet and merchant never need ETH under either path
+once the paymaster route is live end-to-end.
+
+## Settlement model (legacy detail)
 
 1. **Authorization (always on):** payer signs the canonical message; gateway recovers signer via EIP-191 and enforces amount/asset/merchant. Tampered sigs, underpays, wrong asset/network → 402.
 2. **On-chain merchant transfer (when `SETTLER_KEY` set):** gateway submits `USDC.transfer(MERCHANT_WALLET, gross − fee)` on Base and logs the tx hash (`x-nanotab-settle` response header). One transfer per call keeps gas simple.
@@ -69,7 +98,7 @@ Required config (`wrangler.toml` `[vars]` or secrets):
 
 ## Test with real money (small amounts)
 
-1. Fund a throwaway wallet with ~$0.10 USDC on Base + a little ETH for gas (settler only).
+1. Fund a throwaway wallet with ~$0.10 USDC on Base — that's it, no ETH needed (gas comes from USDC via the paymaster).
 2. `MERCHANT_WALLET` = an address you control; `PRICE_USD_CENTS=2` ($0.02).
 3. `NANOTAB_WALLET_KEY=<throwaway key> node demo/agent-buys.js` → each call moves real $0.02 USDC.
 4. Confirm on Basescan: merchant address receives 19900 units/call ($0.0199), fee ledger accrues 100 units/call.

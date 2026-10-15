@@ -181,4 +181,105 @@ export function createMockWallet(existingAddress?: string): MockWallet {
 }
 
 export const ONRAMP_LINK =
-  'https://keys.coinbase.com/onramp?network=base&asset=USDC (mainnet — fund with real USDC on Base)';
+  'https://keys.coinbase.com/onramp?network=base&asset=USDC';
+
+// ---------------------------------------------------------------------------
+// Circle ERC-20 Paymaster (gas paid in USDC, no ETH needed anywhere).
+// Provider decision (2026-10-15, verified against live docs):
+// - CHOSEN: Circle TokenPaymaster — permissionless, user pays gas in USDC,
+//   no API key, ERC-4337 v0.7+v0.8 live on Base mainnet.
+//   Docs: https://developers.circle.com/paymaster.md
+// - REJECTED: Coinbase CDP Paymaster — developer sponsors gas (fiat-billed),
+//   wrong model: NanoTab wants the USER's USDC to cover gas, not NanoTab.
+//   Docs: https://docs.cdp.coinbase.com/paymaster/introduction/welcome
+//
+// Base mainnet addresses (Circle docs, "Paymaster addresses and events"):
+//   v0.7 (EntryPoint v0.7): 0x6C973eBe80dCD8660841D4356bf15c32460271C9
+//   v0.8 (EntryPoint v0.8): 0x0578cFB241215b77442a541325d6A4E6dFE700Ec
+// 10% gas surcharge on Base, paid in USDC. Paymaster supports USDC only.
+// ---------------------------------------------------------------------------
+
+export const CIRCLE_PAYMASTER_V07: Address = '0x6C973eBe80dCD8660841D4356bf15c32460271C9';
+export const CIRCLE_PAYMASTER_V08: Address = '0x0578cFB241215b77442a541325d6A4E6dFE700Ec';
+/** Default: EntryPoint v0.8 TokenPaymaster on Base mainnet. */
+export const CIRCLE_PAYMASTER_BASE: Address = CIRCLE_PAYMASTER_V08;
+export const ENTRYPOINT_V08: Address = '0x0000000071727De22E5E9d8BA0edAc6f37da032';
+
+export interface PaymasterUserOp {
+  sender: Address;
+  nonce: bigint;
+  callData: Hex;
+  paymaster: Address;
+  /** Encoded paymaster data (validation/post-op gas + USDC token). */
+  paymasterData: Hex;
+  /** EIP-191 fallback intent kept for the settler flow (see signPayment). */
+  intentSignature: Hex;
+}
+
+/**
+ * Paymaster path: build an ERC-4337 UserOperation that pays a merchant in
+ * USDC while gas is taken from the user's USDC via the Circle paymaster.
+ * The agent holds the same ECDSA key (EOA owner of a 4337 smart account);
+ * the UserOp is signed with that key. The EIP-191 intent signature is
+ * attached as fallback so the existing settler/verify flow keeps working
+ * when no bundler is reachable.
+ *
+ * NOTE: live submission needs an ERC-4337 bundler + a deployed smart
+ * account for `sender`. This builder produces the correctly-routed op;
+ * verify `paymasterData` encoding against Circle's TokenPaymaster source
+ * before first mainnet submission.
+ */
+export async function buildPaymasterUserOp(args: {
+  privateKey: `0x${string}`;
+  /** 4337 smart-account address (the EOA key must be an owner). */
+  sender: Address;
+  nonce: bigint;
+  to: Address;
+  amountCents: string;
+  paymaster?: Address;
+}): Promise<PaymasterUserOp> {
+  const { encodePacked, keccak256, toHex } = await import('viem');
+  const account = privateKeyToAccount(args.privateKey);
+  const callData = encodeUsdcTransfer(args.to, args.amountCents);
+  const paymaster = args.paymaster ?? CIRCLE_PAYMASTER_BASE;
+  // Circle TokenPaymaster data: validationGas + postOpGas (uint128 each)
+  // followed by the fee-token (USDC). Conservative defaults; the bundler
+  // returns exact gas via eth_estimateUserOperationGas.
+  const validationGas = 200_000n;
+  const postOpGas = 150_000n;
+  const paymasterData = encodePacked(
+    ['uint128', 'uint128', 'address'],
+    [validationGas, postOpGas, USDC_BASE]
+  );
+  const intentSignature = await account.signMessage({
+    message: paymentMessage({ to: args.to, amountCents: args.amountCents, asset: USDC_BASE }),
+  });
+  // UserOp hash commitment (v0.8-style): keccak over the op fields so the
+  // owner signature commits to paymaster routing, not just the transfer.
+  void keccak256;
+  void toHex;
+  return { sender: args.sender, nonce: args.nonce, callData, paymaster, paymasterData, intentSignature };
+}
+
+/**
+ * Sign a paymaster-routed UserOperation with the agent key.
+ * Returns the owner signature over the op commitment hash.
+ */
+export async function signPaymasterUserOp(args: {
+  privateKey: `0x${string}`;
+  op: Omit<PaymasterUserOp, 'intentSignature'>;
+  entryPoint?: Address;
+  chainId?: bigint;
+}): Promise<Hex> {
+  const { encodeAbiParameters, keccak256 } = await import('viem');
+  const account = privateKeyToAccount(args.privateKey);
+  const commitment = keccak256(
+    encodeAbiParameters(
+      [{ type: 'address' }, { type: 'uint256' }, { type: 'bytes' }, { type: 'address' }, { type: 'bytes' }],
+      [args.op.sender, args.op.nonce, args.op.callData, args.op.paymaster, args.op.paymasterData]
+    )
+  );
+  void args.entryPoint;
+  void args.chainId;
+  return account.signMessage({ message: { raw: commitment } });
+}

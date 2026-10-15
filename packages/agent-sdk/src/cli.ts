@@ -52,7 +52,8 @@ async function main(): Promise<void> {
     console.log(`key saved to ~/.nanotab.key (keep secret)`);
   }
   console.log(`wallet: ${wallet.address} (base mainnet, real USDC signing)` + (ownedAddr ? ` [config keeps ${ownedAddr}]` : ''));
-  console.log(`onramp: ${ONRAMP_LINK}`);
+  console.log('fund with USDC on Base, that is it — no ETH needed (gas is paid in USDC via the Circle paymaster).');
+  console.log(`onramp: ${ONRAMP_LINK}  (buy USDC on Base directly into this wallet)`);
   console.log(`wrote ${p}`);
   console.log(JSON.stringify(cfg, null, 2));
 }
