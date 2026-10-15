@@ -1,54 +1,41 @@
 # NanoTab gateway worker
 
-Paywalls **any** origin API with x402-style 402s. Zero code changes on the merchant side.
+Paywalls **any** origin API with x402-style 402s. Zero code changes on the merchant side. **Base mainnet, real USDC.**
 
 ## How it works
 
-1. Request hits the worker with no `X-Payment` header → **402** with payment spec (`x402Version`, `accepts[{scheme: exact, network: base-sepolia, maxAmountRequired, resource, payTo, asset: USDC, fee}]`).
-2. Agent pays (USDC, Base Sepolia) and retries with `X-Payment: base64({amount, to, asset, network, signature, from})`.
-3. Worker verifies (⚠️ **MOCKED for MVP** — well-formed + matching `to`/amount passes, same as `@nanotab/merchant`), logs `gross − 0.5% fee = net`, and proxies to `ORIGIN_URL`.
+1. No `X-Payment` → **402** with payment spec (`x402Version`, `accepts[{scheme: exact, network: base, maxAmountRequired, resource, payTo, asset: USDC_BASE, fee}]`).
+2. Agent signs (viem EIP-191, key from `NANOTAB_WALLET_KEY`) and retries with `X-Payment: base64({amount, to, asset, network, signature, from})`.
+3. Worker verifies structurally (amount ≥ price, `to` == `MERCHANT_WALLET`, USDC-on-Base) **plus EIP-191 signature recovery** (`from` must have signed the canonical message). Underpay / wrong-asset / wrong-network / bad-sig → 402.
+4. Settlement: if `SETTLER_KEY` secret is set → on-chain `USDC.transfer(MERCHANT_WALLET, gross − fee)` on Base, tx hash in `x-nanotab-settle` header. Otherwise payer authorization is verified + logged (`x-nanotab: authorized-logged`), payer submits the transfer. Fee (default 50 bps) logged per call → `FEE_WALLET` or fee-ledger.
+5. Proxies to `ORIGIN_URL`.
 
-## Config (env vars)
+## Config
 
-| Var | Example |
-|---|---|
-| `ORIGIN_URL` | `https://api.theirsite.com` (no trailing slash) |
-| `PRICE_USD_CENTS` | `"2"` = $0.02/call |
-| `MERCHANT_WALLET` | `0x…` |
-| `NANOTAB_FEE_BPS` | `"50"` = 0.5% (default 50) |
-| `NETWORK` / `ASSET` | `base-sepolia` / `USDC` |
+| Var | Example | How |
+|---|---|---|
+| `ORIGIN_URL` | `https://origin.nanotab.dev` | vars |
+| `PRICE_USD_CENTS` | `"2"` = $0.02/call | vars |
+| `MERCHANT_WALLET` | `0x…` (real address) | **secret** — `wrangler secret put MERCHANT_WALLET` |
+| `NANOTAB_FEE_BPS` | `"50"` = 0.5% | vars |
+| `FEE_WALLET` | `0x…` | secret (optional) |
+| `SETTLER_KEY` | hex key, never commit | secret (optional, enables on-chain transfer) |
+| `BASE_RPC_URL` | Base RPC | vars (optional) |
+
+`NETWORK`/`ASSET` are pinned to `base` / USDC mainnet contract in code.
 
 ## Deploy
 
 ```bash
-cd workers/gateway
-npm install
-wrangler login
-# set secrets (or edit [vars] in wrangler.toml)
-wrangler secret put ORIGIN_URL        # https://api.theirsite.com
-wrangler secret put PRICE_USD_CENTS   # 2
-wrangler secret put MERCHANT_WALLET   # 0x…
-wrangler deploy
+npx wrangler deploy   # needs CLOUDFLARE_API_TOKEN
 ```
 
-Point agents / DNS at `https://nanotab-gateway.<you>.workers.dev`.
-
-## Local test
+## Smoke test (no funds needed)
 
 ```bash
-# terminal 1 — origin (demo keyword API, $0.02/call logic lives in gateway now)
-node ../../demo/keyword-api.js   # :4021 — note: demo has its own middleware; for a pure
-                                 # gateway test point ORIGIN_URL at a bare API instead
-# terminal 2 — gateway (override ORIGIN_URL to local origin)
-ORIGIN_URL=http://localhost:4021 npx wrangler dev --port 8787
-# terminal 3
-GW_URL=http://localhost:8787 npm test
+# terminal 1: origin — node demo/keyword-api.js  (repo root)
+# terminal 2: ORIGIN_URL=http://localhost:4021 npx wrangler dev --port 8787
+# terminal 3:
+NANOTAB_TEST_KEY=<throwaway, unfunded> npm test
+# 6 checks: 402, schema, bad-header, underpay, wrong-asset, valid-sig→200
 ```
-
-## Live loop (2026-10-15)
-
-- Origin: `demo/origin-bare.js` (bare Express, no paywall) — `/health`, `/price`, `/keyword?q=`, `/keyword/:term`
-- Prod origin runs on VPS (`/root/nanotab-origin/app.js`, Caddy TLS at `https://origin.nanotab.dev` — needs DNS A `origin.nanotab.dev → VPS`)
-- Gateway `wrangler.toml` `ORIGIN_URL = "https://origin.nanotab.dev"` (local dev: `--var ORIGIN_URL:http://127.0.0.1:4022`)
-- Landing page: `demo/landing.html` → served at `https://nanotab.dev` (VPS Caddy, needs apex DNS A → VPS)
-- Deploy gateway: `cd workers/gateway && wrangler deploy` (needs `wrangler login`)

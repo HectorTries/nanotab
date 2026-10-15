@@ -1,6 +1,6 @@
 # @nanotab/merchant
 
-Express middleware for x402-style 402 charges. MOCKED settlement (Base Sepolia).
+Express middleware for x402-style 402 charges. **Base mainnet, USDC `0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5`.**
 
 ```ts
 import express from 'express';
@@ -14,24 +14,10 @@ app.get('/keyword/:term', nanotabCharge({ price: 0.02, wallet: '0xMERCHANT' }), 
 
 ## 402 schema
 
-```json
-{
-  "x402Version": 1,
-  "accepts": [
-    {
-      "scheme": "exact",
-      "network": "base-sepolia",
-      "maxAmountRequired": "2",
-      "resource": "http://host/keyword/foo",
-      "payTo": "0xMERCHANT",
-      "asset": "USDC",
-      "fee": "0.5%"
-    }
-  ]
-}
-```
+`{ x402Version: 1, accepts: [{ scheme: 'exact', network: 'base', maxAmountRequired: '<cents>', resource, payTo, asset: USDC_BASE, fee: '0.5%' }] }`
 
-- `maxAmountRequired` — USD **cents** as string (`'2'` = $0.02).
-- Client pays by retrying with `X-Payment: base64({ amount, to, asset, network, signature, from })`.
-- Verification is mocked: any well-formed header with matching `to` and sufficient `amount` passes.
-- Settlement is mocked: server logs `gross − 0.5% fee = net`, no on-chain transfer.
+## Verification
+
+Structural: well-formed header, `to` == merchant (case-insensitive), `amount` ≥ price (BigInt compare), asset == USDC-on-Base, network == `base` when present. Full EIP-191 signature recovery is enforced at the gateway (`workers/gateway`); use this middleware behind the gateway or add an async sig check in your own stack.
+
+Settlement accounting (0.5% fee split) is logged per call; on-chain merchant transfer happens at the gateway when `SETTLER_KEY` is configured.

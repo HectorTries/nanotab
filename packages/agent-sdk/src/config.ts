@@ -4,7 +4,7 @@ import { PolicyConfig, parseUsd } from './policy';
 
 export interface NanotabConfig extends PolicyConfig {
   walletAddress: string;
-  network: 'base-sepolia';
+  network: 'base';
 }
 
 export const CONFIG_FILENAME = 'nanotab.config.json';
@@ -22,7 +22,7 @@ export function loadConfig(cwd = process.cwd()): NanotabConfig | null {
   const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
   return {
     walletAddress: String(raw.walletAddress ?? ''),
-    network: 'base-sepolia',
+    network: 'base',
     totalBudget: parseUsd(String(raw.totalBudget ?? raw.budgetUsd ?? raw.total ?? 0)),
     maxPerCall: parseUsd(String(raw.maxPerCall ?? raw.perCall ?? 0)),
     allowlist: raw.allowlist,

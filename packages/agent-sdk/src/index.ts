@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PolicyEngine, PolicyConfig, parseUsd } from './policy';
-import { createMockWallet } from './wallet';
+import { createMockWallet, createSmartWallet } from './wallet';
 import { loadConfig } from './config';
 
 export { PolicyEngine, parseUsd, createMockWallet };
@@ -83,7 +83,7 @@ function logSpend(spendLog: string, entry: Record<string, unknown>): void {
 
 /**
  * nanotabFetch(url): plain GET; on HTTP 402 parses the x402 payment spec,
- * checks policy, mock-signs a USDC payment, retries with X-Payment proof.
+ * checks policy, real-signs a Base-mainnet USDC payment, retries with X-Payment proof.
  */
 export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promise<any> {
   const fileCfg = loadConfig();
@@ -93,7 +93,7 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
     allowlist: opts.allowlist ?? fileCfg?.allowlist,
     maxCallsPerMinute: fileCfg?.maxCallsPerMinute,
   };
-  const walletAddress = opts.wallet ?? opts.walletAddress ?? fileCfg?.walletAddress ?? `0xmock-agent`;
+  const walletAddress = opts.wallet ?? opts.walletAddress ?? fileCfg?.walletAddress;
   const spendLog = opts.spendLog ?? path.join(process.cwd(), 'nanotab-spend.log');
 
   const res = await fetch(url);
@@ -111,13 +111,31 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
   const engine = engineFor(spendLog, policy);
   engine.check(url, amountUsd, accept.payTo);
 
-  // Mock-sign USDC payment (no chain interaction).
-  const wallet = createMockWallet(walletAddress);
-  const signature = wallet.signPayment({
-    to: accept.payTo,
-    amountCents: accept.maxAmountRequired,
-    asset: accept.asset,
-  });
+  // Real-sign USDC payment intent on Base mainnet (viem, EIP-191).
+  // Key from NANOTAB_WALLET_KEY env. Falls back to a read-only mock only if
+  // a walletAddress was explicitly passed AND no key is set (local demo).
+  const walletKey = process.env.NANOTAB_WALLET_KEY as `0x${string}` | undefined;
+  let signature: string;
+  let fromAddr: string;
+  if (walletKey) {
+    const wallet = createSmartWallet(walletKey);
+    signature = await wallet.signPayment({
+      to: accept.payTo,
+      amountCents: accept.maxAmountRequired,
+      asset: accept.asset,
+    });
+    fromAddr = wallet.address;
+  } else if (walletAddress) {
+    const wallet = createMockWallet(walletAddress);
+    signature = wallet.signPayment({
+      to: accept.payTo,
+      amountCents: accept.maxAmountRequired,
+      asset: accept.asset,
+    });
+    fromAddr = wallet.address;
+  } else {
+    throw new Error('no wallet: set NANOTAB_WALLET_KEY env (real Base mainnet USDC signing)');
+  }
   const proof = Buffer.from(
     JSON.stringify({
       amount: accept.maxAmountRequired,
@@ -125,7 +143,7 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
       asset: accept.asset,
       network: accept.network,
       signature,
-      from: wallet.address,
+      from: fromAddr,
     })
   ).toString('base64');
 

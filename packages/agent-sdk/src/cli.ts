@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { createMockWallet, ONRAMP_LINK } from './wallet';
+import { createSmartWallet, ONRAMP_LINK } from './wallet';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { saveConfig, loadConfig } from './config';
 import { parseUsd } from './policy';
 
@@ -22,17 +23,22 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const existing = loadConfig();
-  const wallet = createMockWallet(existing?.walletAddress);
+  const key = (process.env.NANOTAB_WALLET_KEY ?? generatePrivateKey()) as `0x${string}`;
+  const wallet = createSmartWallet(key);
+  const ownedAddr = existing?.walletAddress && existing.walletAddress !== wallet.address ? existing.walletAddress : undefined;
   const cfg = {
     walletAddress: wallet.address,
-    network: 'base-sepolia' as const,
+    network: 'base' as const,
     totalBudget: parseUsd(flag('budget') ?? '$1.00'),
     maxPerCall: parseUsd(flag('per-call') ?? '$0.10'),
     allowlist: flag('allowlist')?.split(',').map((s) => s.trim()).filter(Boolean),
     maxCallsPerMinute: flag('calls-per-min') ? Number(flag('calls-per-min')) : 30,
   };
   const p = saveConfig(cfg);
-  console.log(`mock wallet: ${wallet.address} (base-sepolia, MOCKED — no chain)`);
+  if (!process.env.NANOTAB_WALLET_KEY) {
+    console.log(`NEW wallet key generated for this session only — NOT saved. fund ${wallet.address} with real USDC on Base, then re-run with NANOTAB_WALLET_KEY=<key>.`);
+  }
+  console.log(`wallet: ${wallet.address} (base mainnet, real USDC signing)` + (ownedAddr ? ` [config keeps ${ownedAddr}]` : ''));
   console.log(`onramp: ${ONRAMP_LINK}`);
   console.log(`wrote ${p}`);
   console.log(JSON.stringify(cfg, null, 2));
