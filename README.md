@@ -56,7 +56,14 @@ Required config (`wrangler.toml` `[vars]` or secrets):
 | `PRICE_USD_CENTS` | vars | `"2"` = $0.02/call |
 | `MERCHANT_WALLET` | **secret** | `wrangler secret put MERCHANT_WALLET` — Hector must set the real merchant address; placeholder in repo is NOT a real address |
 | `NANOTAB_FEE_BPS` | vars | `50` = 0.5% |
-| `FEE_WALLET` | secret (optional) | NanoTab fee recipient; fee accrual logged if unset |
+| `FEE_WALLET` | secret (see below) | NanoTab fee recipient. **When set, EVERY X-Payment must carry the fee-split legs or the gateway returns 402.** Unset = legacy single-transfer mode, fee logged to fee-ledger |
+
+**`FEE_WALLET` setup (atomic fee split):**
+
+1. `wrangler secret put FEE_WALLET` in `workers/gateway` (mainnet fee recipient).
+2. SDK side: pass `feeWallet` to `buildPaymasterUserOp()` or set `NANOTAB_FEE_WALLET` / `FEE_WALLET` env — `resolveFeeWallet()` picks explicit arg > `NANOTAB_FEE_WALLET` > `FEE_WALLET`.
+3. The buyer UserOp then batches `[transfer(merchant, net), transfer(FEE_WALLET, fee)]` atomically — fee = 50 bps (0.5%) default, override via `feeBps` / `NANOTAB_FEE_BPS`.
+4. The payer also signs the split legs (`…|feeTo=…|fee=…|net=…` appended to the canonical message); the gateway re-checks recipient + exact amounts and rejects (402) if the fee leg is missing, mis-addressed, or short.
 | `SETTLER_KEY` | secret (optional) | settler private key — enables on-chain merchant transfer per call; **NEVER commit** |
 | `BASE_RPC_URL` | vars (optional) | defaults to `https://mainnet.base.org` |
 
@@ -82,8 +89,15 @@ USDC transfer executes on Base ──▶ merchant gets USDC minus 0.5% NanoTab f
    (`signPayment`) is kept on every UserOp and verified by the gateway as
    today. When `SETTLER_KEY` is set, the gateway submits the on-chain
    merchant transfer per call and logs the tx hash (`x-nanotab-settle`).
-3. **Fee handling:** 0.5% computed in USDC base units per call, logged
-   (`fee → FEE_WALLET` when set, else fee-ledger for batch sweep).
+3. **Fee handling (ATOMIC):** `buildPaymasterUserOp()` now emits
+   `executeBatch` calldata with both legs —
+   `[transfer(merchant, net), transfer(FEE_WALLET, fee)]` — submitted as
+   one UserOp (`calls` array also exposed for the viem-7702
+   `sendUserOperation({ calls })` pattern in `/tmp/sa/7702.mjs`). The
+   gateway enforces both legs (recipient + exact 50bps math) and signs
+   the split into the payer message, so the fee cannot be stripped
+   without invalidating the signature. Rejects with 402 if the fee leg
+   is missing/wrong. Fee < 1 base unit reverts at build time (dust guard).
 
 Footnote: the legacy settler path still needs a little ETH on the *settler*
 key only. The agent wallet and merchant never need ETH under either path

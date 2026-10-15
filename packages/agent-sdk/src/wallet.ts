@@ -205,6 +205,97 @@ export const CIRCLE_PAYMASTER_V08: Address = '0x0578cFB241215b77442a541325d6A4E6
 export const CIRCLE_PAYMASTER_BASE: Address = CIRCLE_PAYMASTER_V08;
 export const ENTRYPOINT_V08: Address = '0x0000000071727De22E5E9d8BA0edAc6f37da032';
 
+// ---------------------------------------------------------------------------
+// NanoTab atomic fee split: every buyer UserOp pays the merchant net
+// (gross − fee) AND the NanoTab fee wallet in ONE atomic bundle.
+// Default fee = 50 bps (0.5%): merchant gets 99.5%, NanoTab gets 0.5%.
+//
+// FEE_WALLET resolution (SDK side): explicit arg > NANOTAB_FEE_WALLET env >
+// FEE_WALLET env. The gateway enforces the same address from its own
+// FEE_WALLET secret — set it via `wrangler secret put FEE_WALLET`.
+// ---------------------------------------------------------------------------
+/** Default NanoTab fee: 50 bps = 0.5%. */
+export const NANOTAB_FEE_BPS_DEFAULT = 50;
+
+/** Resolve the fee recipient: explicit arg wins, then env. Empty = unset. */
+export function resolveFeeWallet(explicit?: Address): Address | '' {
+  const v = explicit ?? process.env.NANOTAB_FEE_WALLET ?? process.env.FEE_WALLET ?? '';
+  return (v as Address) || '';
+}
+
+/** Gross USDC base units → { feeUnits, netUnits } at feeBps. */
+export function splitFeeUnits(grossUnits: bigint, feeBps: number = NANOTAB_FEE_BPS_DEFAULT): {
+  feeUnits: bigint;
+  netUnits: bigint;
+} {
+  const feeUnits = (grossUnits * BigInt(feeBps)) / 10_000n;
+  return { feeUnits, netUnits: grossUnits - feeUnits };
+}
+
+/** One USDC transfer leg of the atomic split, viem-7702 `calls` shape. */
+export interface SplitCall {
+  to: Address;
+  abi: typeof ERC20_ABI;
+  functionName: 'transfer';
+  args: [Address, bigint];
+}
+
+/**
+ * Build the atomic [transfer(merchant, net), transfer(FEE_WALLET, fee)]
+ * calls array. Same shape `bundlerClient.sendUserOperation({ calls })`
+ * accepts in the /tmp/sa/7702.mjs pattern (viem `toSimple7702SmartAccount`):
+ * viem encodes the batch on submission — atomic by construction.
+ */
+export function buildSplitCalls(args: {
+  merchant: Address;
+  feeWallet: Address;
+  amountCents: string;
+  feeBps?: number;
+}): SplitCall[] {
+  const gross = centsToUsdcUnits(args.amountCents);
+  const { feeUnits, netUnits } = splitFeeUnits(gross, args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT);
+  if (feeUnits <= 0n) throw new Error('fee rounds to zero: raise amount or lower feeBps');
+  return [
+    { to: USDC_BASE, abi: ERC20_ABI, functionName: 'transfer', args: [args.merchant, netUnits] },
+    { to: USDC_BASE, abi: ERC20_ABI, functionName: 'transfer', args: [args.feeWallet, feeUnits] },
+  ];
+}
+
+const SIMPLE_ACCOUNT_BATCH_ABI = [
+  {
+    name: 'executeBatch',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'dest', type: 'address[]' },
+      { name: 'value', type: 'uint256[]' },
+      { name: 'func', type: 'bytes[]' },
+    ],
+    outputs: [],
+  },
+] as const;
+
+/**
+ * Pre-encoded `executeBatch(dest[], value[], func[])` calldata for the
+ * split — for smart accounts exposing SimpleAccount-style executeBatch
+ * (e.g. Coinbase Smart Wallet). Ordering: [merchant-net, fee] — a bundler
+ * / EntryPoint that drops a leg fails the whole op, so the fee cannot be
+ * stripped without also stripping the merchant payment.
+ */
+export function encodeSplitBatchCallData(calls: SplitCall[]): Hex {
+  return encodeFunctionData({
+    abi: SIMPLE_ACCOUNT_BATCH_ABI,
+    functionName: 'executeBatch',
+    args: [
+      calls.map((c) => c.to),
+      calls.map(() => 0n),
+      calls.map((c) =>
+        encodeFunctionData({ abi: ERC20_ABI, functionName: 'transfer', args: c.args })
+      ),
+    ],
+  });
+}
+
 export interface PaymasterUserOp {
   sender: Address;
   nonce: bigint;
@@ -234,13 +325,27 @@ export async function buildPaymasterUserOp(args: {
   /** 4337 smart-account address (the EOA key must be an owner). */
   sender: Address;
   nonce: bigint;
+  /** Merchant recipient (receives gross − fee). */
   to: Address;
   amountCents: string;
   paymaster?: Address;
-}): Promise<PaymasterUserOp> {
+  /** NanoTab fee recipient. Defaults to NANOTAB_FEE_WALLET/FEE_WALLET env. */
+  feeWallet?: Address;
+  /** Fee in basis points (default 50 = 0.5%). */
+  feeBps?: number;
+  /** Also expose the viem-7702 `calls` array shape (see buildSplitCalls). */
+  includeCalls?: boolean;
+}): Promise<PaymasterUserOp & { calls?: SplitCall[]; feeWallet: Address; feeBps: number; feeUnits: bigint; netUnits: bigint }> {
   const { encodePacked, keccak256, toHex } = await import('viem');
   const account = privateKeyToAccount(args.privateKey);
-  const callData = encodeUsdcTransfer(args.to, args.amountCents);
+  const feeBps = args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT;
+  const feeWallet = args.feeWallet ?? resolveFeeWallet();
+  if (!feeWallet) throw new Error('fee wallet unset: pass feeWallet or set NANOTAB_FEE_WALLET/FEE_WALLET');
+  const calls = buildSplitCalls({ merchant: args.to, feeWallet, amountCents: args.amountCents, feeBps });
+  // Atomic split: executeBatch([USDC, USDC], [0, 0],
+  //   [transfer(merchant, net), transfer(FEE_WALLET, fee)]).
+  const callData = encodeSplitBatchCallData(calls);
+  const { feeUnits, netUnits } = splitFeeUnits(centsToUsdcUnits(args.amountCents), feeBps);
   const paymaster = args.paymaster ?? CIRCLE_PAYMASTER_BASE;
   // Circle TokenPaymaster data: validationGas + postOpGas (uint128 each)
   // followed by the fee-token (USDC). Conservative defaults; the bundler
@@ -258,7 +363,11 @@ export async function buildPaymasterUserOp(args: {
   // owner signature commits to paymaster routing, not just the transfer.
   void keccak256;
   void toHex;
-  return { sender: args.sender, nonce: args.nonce, callData, paymaster, paymasterData, intentSignature };
+  return {
+    sender: args.sender, nonce: args.nonce, callData, paymaster, paymasterData, intentSignature,
+    calls: args.includeCalls === false ? undefined : calls,
+    feeWallet, feeBps, feeUnits, netUnits,
+  };
 }
 
 /**

@@ -49,10 +49,24 @@ interface PaymentProof {
   signature: string;
   from?: string;
   txHash?: string; // optional: payer's on-chain transfer hash for confirmation
+  // Atomic fee-split legs (REQUIRED when gateway FEE_WALLET is set).
+  // Amounts in USDC base units. feeTo must equal FEE_WALLET, feeAmount +
+  // merchantAmount must equal gross, feeAmount must equal feeBps math.
+  split?: { feeTo: string; feeAmount: string; merchantAmount: string };
 }
 
 function paymentMessage(p: { to: string; amount: string; asset: string }): string {
   return `nanotab-x402|network=base|to=${p.to}|amountCents=${p.amount}|asset=${p.asset}`;
+}
+
+/**
+ * Extended canonical message committing to the atomic fee split.
+ * Signed by the buyer UserOp owner; gateway rejects if the signed split
+ * does not match — the fee leg cannot be stripped without invalidating
+ * the payer signature.
+ */
+function splitPaymentMessage(p: { to: string; amount: string; asset: string; feeTo: string; feeAmount: string; merchantAmount: string }): string {
+  return `${paymentMessage(p)}|feeTo=${p.feeTo}|fee=${p.feeAmount}|net=${p.merchantAmount}`;
 }
 
 function challenge(req: Request, env: Env): Response {
@@ -95,6 +109,37 @@ function verifyPayment(header: string, to: string, amountCents: string): Payment
   if (!assetOk(proof.asset)) throw new Error('unsupported asset (need USDC on Base)');
   if (proof.network && proof.network !== 'base') throw new Error('wrong network (need base)');
   return proof;
+}
+
+/**
+ * Atomic fee-split enforcement (NanoTab 50bps default).
+ * When env.FEE_WALLET is set, the X-Payment proof MUST carry `split` with:
+ *   - split.feeTo == FEE_WALLET (exact recipient)
+ *   - split.feeAmount == floor(gross * feeBps / 10_000) in USDC base units
+ *   - split.merchantAmount == gross − fee
+ * Missing/wrong split → 402. When FEE_WALLET is unset, split is optional
+ * (back-compat single-transfer flow, fee logged to fee-ledger).
+ */
+function verifyFeeSplit(proof: PaymentProof, amountCents: string, env: Env): { feeUnits: bigint; netUnits: bigint } {
+  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '50');
+  const gross = centsToUnits(amountCents);
+  const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
+  const netUnits = gross - feeUnits;
+  if (!env.FEE_WALLET) return { feeUnits, netUnits };
+  const s = proof.split;
+  if (!s?.feeTo || !s?.feeAmount || !s?.merchantAmount) {
+    throw new Error(`fee split missing: UserOp must batch [transfer(merchant, ${netUnits}), transfer(${env.FEE_WALLET}, ${feeUnits})]`);
+  }
+  if (s.feeTo.toLowerCase() !== (env.FEE_WALLET as string).toLowerCase()) {
+    throw new Error(`fee to wrong wallet (need ${env.FEE_WALLET})`);
+  }
+  if (BigInt(s.feeAmount) !== feeUnits) {
+    throw new Error(`fee amount wrong (need ${feeUnits} units @${feeBps}bps, got ${s.feeAmount})`);
+  }
+  if (BigInt(s.merchantAmount) !== netUnits) {
+    throw new Error(`merchant net wrong (need ${netUnits} units, got ${s.merchantAmount})`);
+  }
+  return { feeUnits, netUnits };
 }
 
 /** Recover signer of the EIP-191 authorization; must equal `from` when provided. */
@@ -179,12 +224,26 @@ export default {
     if (!header) return challenge(req, env);
 
     let proof: PaymentProof;
+    let feeUnits = 0n;
+    let netUnits = 0n;
     try {
       proof = verifyPayment(header, env.MERCHANT_WALLET, env.PRICE_USD_CENTS);
+      // Atomic split enforcement: fee leg present + exact BEFORE signature.
+      ({ feeUnits, netUnits } = verifyFeeSplit(proof, env.PRICE_USD_CENTS, env));
       if (proof.from) {
+        // Split-aware message when the payer committed to legs; legacy
+        // single-transfer message otherwise (back-compat when split unset
+        // and FEE_WALLET unset).
+        const msg = proof.split?.feeTo
+          ? splitPaymentMessage({
+              to: proof.to, amount: proof.amount, asset: proof.asset,
+              feeTo: proof.split.feeTo, feeAmount: proof.split.feeAmount,
+              merchantAmount: proof.split.merchantAmount,
+            })
+          : paymentMessage({ to: proof.to, amount: proof.amount, asset: proof.asset });
         const ok = await verifyMessage({
           address: proof.from as Address,
-          message: paymentMessage({ to: proof.to, amount: proof.amount, asset: proof.asset }),
+          message: msg,
           signature: proof.signature as Hex,
         });
         if (!ok) throw new Error('invalid payment signature');
@@ -193,22 +252,21 @@ export default {
       return Response.json({ error: (e as Error).message }, { status: 402 });
     }
 
-    // Settlement.
+    // Settlement (feeUnits/netUnits already enforced by verifyFeeSplit above).
     const gross = Number(env.PRICE_USD_CENTS) / 100;
     const fee = (gross * feeBps) / 10_000;
-    const { feeUnits, netUnits } = split(env.PRICE_USD_CENTS, feeBps);
     let settleNote: string;
     if (env.SETTLER_KEY) {
       try {
         const s = await settleOnChain(env, env.PRICE_USD_CENTS);
-        settleNote = `on-chain merchant transfer ${s.txHash} (net ${s.net} units; fee ${s.fee} units → ${env.FEE_WALLET ?? 'fee-ledger (unset FEE_WALLET, swept in batch)'})`;
+        settleNote = `on-chain merchant transfer ${s.txHash} (net ${s.net} units; fee ${s.fee} units to ${env.FEE_WALLET ?? 'fee-ledger (unset FEE_WALLET, swept in batch)'})`;
         console.log(`[nanotab-gw] settled $${gross.toFixed(2)} → ${env.MERCHANT_WALLET}: ${settleNote}`);
       } catch (e) {
         settleNote = `on-chain settlement FAILED (${(e as Error).message}); fee accounting logged, merchant settle retry required`;
         console.log(`[nanotab-gw] SETTLE-FAIL $${gross.toFixed(2)} → ${env.MERCHANT_WALLET}: ${(e as Error).message}`);
       }
     } else {
-      settleNote = `fee accounting logged (no SETTLER_KEY: merchant net ${netUnits} units → ${env.MERCHANT_WALLET}, fee ${feeUnits} units @${feeBps}bps → ${env.FEE_WALLET ?? 'fee-ledger'}; payer-authorized off-chain, payer submits on-chain transfer)`;
+      settleNote = `fee accounting logged (no SETTLER_KEY: merchant net ${netUnits} units to ${env.MERCHANT_WALLET}, fee ${feeUnits} units @${feeBps}bps to ${env.FEE_WALLET ?? 'fee-ledger'}; payer-authorized off-chain, payer submits on-chain transfer)`;
       console.log(
         `[nanotab-gw] authorized $${gross.toFixed(2)} → ${env.MERCHANT_WALLET} (fee ${(feeBps / 100).toFixed(2)}% $${fee.toFixed(4)}, net $${(gross - fee).toFixed(4)}, sig ${proof.signature.slice(0, 18)}… from ${proof.from ?? 'unknown'}) [${settleNote}]`
       );

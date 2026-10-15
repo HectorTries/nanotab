@@ -55,4 +55,24 @@ if (devKey) {
   console.log('SKIP valid-signed-payment (set NANOTAB_TEST_KEY to a throwaway dev key)');
 }
 
+// --- Atomic fee-split cases (run only when GW has FEE_WALLET set + NANOTAB_TEST_KEY) ---
+if (devKey && process.env.FEE_WALLET) {
+  const FEE = process.env.FEE_WALLET;
+  const leg = (to, amount, asset, split) =>
+    `nanotab-x402|network=base|to=${to}|amountCents=${amount}|asset=${asset}|feeTo=${split.feeTo}|fee=${split.feeAmount}|net=${split.merchantAmount}`;
+  const paySplit = async (split) => {
+    const p = { amount: '2', to: WALLET, asset: USDC, network: 'base', from, split };
+    p.signature = await signFn(leg(p.to, p.amount, p.asset, split));
+    return Buffer.from(JSON.stringify(p)).toString('base64');
+  };
+  r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': await paySplit({ feeTo: FEE, feeAmount: '100', merchantAmount: '19900' }) } });
+  check('split-valid → passes verify (non-402)', r.status !== 402, `status=${r.status}`);
+  r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': await pay() } });
+  check('split-missing → 402', r.status === 402, (await r.text()).slice(0, 90));
+  r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': await paySplit({ feeTo: FEE, feeAmount: '50', merchantAmount: '19950' }) } });
+  check('split-wrong-fee → 402', r.status === 402, (await r.text()).slice(0, 90));
+} else {
+  console.log('SKIP fee-split cases (need NANOTAB_TEST_KEY + FEE_WALLET env)');
+}
+
 process.exit(fail ? 1 : 0);
