@@ -44,3 +44,11 @@ ORIGIN_URL=http://localhost:4021 npx wrangler dev --port 8787
 # terminal 3
 GW_URL=http://localhost:8787 npm test
 ```
+
+## Live loop (2026-10-15)
+
+- Origin: `demo/origin-bare.js` (bare Express, no paywall) — `/health`, `/price`, `/keyword?q=`, `/keyword/:term`
+- Prod origin runs on VPS (`/root/nanotab-origin/app.js`, Caddy TLS at `https://origin.nanotab.dev` — needs DNS A `origin.nanotab.dev → VPS`)
+- Gateway `wrangler.toml` `ORIGIN_URL = "https://origin.nanotab.dev"` (local dev: `--var ORIGIN_URL:http://127.0.0.1:4022`)
+- Landing page: `demo/landing.html` → served at `https://nanotab.dev` (VPS Caddy, needs apex DNS A → VPS)
+- Deploy gateway: `cd workers/gateway && wrangler deploy` (needs `wrangler login`)

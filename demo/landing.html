@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab — micropayments for AI agents</title>
+<meta name="description" content="NanoTab paywalls any API with x402-style 402s. Agents pay per call in USDC on Base. 0.5% fee.">
+<style>
+:root{--bg:#0b0e14;--fg:#e8ecf3;--mut:#9aa3b2;--acc:#7df9c6;--card:#141926;--line:#232b3d}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:0 20px}
+.wrap{max-width:720px;margin:0 auto;padding:64px 0 80px}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:4px 14px;font-size:13px;color:var(--acc);margin-bottom:20px}
+h1{font-size:clamp(32px,6vw,52px);line-height:1.1;letter-spacing:-.02em}
+h1 span{color:var(--acc)}p.sub{color:var(--mut);font-size:18px;margin:16px 0 28px}
+.btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:56px}
+a.btn{background:var(--acc);color:#06281b;font-weight:700;padding:12px 22px;border-radius:10px;text-decoration:none}
+a.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+h2{font-size:22px;margin:40px 0 16px}.steps{display:grid;gap:12px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.step b{color:var(--acc)}.step p{color:var(--mut);font-size:15px;margin-top:4px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;overflow-x:auto;font-size:13.5px;line-height:1.55}
+code{color:var(--acc)}.price{font-size:15px;color:var(--mut)}.price b{color:var(--fg);font-size:28px}
+footer{margin-top:56px;color:var(--mut);font-size:13px;border-top:1px solid var(--line);padding-top:20px}
+footer a{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="badge">x402 &middot; USDC on Base Sepolia &middot; testnet MVP</div>
+<h1>APIs that charge <span>per call.</span><br>Agents that pay.</h1>
+<p class="sub">NanoTab wraps any HTTP API in a paywall. No API keys, no signup — the agent pays $0.02 in USDC, the merchant gets paid, NanoTab takes 0.5%.</p>
+<div class="btns">
+<a class="btn" href="https://gateway.nanotab.dev/keyword/solar">Try the live gateway</a>
+<a class="btn ghost" href="https://github.com/HectorTries/nanotab">GitHub</a>
+</div>
+<h2>How it works</h2>
+<div class="steps">
+<div class="step"><b>1. Agent calls your API</b><p>No <code>X-Payment</code> header? Gateway answers <code>402 Payment Required</code> with price, wallet &amp; network.</p></div>
+<div class="step"><b>2. Agent pays in USDC on Base</b><p>Agent signs a micropayment ($0.02/call) and retries with <code>X-Payment: base64(proof)</code>.</p></div>
+<div class="step"><b>3. Gateway verifies &amp; proxies</b><p>Proof checks out → request proxies to your origin. You keep 99.5%. Zero code changes on your side.</p></div>
+</div>
+<h2>Live demo</h2>
+<pre><code># 1 — no payment → 402 challenge
+curl https://gateway.nanotab.dev/keyword/solar
+# → {"x402Version":1,"accepts":[{...,"maxAmountRequired":"2",...}]}
+
+# 2 — pay $0.02 (mock signature on testnet) → 200, real data
+curl -H "X-Payment: &lt;base64-proof&gt;" \
+  "https://gateway.nanotab.dev/keyword?q=solar"
+# → {"term":"solar","volume":89625,"cpc":1.25,...}</code></pre>
+<h2>Pricing</h2>
+<p class="price"><b>0.5%</b> per settled call. Merchant sets the price (demo: $0.02). No monthly fee, no signup.</p>
+<h2>Endpoints</h2>
+<pre><code>GET gateway.nanotab.dev/keyword?q=term  — SEO data ($0.02)
+GET gateway.nanotab.dev/price           — price + merchant info
+GET gateway.nanotab.dev/health          — liveness</code></pre>
+<footer>NanoTab MVP — payment verification is mocked on Base Sepolia testnet. No real funds move. <a href="https://github.com/HectorTries/nanotab">Source</a></footer>
+</div>
+</body>
+</html>
