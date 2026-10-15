@@ -11,6 +11,10 @@ export interface ChargeOptions {
   wallet: string;
   network?: string;
   asset?: string;
+  /** Public base URL for the 402 resource field, e.g. 'https://nanotab.dev/saveshare'.
+   *  Needed behind a reverse proxy that strips a path prefix — otherwise the
+   *  resource would show the internal http://127.0.0.1:port/... URL. */
+  baseUrl?: string;
 }
 
 export interface PaymentProof {
@@ -59,7 +63,13 @@ export function nanotabCharge(opts: ChargeOptions) {
 
   return (req: Request, res: Response, next: NextFunction): void => {
     const header = req.header('X-Payment');
-    const resource = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    // Public resource URL: explicit baseUrl wins; else respect proxy headers
+    // (requires app.set('trust proxy') or a proxy that sets X-Forwarded-*).
+    const proto = (req.get('x-forwarded-proto') || req.protocol || 'http').split(',')[0].trim();
+    const host = (req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+    const resource = opts.baseUrl
+      ? opts.baseUrl.replace(/\/$/, '') + req.originalUrl
+      : `${proto}://${host}${req.originalUrl}`;
 
     if (!header) {
       res.status(402).json({

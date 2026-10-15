@@ -111,11 +111,11 @@ function main() {
   const alreadyImported = src.includes('@nanotab/merchant') || /\bnanotabCharge\b/.test(src);
   const isESM = !/require\s*\(/.test(src) && /^\s*import\s/m.test(src);
 
-  // Matches: app.get('/path', ...   app.post("/path", ...   app.use(`/path`, ...
-  // Captures: method, quote, route path, rest of line after the path's closing quote.
-  const routeRe = /\bapp\s*\.\s*(get|post|use)\s*\(\s*(['"`])((?:(?!\2).)*)\2/;
-  const ambiguousRe = /\bapp\s*\.\s*(get|post|use|all|route)\s*\(/;
-  const varOrTemplateRe = /\bapp\s*\.\s*(get|post|use)\s*\(\s*[^'"`\s]/; // path is not a string literal
+  // Matches: app.get('/path', ...  router.post("/path", ...  app.use(`/path`, ...
+  // Captures: receiver (app|router), method, quote, route path, rest of line after the path's closing quote.
+  const routeRe = /\b(app|router)\s*\.\s*(get|post|put|delete|patch|use|all)\s*\(\s*(['"`])((?:(?!\3).)*)\3/;
+  const ambiguousRe = /\b(app|router)\s*\.\s*(get|post|put|delete|patch|use|all|route)\s*\(/;
+  const varOrTemplateRe = /\b(app|router)\s*\.\s*(get|post|put|delete|patch|use|all)\s*\(\s*[^'"`\s]/; // path is not a string literal
 
   const touched = [];
   const skipped = [];
@@ -131,15 +131,23 @@ function main() {
       out.push(line);
       continue;
     }
-    const [, method, , routePath] = m;
+    const [, receiver, method, , routePath] = m;
+    const where = `${receiver}.${method}`;
     if (line.includes('nanotabCharge')) {
-      skipped.push({ method, path: routePath, reason: 'already wrapped' });
+      skipped.push({ method: where, path: routePath, reason: 'already wrapped' });
       out.push(line);
       continue;
     }
     // Template literals with ${} are dynamic — flag, don't touch.
-    if (m[2] === '`' && routePath.includes('${')) {
+    // Static template literals (no ${}) are safe to wrap.
+    if (m[3] === '`' && routePath.includes('${')) {
       ambiguous.push({ line: i + 1, text: line.trim() });
+      out.push(line);
+      continue;
+    }
+    // app.use('/prefix', router) mounts middleware, not a payable route — flag, don't wrap.
+    if (method === 'use' && /,\s*(router\b|\w+Router\b)/.test(line)) {
+      ambiguous.push({ line: i + 1, text: `router mount (not wrapped): ${line.trim()}` });
       out.push(line);
       continue;
     }
@@ -150,12 +158,12 @@ function main() {
       continue;
     }
     // Insert chargeArg right after the route-path argument: app.get('/p', <HERE>handler...
-    const patched = line.replace(routeRe, (full, meth, q, rp) => {
+    const patched = line.replace(routeRe, (full, recv, meth, q, rp) => {
       // Rebuild the matched prefix and append the middleware after `'<path>',`.
       const prefixEnd = full.lastIndexOf(q) + 1;
       return full.slice(0, prefixEnd) + `, ${chargeArg}` + full.slice(prefixEnd);
     });
-    touched.push({ method, path: routePath });
+    touched.push({ method: where, path: routePath });
     out.push(patched);
   }
 
