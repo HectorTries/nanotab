@@ -16,7 +16,7 @@ function flag(name: string): string | undefined {
 async function main(): Promise<void> {
   const cmd = process.argv[2];
   if (cmd === 'protect') {
-    require('../../cli/protect.js');
+    require('../cli/protect.js');
     return;
   }
   if (cmd !== 'init') {
