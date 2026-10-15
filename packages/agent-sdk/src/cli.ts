@@ -19,10 +19,15 @@ async function main(): Promise<void> {
     require('../cli/protect.js');
     return;
   }
+  if (cmd === 'deploy') {
+    require('../cli/deploy.js');
+    return;
+  }
   if (cmd !== 'init') {
     console.log('Usage:');
     console.log('  nanotab init --budget \'$1.00\' --per-call \'$0.10\' [--allowlist host1,host2] [--calls-per-min 20]');
     console.log('  nanotab protect --price <usd> --wallet <0x..> [--route "<glob>"] [--yes] <file.js>');
+    console.log('  nanotab deploy --price <usd> --wallet <0x..> [--file ./server.js | --dir ./api] [--name <worker>] [--yes]');
     process.exit(1);
   }
   const existing = loadConfig();
