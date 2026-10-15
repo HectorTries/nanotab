@@ -79,6 +79,17 @@ pre code{color:#c9f5e2}
 .step h3{font-size:19px;letter-spacing:-.01em;margin-bottom:8px}
 .step p{color:var(--mut);font-size:14.5px}
 .step code{background:rgba(0,0,0,.4);padding:2px 7px;border-radius:6px;font-size:13px;color:var(--acc);font-family:'JetBrains Mono',monospace}
+/* merchant / buyer how-to */
+.howto{max-width:780px;margin:44px auto 0;display:grid;gap:16px}
+.howstep{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 26px;position:relative;overflow:hidden}
+.howstep::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--acc),var(--acc2));opacity:0;transition:opacity .25s}
+.howstep:hover::after{opacity:1}
+.howstep .num{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--acc);border:1px solid rgba(93,242,184,.35);display:inline-block;border-radius:99px;padding:3px 13px;margin-bottom:14px}
+.howstep h3{font-size:19px;letter-spacing:-.01em;margin-bottom:6px}
+.howstep p{color:var(--mut);font-size:14.5px;margin-bottom:4px}
+.howstep p b{color:var(--fg)}
+.howstep pre{margin:14px 0 4px;user-select:all}
+.soon{display:inline-block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--gold);border:1px solid rgba(255,212,121,.4);border-radius:99px;padding:2px 11px;margin-left:10px;vertical-align:middle}
 /* proof */
 .proofgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:900px;margin:0 auto}
 @media(max-width:700px){.proofgrid{grid-template-columns:1fr}}
@@ -105,7 +116,7 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="bg"></div><div class="grid"></div>
 <nav>
 <div class="logo"><i>◒</i> NanoTab</div>
-<div class="navlinks"><a href="#generate">Generator</a><a href="#how">How it works</a><a href="#proof">Proof</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="#generate">Start collecting →</a></div>
+<div class="navlinks"><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="#generate">Start collecting →</a></div>
 </nav>
 <header class="hero">
 <div class="blob" style="width:420px;height:420px;left:-120px;top:-40px;background:#7c6cf6;animation:float 9s ease-in-out infinite"></div>
@@ -150,6 +161,34 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="step"><span class="num">01</span><h3>Fill in the form</h3><p>Wallet, what your endpoint should do, price per call. Get a copy-paste setup prompt.</p></div>
 <div class="step"><span class="num">02</span><h3>Paste it to your agent</h3><p>Any coding agent — it builds your endpoint if needed, wraps it with <code>npx nanotab protect</code>, deploys it with public HTTPS, and verifies the 402 + paid-200 flow.</p></div>
 <div class="step"><span class="num">03</span><h3>Collect USDC</h3><p>Every call pays straight to your wallet on Base. No ETH, no gas, no signup — gas comes out of the USDC via the Circle paymaster.</p></div>
+</div>
+</section>
+<section id="sell" class="reveal">
+<div class="eyebrow">For merchants · sell your API</div>
+<h2>Four commands.<br>You get paid.</h2>
+<p class="secsub">Protect any Express endpoint, deploy it, collect USDC on Base. You keep 99.5%.</p>
+<div class="howto">
+<div class="howstep"><span class="num">01 · Install</span><h3>Get both packages</h3><p>Merchant middleware + the CLI. One line, global.</p><pre><code>npm i -g @nanotab/merchant @nanotab/agent-sdk</code></pre></div>
+<div class="howstep"><span class="num">02 · Protect</span><h3>Wrap your endpoint</h3><p>Points at your Express server, prints a diff, asks before touching anything. <b>--price</b> is USD per call, <b>--wallet</b> is where payouts land.</p><pre><code>npx nanotab protect --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js</code></pre></div>
+<div class="howstep"><span class="num">03 · Deploy</span><h3>Ship it to the world<span class="soon">0.1.2 · coming</span></h3><p>Bundles with esbuild and deploys to Cloudflare Workers. You’ll be asked for a <b>CLOUDFLARE_API_TOKEN</b> (dash.cloudflare.com → profile → API tokens → Workers Edit). Prefer a plain <b>fetch handler</b> — Express needs the @cloudflare/express adapter.</p><pre><code>CLOUDFLARE_API_TOKEN=xxxx npx nanotab deploy --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js
+# → https://my-api.&lt;you&gt;.workers.dev  ✅ live</code></pre></div>
+<div class="howstep"><span class="num">04 · Get paid</span><h3>USDC straight to your wallet</h3><p>Every paid call settles on Base. <b>0.5%</b> goes to NanoTab automatically, the rest is yours. No ETH, no gas, no signup — gas comes out of the USDC via the Circle paymaster. Verify any time:</p><pre><code>curl https://my-api.&lt;you&gt;.workers.dev/keyword?q=solar
+# → HTTP 402 + payment spec (unpaid)
+# paid call → HTTP 200 + your data</code></pre></div>
+</div>
+</section>
+<section id="buy" class="reveal">
+<div class="eyebrow">For buyers · pay per call</div>
+<h2>Three steps.<br>Pay as you go.</h2>
+<p class="secsub">Create a wallet, fund it with USDC, call any NanoTab endpoint from code.</p>
+<div class="howto">
+<div class="howstep"><span class="num">01 · Wallet</span><h3>Create a buyer wallet</h3><p>Generates a local key + address. <b>--budget</b> caps total spend, <b>--per-call</b> caps a single call.</p><pre><code>npx nanotab init --budget '$1.00' --per-call '$0.10'
+# → wallet 0x…  (saved locally as .nanotab.key)</code></pre></div>
+<div class="howstep"><span class="num">02 · Fund</span><h3>Top up with USDC on Base</h3><p>Send USDC (Base network) to the address above. Just enough to cover your calls — <b>no ETH needed</b>, the Circle paymaster covers gas out of the USDC.</p><pre><code># from any exchange or wallet → send USDC (Base) to:
+0xYOUR_NEW_WALLET_ADDRESS</code></pre></div>
+<div class="howstep"><span class="num">03 · Call</span><h3>Fetch from code</h3><p><b>nanotabFetch</b> handles the whole 402 → pay → retry loop. One function, paid 200 back.</p><pre><code>const { nanotabFetch } = require('@nanotab/agent-sdk');
+const data = await nanotabFetch('https://my-api.&lt;you&gt;.workers.dev/keyword?q=solar');
+console.log(data); // 200 + JSON ✅</code></pre></div>
 </div>
 </section>
 <section id="proof" class="reveal">
