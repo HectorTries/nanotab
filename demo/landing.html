@@ -217,9 +217,9 @@ console.log(await res.json()); // your data</code></pre></div>
 </div>
 </div>
 <div class="howto">
-<div class="howstep"><span class="num">01 · Wallet</span><h3>Create a buyer wallet</h3><p>Generates a local key + address. <b>--budget</b> caps total spend, <b>--per-call</b> caps a single call.</p><pre><code>npx nanotab buy-init
+<div class="howstep"><span class="num">01 · Wallet</span><h3>Create a buyer wallet</h3><p>Generates a local key + address. <b>--budget</b> caps total spend, <b>--per-call</b> caps a single call.</p><pre><code>curl -fsSL https://nanotab.dev/buy.sh | bash
 # → wallet 0x… + fund instructions + backup path
-# (custom: nanotab init --budget '$5.00' --per-call '$0.10')</code></pre></div>
+# (or: npx nanotab buy-init — after npm publish)</code></pre></div>
 <div class="howstep"><span class="num">02 · Fund</span><h3>Top up with USDC on Base</h3><p>Send USDC (Base network) to the address above. Just enough to cover your calls — <b>no ETH needed</b>, the Circle paymaster covers gas out of the USDC.</p><pre><code># from any exchange or wallet → send USDC (Base) to:
 0xYOUR_NEW_WALLET_ADDRESS</code></pre></div>
 <div class="howstep"><span class="num">03 · Call</span><h3>Fetch from code</h3><p><b>nanotabFetch</b> handles the whole 402 → pay → retry loop. One function, paid 200 back.</p><pre><code>const { nanotabFetch } = require('@nanotab/agent-sdk');
