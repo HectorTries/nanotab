@@ -108,12 +108,14 @@ pre code{color:#c9f5e2}
 .final{max-width:1180px;margin:80px auto 0;padding:70px 28px;text-align:center;border-top:1px solid var(--line)}
 footer{max-width:1180px;margin:0 auto;padding:26px 28px 44px;display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;flex-wrap:wrap;gap:10px}
 footer a{color:var(--acc);text-decoration:none}
+@media(max-width:760px){.navlinks a:not(.navcta){display:none}.hero{padding:50px 20px 24px}section{padding:56px 20px 0}.herobtns .btn{font-size:17px;padding:17px 32px;width:100%}.eco{font-size:12px}}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
 .reveal.on{opacity:1;transform:none}
 </style>
 </head>
 <body>
 <div class="bg"></div><div class="grid"></div>
+<div class="eco" style="text-align:center;font-size:13px;color:var(--mut);padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.04)">🤖→💰 The x402 economy is live: <b style="color:var(--acc)">$24.2M</b> settled onchain · <b style="color:var(--fg)">94K</b> agent-txns vs 22K last quarter · NanoTab takes just <b style="color:var(--acc)">0.1%</b> — <a href="#proof" style="color:var(--acc)">see live proof ↓</a></div>
 <nav>
 <div class="logo"><i>◒</i> NanoTab</div>
 <div class="navlinks"><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="#generate">Start collecting →</a></div>
@@ -230,23 +232,23 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <section id="proof" class="reveal">
 <div class="eyebrow">Live proof</div>
 <h2>Real money. Real chain.</h2>
-<p class="secsub">Real paid call on Base mainnet, 16 Oct 2026. Buyer 0x4921…bd89 → gateway 402 → paid 200.</p>
+<p class="secsub">Settled on Base mainnet, 15 Oct 2026. Click through to BaseScan.</p>
 <div class="proofgrid" style="margin-top:44px">
-<div class="proof"><div class="tag">◆ Live endpoint</div><h3>SaveShare · $0.05/call</h3><p>Unpaid call returns 402 with the payment spec. Try it:<br><a href="https://nanotab.dev/saveshare/creator/moneywithkatie">nanotab.dev/saveshare/creator/moneywithkatie ↗</a></p></div>
-<div class="proof"><div class="tag">◆ Paid call</div><h3>$0.05 USDC · Base mainnet</h3><p>Buyer 0x4921…bd89 paid, merchant got it. Agent wallet: 0 ETH.<br>Gateway flow: 402 → 200, verified live.</p></div>
-<div class="proof"><div class="tag">◆ Fee settled</div><h3>0.1% · ~50 units</h3><p>$0.05 = 50,000 units: 49,950 → merchant, 50 → NanoTab. Circle paymaster + Pimlico, 0 ETH.</p></div>
-<div class="proof"><div class="tag">◆ Merchant</div><h3 style="font-family:'JetBrains Mono',monospace;font-size:14px;word-break:break-all">0xc47b6d6a4137373ab169aeeedb95971d4939ef0b</h3><p>Receives 49,950 units per paid call on Base.</p></div>
+<div class="proof"><div class="tag">◆ Live endpoint</div><h3>SaveShare · $0.05/call</h3><p>Unpaid call returns 402 with the payment spec. Try it:<br><a href="https://nanotab.dev/saveshare/creator/adm.jay">nanotab.dev/saveshare/creator/adm.jay ↗</a></p></div>
+<div class="proof"><div class="tag">◆ Paid call</div><h3>0.001 USDC · Base mainnet</h3><p>Buyer paid, merchant got it. Agent wallet: 0 ETH.<br><a href="https://basescan.org/tx/0x0b39b4ec4a6ef4562cfd9efe10c3bba5858c486ac4c3f0c92fcb91caef23f5b2">tx 0x0b39b4…23f5b2 ↗</a></p></div>
+<div class="proof"><div class="tag">◆ Fee settled</div><h3>0.1% onchain · EIP-7702</h3><p>1 unit to NanoTab. Circle paymaster + Pimlico.<br><a href="https://basescan.org/tx/0x0e85cf9dc38a50ec9ff17ccc1e7b761bb94ac43ac9ccc526973f94738e947370">tx 0x0e85cf…e947370 ↗</a></p></div>
+<div class="proof"><div class="tag">◆ Atomic split</div><h3>$0.05 in one tx · fee enforced</h3><p>Single UserOp: [49950 → merchant, 50 → fee]. One tx, 0 ETH.<br><a href="https://basescan.org/tx/0x47ac3dd59e13d5ad0b3dc226dbb3ff77775f5257343cf134f50aad5c243b60b8">tx 0x47ac3d…243b60b8 ↗</a></p></div>
 </div>
-<h3 style="margin:36px 0 12px;font-size:17px">Unpaid → <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">402</span></h3>
-<pre><code>curl https://nanotab.dev/saveshare/creator/moneywithkatie
+<h3 style="margin:36px 0 12px;font-size:17px">Unpaid → <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">402</span> <button type="button" class="btn ghost" id="curlCopyBtn" style="font-size:13px;padding:7px 16px;margin-left:10px;vertical-align:middle">Copy curl 📋</button></h3>
+<pre><code id="curl402">curl https://nanotab.dev/saveshare/creator/adm.jay
 {"x402Version":1,"accepts":[{"scheme":"exact","network":"base",
-"maxAmountRequired":"5","resource":"https://nanotab.dev/saveshare/creator/moneywithkatie",
+"maxAmountRequired":"5","resource":"https://nanotab.dev/saveshare/creator/adm.jay",
 "payTo":"0xc47b6d6a4137373ab169aeeedb95971d4939ef0b",
 "asset":"0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5","fee":"0.1%"}]}</code></pre>
 <h3 style="margin:28px 0 12px;font-size:17px">Paid → <span style="font-family:'JetBrains Mono',monospace;color:var(--acc)">200</span></h3>
-<pre><code>curl -H "X-Payment: &lt;base64-proof&gt;" https://nanotab.dev/saveshare/creator/moneywithkatie
-{"handle":"moneywithkatie","video_count":20,"avg_views":&lt;n&gt;,
-"top_hook":"..."}</code></pre>
+<pre><code>curl -H "X-Payment: &lt;base64-proof&gt;" https://nanotab.dev/saveshare/creator/adm.jay
+{"handle":"adm.jay","video_count":17,"avg_views":580.8,
+"top_hook":"Okay, whose email ends in this or maybe this? ..."}</code></pre>
 <p class="secsub" style="margin-top:24px">Full walkthrough in the <a href="https://github.com/HectorTries/nanotab" style="color:var(--acc)">docs ↗</a>.</p>
 </section>
 <section class="reveal">
@@ -357,6 +359,16 @@ genKeyBtn.textContent='Regenerate 🔑';
 }catch(e){document.getElementById('browserKeyOut').textContent='ERROR: '+e.message}
 })}
 })();
+// curl 402 copy button
+var curlCopyBtn = document.getElementById('curlCopyBtn');
+if (curlCopyBtn) {
+  curlCopyBtn.addEventListener('click', function() {
+    var t = document.getElementById('curl402').textContent.split(String.fromCharCode(10))[0];
+    function done() { curlCopyBtn.textContent = 'Copied \u2713'; setTimeout(function(){ curlCopyBtn.textContent = 'Copy curl'; }, 2000); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(done); }
+    else { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch(e){} document.body.removeChild(ta); done(); }
+  });
+}
 document.getElementById("genBtn").addEventListener("click",gen);
 document.getElementById("copyBtn").addEventListener("click",copyOut);
 function copyOut(){
