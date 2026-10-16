@@ -122,11 +122,11 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="blob" style="width:420px;height:420px;left:-120px;top:-40px;background:#7c6cf6;animation:float 9s ease-in-out infinite"></div>
 <div class="blob" style="width:340px;height:340px;right:-100px;top:60px;background:#12b981;animation:float 11s ease-in-out infinite"></div>
 <div class="live"><span class="dot"></span> x402 · USDC on Base mainnet · live</div>
-<h1>Sell your API.<br><span class="grad">Or buy API calls.</span></h1>
-<p class="sub">Fill in the form, hand the prompt to any coding agent, and your API starts charging per call. Agents pay in <b>USDC on Base</b> — straight to your wallet. <b>No ETH. No gas. No signup.</b></p>
+<h1>Get paid for your data<br><span class="grad">by agents, in one prompt.</span></h1>
+<p class="sub">Got data or an API? One prompt turns it into a pay-per-call endpoint — agents pay you in <b>USDC on Base</b>, straight to your wallet. <b>No ETH. No gas. No signup.</b> Or flip it around: give <b>your agent its own wallet in one click</b> and let it buy the API calls it needs.</p>
 <div class="herobtns">
-<a class="btn" href="#sell">Sell your API →</a>
-<a class="btn ghost" href="#buy">Buy API calls →</a>
+<a class="btn" href="#sell">Get paid for my data →</a>
+<a class="btn ghost" href="#buy">Set up my agent's wallet →</a>
 </div>
 </header>
 <div class="ticker"><div class="track" id="tick">
@@ -164,9 +164,9 @@ footer a{color:var(--acc);text-decoration:none}
 </div>
 </section>
 <section id="sell" class="reveal">
-<div class="eyebrow">For merchants · sell your API</div>
-<h2>Four steps.<br>You get paid.</h2>
-<p class="secsub">Any HTTP endpoint becomes a paid API. You keep 99.5% of every call, settled in USDC on Base — straight to your wallet.</p>
+<div class="eyebrow">For merchants · get paid by agents</div>
+<h2>Get paid for your data<br>by agents in one prompt.</h2>
+<p class="secsub">Fill in the form, hand the prompt to any coding agent, and your API starts charging per call. You keep 99.5% of every call, settled in USDC on Base — straight to your wallet. Four steps, plain and simple:</p>
 <div class="howto">
 <div class="howstep"><span class="num">Step 1 · Wallet address</span><h3>Where should the money go?</h3><p>Any Ethereum-style address you control — MetaMask, Coinbase Wallet, whatever. Payouts land here in <b>USDC on Base</b>. That’s the only thing you need to decide up front:</p><pre><code>0xYOUR_ADDRESS   ← paste this into step 2</code></pre></div>
 <div class="howstep"><span class="num">Step 2 · Price per call</span><h3>You set the price</h3><p>A flat USD price per API call — <b>$0.01</b>, <b>$0.05</b>, whatever your data is worth. Buyers pay exactly this; NanoTab takes <b>0.5%</b> automatically, you keep the rest.</p><pre><code>--price 0.05   ← five cents per call</code></pre></div>
@@ -193,9 +193,9 @@ console.log(await res.json()); // your data</code></pre></div>
 </div>
 </section>
 <section id="buy" class="reveal">
-<div class="eyebrow">For buyers · pay per call</div>
-<h2>Three steps.<br>Pay as you go.</h2>
-<p class="secsub">In plain English: you create a spending wallet, put a few dollars of <b style="color:var(--fg)">USDC on the Base network</b> into it, then call paid APIs from your code. A helper called <b style="color:var(--fg)">nanotabFetch</b> handles the paying automatically — first try gets a price tag (HTTP 402), it pays it, retries, and your data comes back (HTTP 200). You never touch ETH or gas.</p>
+<div class="eyebrow">For buyers · fund your agent</div>
+<h2>Set up your agent with<br>its own wallet in one click.</h2>
+<p class="secsub">In plain English: your agent gets its own spending wallet, you put a few dollars of <b style="color:var(--fg)">USDC on the Base network</b> into it, then it buys whatever API calls it needs. Three steps: A helper called <b style="color:var(--fg)">nanotabFetch</b> handles the paying automatically — first try gets a price tag (HTTP 402), it pays it, retries, and your data comes back (HTTP 200). You never touch ETH or gas.</p>
 <div class="howto">
 <div class="howstep"><span class="num">01 · Wallet</span><h3>Create a buyer wallet</h3><p>Generates a local key + address. <b>--budget</b> caps total spend, <b>--per-call</b> caps a single call.</p><pre><code>npx nanotab init --budget '$1.00' --per-call '$0.10'
 # → wallet 0x…  (saved locally as .nanotab.key)</code></pre></div>
