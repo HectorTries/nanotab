@@ -31,15 +31,38 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const existing = loadConfig();
+  const keyPath = flag('key-path') ?? path.join(os.homedir(), '.nanotab.key');
+  const keyLabel = keyPath.startsWith(os.homedir()) ? '~' + keyPath.slice(os.homedir().length) : keyPath;
+  const wantsRewrite = process.argv.includes('--force') || process.argv.includes('--backup');
+  const backupKey = (): void => {
+    const bak = `${keyPath}.bak.${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    fs.copyFileSync(keyPath, bak);
+    fs.chmodSync(bak, 0o600);
+    console.log(`existing key backed up to ${bak}`);
+  };
+  const writeFreshKey = (): `0x${string}` => {
+    const fresh = generatePrivateKey() as `0x${string}`;
+    fs.writeFileSync(keyPath, fresh, { mode: 0o600 });
+    fs.chmodSync(keyPath, 0o600);
+    return fresh;
+  };
   let key: `0x${string}`;
   let keySaved = false;
   if (process.env.NANOTAB_WALLET_KEY) {
     key = process.env.NANOTAB_WALLET_KEY as `0x${string}`;
+  } else if (fs.existsSync(keyPath)) {
+    if (wantsRewrite) {
+      backupKey();
+      key = writeFreshKey();
+      keySaved = true;
+    } else {
+      console.error(`ERROR: ${keyLabel} already exists. Refusing to overwrite (funds protection).`);
+      console.error(`Re-run with --force (backs up old key to ${keyLabel}.bak.<timestamp>, then overwrites) or --backup (auto-backs-up, then writes new key).`);
+      console.error(`Custom location? Re-run with --key-path <path>.`);
+      process.exit(2);
+    }
   } else {
-    key = generatePrivateKey() as `0x${string}`;
-    const keyPath = path.join(os.homedir(), '.nanotab.key');
-    fs.writeFileSync(keyPath, key, { mode: 0o600 });
-    fs.chmodSync(keyPath, 0o600);
+    key = writeFreshKey();
     keySaved = true;
   }
   const wallet = createSmartWallet(key);
