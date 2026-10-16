@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createSmartWallet, ONRAMP_LINK } from './wallet';
 import { generatePrivateKey } from 'viem/accounts';
-import { saveConfig, loadConfig } from './config';
+import { saveConfig, loadConfig, setExplicitConfigPath } from './config';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -86,6 +86,8 @@ function cmdBackup(keyPath: string): void {
 }
 
 async function cmdInit(): Promise<void> {
+  const cfgFlag = flag('config');
+  if (cfgFlag) setExplicitConfigPath(cfgFlag);
   const existing = loadConfig();
   const keyPath = flag('key-path') ?? defaultKeyPath();
   const keyLabel = shortLabel(keyPath);
@@ -181,7 +183,7 @@ async function main(): Promise<void> {
   if (cmd !== 'init' && cmd !== 'buy-init') {
     console.log('Usage:');
     console.log('  nanotab buy-init                                   # ONE-CLICK buyer setup: wallet + config + backup ($5 budget, $0.10/call)');
-    console.log('  nanotab init --budget \'$1.00\' --per-call \'$0.10\' [--allowlist host1,host2] [--calls-per-min 20] [--key-path <path>] [--force]');
+    console.log('  nanotab init [...] [--config <path>] [--key-path <path>] [--force]');
     console.log('  nanotab export [--key-path <path>]   # key path + backup instructions (never prints the key)');
     console.log('  nanotab backup [--key-path <path>]   # timestamped .bak copy of the key file');
     console.log('  nanotab protect --price <usd> --wallet <0x..> [--route "<glob>"] [--yes] <file.js>');
