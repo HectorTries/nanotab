@@ -18,6 +18,23 @@ Every paid call appends a JSON line to `nanotab-spend.log`: `{ timestamp, url, a
 
 Key never touches the repo — env only. Without the env key, `nanotabFetch` throws (local demos may pass an explicit address + `NANOTAB_ALLOW_MOCK=1` for offline sig-shape tests only).
 
+## 🔑 Key safety (read this — real money)
+
+The agent key controls REAL USDC on Base mainnet. Lose it = lose the funds. Leak it = someone else spends them.
+
+```bash
+nanotab init      # new key → prints a loud BACKUP warning + key path
+nanotab export    # key path + backup instructions (NEVER prints the key)
+nanotab backup    # timestamped .bak copy of the key file (mode 0600)
+```
+
+Rules:
+
+1. **Back up immediately after `init`.** Copy the key into a password manager (1Password, Bitwarden). `nanotab backup` is a convenience copy, not a backup strategy.
+2. **Prefer a secret manager in prod:** `export NANOTAB_WALLET_KEY=0x…` (Vault, KMS, 1Password Connect). In env mode `init` writes nothing to disk and `nanotabFetch` reads the env key.
+3. **Never** commit the key, print it to logs, paste it in chat, or screenshot it. `nanotab export` deliberately never prints key material.
+4. **Overwrite protection:** `init` refuses to overwrite an existing key file. Use `--force` (auto-backs-up first) or `--key-path <path>` / `NANOTAB_KEY_PATH=<path>` for a custom location.
+
 ## Wallet API
 
 ```ts
