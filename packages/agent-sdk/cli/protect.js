@@ -121,7 +121,7 @@ function main() {
   const filterRe = routeGlob ? globToRegExp(routeGlob) : null;
   const chargeArg = `nanotabCharge({ price: ${price}, wallet: '${wallet}' })`;
 
-  const alreadyImported = src.includes('@nanotab/merchant') || /\bnanotabCharge\b/.test(src);
+  const alreadyImported = /require\s*\(\s*['"]@nanotab\/merchant['"]\s*\)/.test(src) || /import\s+[^;]*['"]@nanotab\/merchant['"]/.test(src);
   const isESM = !/require\s*\(/.test(src) && /^\s*import\s/m.test(src);
 
   // Matches: app.get('/path', ...  router.post("/path", ...  app.use(`/path`, ...
