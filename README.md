@@ -41,6 +41,28 @@ Merchant CLI — paywall an existing Express server in one command:
 npx nanotab protect --price 0.02 --wallet 0xMERCHANT [--route "/keyword/*"] [--yes] ./server.js
 ```
 
+- `--route "<glob>"` limits wrapping to matching routes (`*` wildcard; Express
+  `:params` count as wildcards). Without it, all `app.get` routes are wrapped.
+- `/health`, `/healthz`, `/readyz`, `/livez` are **skipped by default** so load
+  balancers and uptime probes stay free — pass an explicit `--route` matching
+  them to paywall them anyway.
+- `--yes` (also `-y`, `--yes=true`) applies the change to the file in place.
+  Without it, the CLI prints a diff and asks `[Y/n]`.
+
+## Site deploy (nanotab.dev)
+
+Static landing (`demo/landing.html`) is served from `/srv/nanotab` on the
+Hetzner box behind Caddy:
+
+```bash
+scp demo/landing.html root@178.104.35.162:/srv/nanotab/index.html
+```
+
+Redirects live in `/etc/caddy/Caddyfile` (back up before editing,
+`caddy fmt --overwrite` + `caddy reload` after). Current: `/generate.html`
+→ `/#generate` (301) — the generator lives in the landing-page anchor, not a
+separate page.
+
 ## Gateway deploy
 
 ```bash

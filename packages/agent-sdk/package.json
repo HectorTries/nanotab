@@ -8,7 +8,8 @@
     "nanotab": "dist/cli.js"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "node cli/test-protect.js"
   },
   "license": "MIT",
   "devDependencies": {
@@ -18,5 +19,11 @@
   },
   "dependencies": {
     "viem": "^2.57.7"
-  }
+  },
+  "files": [
+    "dist",
+    "cli/protect.js",
+    "cli/deploy.js",
+    "README.md"
+  ]
 }

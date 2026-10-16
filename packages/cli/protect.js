@@ -21,7 +21,11 @@ function usageAndExit(code = 1) {
   --price   charge per call in USD (e.g. 0.02)
   --wallet  merchant wallet receiving settlement
   --route   only wrap routes matching glob, e.g. "/keyword/*" (default: all app.get routes)
-  --yes     apply without prompting (otherwise prints diff + asks Y/n)`);
+  --yes     apply without prompting (otherwise prints diff + asks Y/n)
+  (-y, --yes=true also accepted)
+
+  health-check routes (/health, /healthz, /readyz, /livez) are skipped by
+  default — pass an explicit --route matching them to include.`);
   process.exit(code);
 }
 
@@ -40,6 +44,9 @@ function globToRegExp(glob) {
   return new RegExp(`^${esc}$`);
 }
 
+/** Health-check endpoints are never paywalled unless explicitly --route'd. */
+const HEALTH_PATH_RE = /^\/(healthz?|readyz?|livez?)([/?#].*)?$/i;
+
 /** Express-style path like /keyword/:term matches a concrete sample; for matching
  *  route *definitions* against the user's glob, treat :params as wildcards. */
 function routeDefMatches(routePath, filterRe) {
@@ -52,8 +59,9 @@ function main() {
   const priceRaw = flag('price');
   const wallet = flag('wallet');
   const routeGlob = flag('route');
-  const yes = hasFlag('yes') || hasFlag('y');
-  const rest = process.argv.slice(2).filter((a) => a !== 'protect');
+  const yes = hasFlag('yes') || hasFlag('y') || process.argv.includes('-y') || process.argv.some((a) => a === '--yes=true' || a === '--yes=1');
+  // Bare `-y` is a flag (not a target file): drop it before target detection.
+  const rest = process.argv.slice(2).filter((a) => a !== 'protect' && a !== '-y');
   const usedAsValue = new Set(['price', 'wallet', 'route'].flatMap((n) => {
     const i = rest.indexOf(`--${n}`);
     return i >= 0 ? [rest[i + 1]] : [];
@@ -148,6 +156,14 @@ function main() {
     // app.use('/prefix', router) mounts middleware, not a payable route — flag, don't wrap.
     if (method === 'use' && /,\s*(router\b|\w+Router\b)/.test(line)) {
       ambiguous.push({ line: i + 1, text: `router mount (not wrapped): ${line.trim()}` });
+      out.push(line);
+      continue;
+    }
+    // Health-check endpoints stay public by default (load balancers / uptime
+    // probes must reach them without paying). An explicit --route that
+    // matches them still wins — the user asked for it.
+    if (!filterRe && HEALTH_PATH_RE.test(routePath)) {
+      skipped.push({ method: where, path: routePath, reason: 'health-check route (skipped by default; use --route to include)' });
       out.push(line);
       continue;
     }
