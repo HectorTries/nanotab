@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PolicyEngine, PolicyConfig, parseUsd } from './policy';
-import { createMockWallet, createSmartWallet } from './wallet';
+import { createMockWallet, createSmartWallet, submitSplitUserOp, resolveFeeWallet } from './wallet';
 import { loadConfig } from './config';
 
 export { PolicyEngine, parseUsd, createMockWallet };
@@ -136,6 +136,22 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
   } else {
     throw new Error('no wallet: set NANOTAB_WALLET_KEY env (real Base mainnet USDC signing)');
   }
+  // Gap-3 close: submit the payment as a REAL UserOp (Pimlico bundler +
+  // Circle paymaster, gas in USDC, 0 ETH) BEFORE retrying with X-Payment.
+  // Env: NANOTAB_WALLET_KEY + PIMLICO_API_KEY. Skip only when explicitly
+  // disabled (NANOTAB_NO_SUBMIT=1) or when running the mock/demo path.
+  let userOp: { userOpHash: string; txHash: string } | null = null;
+  if (walletKey && process.env.NANOTAB_NO_SUBMIT !== '1') {
+    const feeArg = (process.env.NANOTAB_FEE_WALLET ?? process.env.FEE_WALLET ?? '') as `0x${string}` | '';
+    const sub = await submitSplitUserOp({
+      privateKey: walletKey,
+      merchant: accept.payTo as `0x${string}`,
+      amountCents: accept.maxAmountRequired,
+      ...(feeArg ? { feeWallet: feeArg } : {}),
+    });
+    if (!sub.success) throw new Error(`UserOp reverted: ${sub.txHash}`);
+    userOp = { userOpHash: String(sub.userOpHash), txHash: sub.txHash };
+  }
   const proof = Buffer.from(
     JSON.stringify({
       amount: accept.maxAmountRequired,
@@ -144,6 +160,7 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
       network: accept.network,
       signature,
       from: fromAddr,
+      ...(userOp ? { userOpHash: userOp.userOpHash, txHash: userOp.txHash } : {}),
     })
   ).toString('base64');
 

@@ -23,7 +23,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { base } from 'viem/chains';
 
 export const BASE_MAINNET_CHAIN_ID = 8453;
-export const USDC_BASE: Address = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
+export const USDC_BASE: Address = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 export const NETWORK = 'base' as const;
 export const USDC_DECIMALS = 6;
 
@@ -125,6 +125,121 @@ export function createSmartWallet(privateKey: `0x${string}`): SmartWallet {
         functionName: 'balanceOf',
         args: [account.address],
       }) as Promise<bigint>,
+  };
+}
+
+/**
+ * Submit the atomic fee-split [transfer(merchant, net), transfer(FEE, fee)]
+ * as a REAL ERC-4337 UserOp on Base mainnet — gas paid in USDC via the
+ * Circle TokenPaymaster (EntryPoint v0.8), 0 ETH needed.
+ *
+ * Pattern proven live (pay.mjs): EIP-7702 SimpleAccount + EIP-2612 permit
+ * paymasterData [uint8 mode=0, USDC, permitAmount, permitSig] with
+ * isFinal:true, fees from `pimlico_getUserOperationGasPrice`.
+ *
+ * Keys from args/env only, never hardcoded. Pimlico key: explicit arg >
+ * PIMLICO_API_KEY env > PIMLICO_KEY env.
+ */
+export function resolvePimlicoKey(explicit?: string): string {
+  const v = explicit ?? process.env.PIMLICO_API_KEY ?? process.env.PIMLICO_KEY ?? '';
+  if (!v) throw new Error('pimlico key unset: pass pimlicoKey or set PIMLICO_API_KEY');
+  return v;
+}
+
+export interface SubmitSplitResult {
+  userOpHash: Hex;
+  txHash: string;
+  success: boolean;
+  feeWallet: Address | '';
+  feeBps: number;
+  feeUnits: bigint;
+  netUnits: bigint;
+  sender7702: Address;
+}
+
+export async function submitSplitUserOp(args: {
+  privateKey: `0x${string}`;
+  merchant: Address;
+  amountCents: string;
+  feeWallet?: Address;
+  feeBps?: number;
+  pimlicoKey?: string;
+  rpcUrl?: string;
+  onStatus?: (msg: string) => void;
+}): Promise<SubmitSplitResult> {
+  const { encodePacked, hexToBigInt } = await import('viem');
+  const { createBundlerClient, toSimple7702SmartAccount } = await import('viem/account-abstraction');
+  const pimlicoKey = resolvePimlicoKey(args.pimlicoKey);
+  const feeBps = args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT;
+  const feeWallet = (args.feeWallet ?? resolveFeeWallet()) as Address | '';
+  // Atomic fee split when a fee wallet is configured; otherwise a plain
+  // gross transfer to the merchant (gateway settles the 0.5% fee itself).
+  const calls: SplitCall[] = feeWallet
+    ? buildSplitCalls({ merchant: args.merchant, feeWallet, amountCents: args.amountCents, feeBps })
+    : [{ to: USDC_BASE, abi: ERC20_ABI, functionName: 'transfer', args: [args.merchant, centsToUsdcUnits(args.amountCents)] }];
+  const { feeUnits, netUnits } = feeWallet
+    ? splitFeeUnits(centsToUsdcUnits(args.amountCents), feeBps)
+    : { feeUnits: 0n, netUnits: centsToUsdcUnits(args.amountCents) };
+
+  const owner = privateKeyToAccount(args.privateKey);
+  const client = createPublicClient({ chain: base, transport: http(args.rpcUrl ?? RPC_URL) });
+  const account = await toSimple7702SmartAccount({ client, owner });
+  args.onStatus?.(`sender7702=${account.address}`);
+
+  // EIP-2612 permit: authorize the Circle paymaster to pull gas-USDC.
+  const permitAmount = 10_000_000n; // 10 USDC allowance, covers gas
+  const deadline = (1n << 256n) - 1n;
+  const eip2612Abi = [...ERC20_ABI,
+    { inputs: [{ name: 'owner', type: 'address' }], name: 'nonces', outputs: [{ type: 'uint256' }], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'version', outputs: [{ type: 'string' }], stateMutability: 'view', type: 'function' },
+    { inputs: [], name: 'name', outputs: [{ type: 'string' }], stateMutability: 'view', type: 'function' },
+  ] as const;
+  const token = { address: USDC_BASE } as const;
+  const reader = createPublicClient({ chain: base, transport: http(args.rpcUrl ?? RPC_URL) });
+  const [tName, tVersion, tNonce] = await Promise.all([
+    reader.readContract({ address: USDC_BASE, abi: eip2612Abi, functionName: 'name' }),
+    reader.readContract({ address: USDC_BASE, abi: eip2612Abi, functionName: 'version' }),
+    reader.readContract({ address: USDC_BASE, abi: eip2612Abi, functionName: 'nonces', args: [owner.address] }),
+  ]);
+  const permitSig = await owner.signTypedData({
+    types: { Permit: [
+      { name: 'owner', type: 'address' }, { name: 'spender', type: 'address' },
+      { name: 'value', type: 'uint256' }, { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' }] },
+    primaryType: 'Permit',
+    domain: { name: tName as string, version: tVersion as string, chainId: base.id, verifyingContract: USDC_BASE },
+    message: { owner: owner.address, spender: CIRCLE_PAYMASTER_BASE,
+      value: permitAmount.toString(), nonce: (tNonce as bigint).toString(), deadline: deadline.toString() },
+  } as never);
+  void token;
+
+  const paymaster = {
+    async getPaymasterData() {
+      return { paymaster: CIRCLE_PAYMASTER_BASE,
+        paymasterData: encodePacked(['uint8', 'address', 'uint256', 'bytes'], [0, USDC_BASE, permitAmount, permitSig]),
+        paymasterVerificationGasLimit: 200000n, paymasterPostOpGasLimit: 35000n, isFinal: true };
+    },
+  };
+  const bundlerClient = createBundlerClient({
+    account, client, paymaster,
+    userOperation: { estimateFeesPerGas: async ({ bundlerClient: bc }) => {
+      const { standard: fees } = await (bc as any).request({ method: 'pimlico_getUserOperationGasPrice' });
+      return { maxFeePerGas: hexToBigInt(fees.maxFeePerGas), maxPriorityFeePerGas: hexToBigInt(fees.maxPriorityFeePerGas) };
+    } },
+    transport: http(`https://api.pimlico.io/v2/8453/rpc?apikey=${pimlicoKey}`),
+  });
+  const authorization = await owner.signAuthorization({
+    chainId: base.id,
+    nonce: await client.getTransactionCount({ address: owner.address }),
+    contractAddress: '0xe6Cae83BdE06E4c305530e199D7217f42808555B',
+  });
+  const userOpHash = await (bundlerClient as any).sendUserOperation({ account, authorization, calls });
+  args.onStatus?.(`userOpHash=${userOpHash}`);
+  const receipt = await (bundlerClient as any).waitForUserOperationReceipt({ hash: userOpHash, timeout: 180000 });
+  return {
+    userOpHash, txHash: receipt.receipt.transactionHash as string,
+    success: receipt.success as boolean,
+    feeWallet, feeBps, feeUnits, netUnits, sender7702: account.address,
   };
 }
 
