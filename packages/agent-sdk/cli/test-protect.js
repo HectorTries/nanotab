@@ -30,6 +30,9 @@ const BASE = [
   "const express = require('express');",
   'const app = express();',
   "app.get('/health', (req, res) => res.send('ok'));",
+  "app.get('/ready', (req, res) => res.send('ok'));",
+  "app.get('/live', (req, res) => res.send('ok'));",
+  "app.get('/status', (req, res) => res.send('ok'));",
   "app.get('/keyword/:term', (req, res) => res.json({}));",
   'app.listen(3000);',
 ];
@@ -60,8 +63,26 @@ check('/health skipped by default', () => {
   const out = fs.readFileSync(f, 'utf8');
   assert.ok(out.includes("app.get('/health', (req, res)"), '/health was wrapped');
 });
+check('all health-style routes skipped by default', () => {
+  const f = tmpSrv(BASE);
+  run(f, ['--price', '0.02', '--wallet', '0xABC', '--yes']);
+  const out = fs.readFileSync(f, 'utf8');
+  for (const p of ['/health', '/ready', '/live', '/status']) {
+    assert.ok(out.includes(`app.get('${p}', (req, res)`), `${p} was wrapped`);
+    assert.ok(!out.includes(`'${p}', nanotabCharge(`), `${p} was wrapped`);
+  }
+  assert.ok(out.includes("'/keyword/:term', nanotabCharge("), '/keyword not wrapped');
+});
+check('--include-health wraps health routes', () => {
+  const f = tmpSrv(BASE);
+  run(f, ['--price', '0.02', '--wallet', '0xABC', '--include-health', '--yes']);
+  const out = fs.readFileSync(f, 'utf8');
+  for (const p of ['/health', '/ready', '/live', '/status']) {
+    assert.ok(out.includes(`'${p}', nanotabCharge(`), `${p} not wrapped`);
+  }
+});
 check('--route glob wraps matching routes incl. non-GET', () => {
-  const f = tmpSrv([...BASE.slice(0, 4), "app.post('/keyword/run', (req, res) => res.json({}));", BASE[4]]);
+  const f = tmpSrv([...BASE.slice(0, 6), "app.post('/keyword/run', (req, res) => res.json({}));", BASE[6]]);
   run(f, ['--price', '0.02', '--wallet', '0xABC', '--route', '/keyword/*', '--yes']);
   const out = fs.readFileSync(f, 'utf8');
   assert.ok(out.includes("'/keyword/:term', nanotabCharge("), 'GET /keyword not wrapped');

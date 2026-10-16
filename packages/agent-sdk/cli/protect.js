@@ -21,11 +21,13 @@ function usageAndExit(code = 1) {
   --price   charge per call in USD (e.g. 0.02)
   --wallet  merchant wallet receiving settlement
   --route   only wrap routes matching glob, e.g. "/keyword/*" (default: all app.get routes)
+  --include-health  wrap health-check routes too (skipped by default)
   --yes     apply without prompting (otherwise prints diff + asks Y/n)
   (-y, --yes=true also accepted)
 
-  health-check routes (/health, /healthz, /readyz, /livez) are skipped by
-  default — pass an explicit --route matching them to include.`);
+  health-check routes (/health, /ready, /live, /status + z-variants) are
+  skipped by default — pass --include-health or an explicit --route
+  matching them to include.`);
   process.exit(code);
 }
 
@@ -44,8 +46,10 @@ function globToRegExp(glob) {
   return new RegExp(`^${esc}$`);
 }
 
-/** Health-check endpoints are never paywalled unless explicitly --route'd. */
-const HEALTH_PATH_RE = /^\/(healthz?|readyz?|livez?)([/?#].*)?$/i;
+/** Health-check endpoints are never paywalled unless --include-health or an
+ *  explicit --route matching them is given. Load balancers / uptime probes
+ *  must reach them without paying. */
+const HEALTH_PATH_RE = /^\/(healthz?|readyz?|livez?|ready|live|status)([/?#].*)?$/i;
 
 /** Express-style path like /keyword/:term matches a concrete sample; for matching
  *  route *definitions* against the user's glob, treat :params as wildcards. */
@@ -59,6 +63,7 @@ function main() {
   const priceRaw = flag('price');
   const wallet = flag('wallet');
   const routeGlob = flag('route');
+  const includeHealth = hasFlag('include-health');
   const yes = hasFlag('yes') || hasFlag('y') || process.argv.includes('-y') || process.argv.some((a) => a === '--yes=true' || a === '--yes=1');
   // Bare `-y` is a flag (not a target file): drop it before target detection.
   const rest = process.argv.slice(2).filter((a) => a !== 'protect' && a !== '-y');
@@ -160,9 +165,9 @@ function main() {
       continue;
     }
     // Health-check endpoints stay public by default (load balancers / uptime
-    // probes must reach them without paying). An explicit --route that
-    // matches them still wins — the user asked for it.
-    if (!filterRe && HEALTH_PATH_RE.test(routePath)) {
+    // probes must reach them without paying). --include-health or an explicit
+    // --route matching them opts back in.
+    if (!includeHealth && !filterRe && HEALTH_PATH_RE.test(routePath)) {
       skipped.push({ method: where, path: routePath, reason: 'health-check route (skipped by default; use --route to include)' });
       out.push(line);
       continue;
