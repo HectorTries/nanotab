@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 
-export const NANOTAB_FEE_BPS = 50; // 0.5%
+export const NANOTAB_FEE_BPS = 10; // 0.1%
 export const USDC_BASE = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
 export const NETWORK = 'base';
 
@@ -82,7 +82,7 @@ export function nanotabCharge(opts: ChargeOptions) {
             resource,
             payTo: opts.wallet,
             asset,
-            fee: '0.5%',
+            fee: '0.1%',
           },
         ],
       });
@@ -101,7 +101,7 @@ export function nanotabCharge(opts: ChargeOptions) {
     const gross = Number(amountCents) / 100;
     const fee = (gross * NANOTAB_FEE_BPS) / 10_000;
     console.log(
-      `[nanotab] authorized $${gross.toFixed(2)} → ${opts.wallet} (fee 0.5% $${fee.toFixed(4)}, net $${(gross - fee).toFixed(4)}) [base mainnet USDC; on-chain settle via gateway]`
+      `[nanotab] authorized $${gross.toFixed(2)} → ${opts.wallet} (fee 0.1% $${fee.toFixed(4)}, net $${(gross - fee).toFixed(4)}) [base mainnet USDC; on-chain settle via gateway]`
     );
     next();
   };

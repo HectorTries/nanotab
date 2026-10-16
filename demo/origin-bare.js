@@ -26,7 +26,7 @@ app.get('/price', (req, res) => res.json({
   merchant: MERCHANT_WALLET,
   network: 'base-sepolia',
   asset: 'USDC',
-  fee_bps: 50,
+  fee_bps: 10,
 }));
 app.get('/keyword', (req, res) => {
   const q = String(req.query.q || '').trim();

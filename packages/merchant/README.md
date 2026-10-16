@@ -14,10 +14,10 @@ app.get('/keyword/:term', nanotabCharge({ price: 0.02, wallet: '0xMERCHANT' }), 
 
 ## 402 schema
 
-`{ x402Version: 1, accepts: [{ scheme: 'exact', network: 'base', maxAmountRequired: '<cents>', resource, payTo, asset: USDC_BASE, fee: '0.5%' }] }`
+`{ x402Version: 1, accepts: [{ scheme: 'exact', network: 'base', maxAmountRequired: '<cents>', resource, payTo, asset: USDC_BASE, fee: '0.1%' }] }`
 
 ## Verification
 
 Structural: well-formed header, `to` == merchant (case-insensitive), `amount` ≥ price (BigInt compare), asset == USDC-on-Base, network == `base` when present. Full EIP-191 signature recovery is enforced at the gateway (`workers/gateway`); use this middleware behind the gateway or add an async sig check in your own stack.
 
-Settlement accounting (0.5% fee split) is logged per call; on-chain merchant transfer happens at the gateway when `SETTLER_KEY` is configured.
+Settlement accounting (0.1% fee split) is logged per call; on-chain merchant transfer happens at the gateway when `SETTLER_KEY` is configured.

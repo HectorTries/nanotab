@@ -173,7 +173,7 @@ export async function submitSplitUserOp(args: {
   const feeBps = args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT;
   const feeWallet = (args.feeWallet ?? resolveFeeWallet()) as Address | '';
   // Atomic fee split when a fee wallet is configured; otherwise a plain
-  // gross transfer to the merchant (gateway settles the 0.5% fee itself).
+  // gross transfer to the merchant (gateway settles the 0.1% fee itself).
   const calls: SplitCall[] = feeWallet
     ? buildSplitCalls({ merchant: args.merchant, feeWallet, amountCents: args.amountCents, feeBps })
     : [{ to: USDC_BASE, abi: ERC20_ABI, functionName: 'transfer', args: [args.merchant, centsToUsdcUnits(args.amountCents)] }];
@@ -323,14 +323,14 @@ export const ENTRYPOINT_V08: Address = '0x0000000071727De22E5E9d8BA0edAc6f37da03
 // ---------------------------------------------------------------------------
 // NanoTab atomic fee split: every buyer UserOp pays the merchant net
 // (gross − fee) AND the NanoTab fee wallet in ONE atomic bundle.
-// Default fee = 50 bps (0.5%): merchant gets 99.5%, NanoTab gets 0.5%.
+// Default fee = 10 bps (0.1%): merchant gets 99.9%, NanoTab gets 0.1%.
 //
 // FEE_WALLET resolution (SDK side): explicit arg > NANOTAB_FEE_WALLET env >
 // FEE_WALLET env. The gateway enforces the same address from its own
 // FEE_WALLET secret — set it via `wrangler secret put FEE_WALLET`.
 // ---------------------------------------------------------------------------
-/** Default NanoTab fee: 50 bps = 0.5%. */
-export const NANOTAB_FEE_BPS_DEFAULT = 50;
+/** Default NanoTab fee: 10 bps = 0.1%. */
+export const NANOTAB_FEE_BPS_DEFAULT = 10;
 
 /** Resolve the fee recipient: explicit arg wins, then env. Empty = unset. */
 export function resolveFeeWallet(explicit?: Address): Address | '' {
@@ -446,7 +446,7 @@ export async function buildPaymasterUserOp(args: {
   paymaster?: Address;
   /** NanoTab fee recipient. Defaults to NANOTAB_FEE_WALLET/FEE_WALLET env. */
   feeWallet?: Address;
-  /** Fee in basis points (default 50 = 0.5%). */
+  /** Fee in basis points (default 10 = 0.1%). */
   feeBps?: number;
   /** Also expose the viem-7702 `calls` array shape (see buildSplitCalls). */
   includeCalls?: boolean;

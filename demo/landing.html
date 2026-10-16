@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NanoTab — give this to your agent to start collecting money for your content</title>
-<meta name="description" content="Fill in the form, paste the prompt to your agent, collect USDC per call on Base. 0.5% fee.">
+<meta name="description" content="Fill in the form, paste the prompt to your agent, collect USDC per call on Base. 0.1% fee.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -38,7 +38,7 @@ h1{font-size:clamp(38px,7vw,84px);line-height:1.02;letter-spacing:-.045em;font-w
 h1 .grad{background:linear-gradient(100deg,var(--acc) 10%,#a5f3d0 35%,var(--acc2) 70%,#c4b5fd 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{color:var(--mut);font-size:clamp(16px,2.2vw,20px);margin:24px auto 0;max-width:640px;line-height:1.65}
 .sub b{color:var(--fg)}
-.herobtns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:36px}
+.herobtns{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:40px}.herobtns .btn{font-size:19px;padding:20px 46px;border-radius:16px}
 a.btn,button.btn{background:linear-gradient(135deg,var(--acc),#3ee89e);color:#04160e;font-weight:700;padding:15px 34px;border-radius:14px;text-decoration:none;border:none;font-size:16px;cursor:pointer;transition:transform .2s,box-shadow .2s;display:inline-block;box-shadow:0 4px 40px rgba(93,242,184,.28)}
 a.btn:hover,button.btn:hover{transform:translateY(-2px);box-shadow:0 10px 50px rgba(93,242,184,.42)}
 a.btn.ghost,button.btn.ghost{background:rgba(255,255,255,.05);color:var(--fg);border:1px solid var(--line);box-shadow:none}
@@ -122,54 +122,23 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="blob" style="width:420px;height:420px;left:-120px;top:-40px;background:#7c6cf6;animation:float 9s ease-in-out infinite"></div>
 <div class="blob" style="width:340px;height:340px;right:-100px;top:60px;background:#12b981;animation:float 11s ease-in-out infinite"></div>
 <div class="live"><span class="dot"></span> x402 · USDC on Base mainnet · live</div>
-<h1>Get paid for your data<br><span class="grad">by agents, in one prompt.</span></h1>
+<h1>Set up agentic payments<br><span class="grad">in one click.</span></h1>
 <p class="sub">Got data or an API? One prompt turns it into a pay-per-call endpoint — agents pay you in <b>USDC on Base</b>, straight to your wallet. <b>No ETH. No gas. No signup.</b> Or flip it around: give <b>your agent its own wallet in one click</b> and let it buy the API calls it needs.</p>
 <div class="herobtns">
-<a class="btn" href="#sell">Get paid for my data →</a>
-<a class="btn ghost" href="#buy">Set up my agent's wallet →</a>
+<a class="btn" href="#sell">Sell (get paid) →</a>
+<a class="btn ghost" href="#buy">Buy (agent wallet) →</a>
 </div>
 </header>
 <div class="ticker"><div class="track" id="tick">
-<span><b>402</b> payment required → paywall served</span><span><b>200</b> paid call settled on Base</span><span><b>0.5%</b> fee · you keep 99.5%</span><span><b>0 ETH</b> needed · Circle paymaster covers gas</span><span><b>USDC</b> straight to your wallet</span>
+<span><b>402</b> payment required → paywall served</span><span><b>200</b> paid call settled on Base</span><span><b>0.1%</b> fee · you keep 99.9%</span><span><b>0 ETH</b> needed · Circle paymaster covers gas</span><span><b>USDC</b> straight to your wallet</span>
 </div></div>
-<section id="generate">
-<div class="eyebrow">The generator</div>
-<h2>Three fields. One prompt.<br>Money in.</h2>
-<p class="secsub">Tell us where to send the money and what you're selling. We write the brief your agent needs.</p>
-<div class="genwrap" id="generate-box">
-<label for="wallet">Wallet address <span style="color:var(--mut);font-weight:400">— payouts go here</span></label>
-<input id="wallet" placeholder="0x..." autocomplete="off" spellcheck="false">
-<label for="desc">What should your endpoint do?</label>
-<textarea id="desc" placeholder="e.g. creator lookup from my sqlite db"></textarea>
-<div class="hint">No API yet? Say so — e.g. "I have no API yet — build one that…". Your agent will build it.</div>
-<div class="row">
-<div><label for="price">Price per call (USD)</label><input id="price" placeholder="0.02" inputmode="decimal" autocomplete="off"></div>
-<div><label for="model">Agent SDK <span style="color:var(--mut);font-weight:400">(optional)</span></label><input id="model" value="@nanotab/agent-sdk" autocomplete="off" spellcheck="false"></div>
-</div>
-<div class="btns">
-<button type="button" class="btn" id="genBtn">Generate prompt ✨</button>
-<button type="button" class="btn ghost" id="copyBtn" style="display:none">Copy</button>
-</div>
-<div id="out"><pre><code id="promptText"></code></pre></div>
-</div>
-</section>
-<section id="how" class="reveal">
-<div class="eyebrow">How it works</div>
-<h2>Agent does the work.<br>You get paid.</h2>
-<p class="secsub">From zero to a monetised API in one paste.</p>
-<div class="steps3" style="margin-top:44px">
-<div class="step"><span class="num">01</span><h3>Fill in the form</h3><p>Wallet, what your endpoint should do, price per call. Get a copy-paste setup prompt.</p></div>
-<div class="step"><span class="num">02</span><h3>Paste it to your agent</h3><p>Any coding agent — it builds your endpoint if needed, wraps it with <code>npx nanotab protect</code>, deploys it with public HTTPS, and verifies the 402 + paid-200 flow.</p></div>
-<div class="step"><span class="num">03</span><h3>Collect USDC</h3><p>Every call pays straight to your wallet on Base. No ETH, no gas, no signup — gas comes out of the USDC via the Circle paymaster.</p></div>
-</div>
-</section>
 <section id="sell" class="reveal">
 <div class="eyebrow">For merchants · get paid by agents</div>
 <h2>Get paid for your data<br>by agents in one prompt.</h2>
-<p class="secsub">Fill in the form, hand the prompt to any coding agent, and your API starts charging per call. You keep 99.5% of every call, settled in USDC on Base — straight to your wallet. Four steps, plain and simple:</p>
+<p class="secsub">Fill in the form, hand the prompt to any coding agent, and your API starts charging per call. You keep 99.9% of every call, settled in USDC on Base — straight to your wallet. Four steps, plain and simple:</p>
 <div class="howto">
 <div class="howstep"><span class="num">Step 1 · Wallet address</span><h3>Where should the money go?</h3><p>Any Ethereum-style address you control — MetaMask, Coinbase Wallet, whatever. Payouts land here in <b>USDC on Base</b>. That’s the only thing you need to decide up front:</p><pre><code>0xYOUR_ADDRESS   ← paste this into step 2</code></pre></div>
-<div class="howstep"><span class="num">Step 2 · Price per call</span><h3>You set the price</h3><p>A flat USD price per API call — <b>$0.01</b>, <b>$0.05</b>, whatever your data is worth. Buyers pay exactly this; NanoTab takes <b>0.5%</b> automatically, you keep the rest.</p><pre><code>--price 0.05   ← five cents per call</code></pre></div>
+<div class="howstep"><span class="num">Step 2 · Price per call</span><h3>You set the price</h3><p>A flat USD price per API call — <b>$0.01</b>, <b>$0.05</b>, whatever your data is worth. Buyers pay exactly this; NanoTab takes <b>0.1%</b> automatically, you keep the rest.</p><pre><code>--price 0.05   ← five cents per call</code></pre></div>
 <div class="howstep"><span class="num">Step 3 · Your endpoint file</span><h3>Point at your server code</h3><p>One command wraps your existing endpoint with the paywall. It shows you a diff and asks before changing anything — nothing happens silently.</p><pre><code>npx nanotab protect --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js</code></pre></div>
 <div class="howstep"><span class="num">Step 4 · Deploy</span><h3>Ship it — two ways</h3><p><b>Easy path:</b> one command deploys to Cloudflare Workers. You’ll need a free <b>CLOUDFLARE_API_TOKEN</b> (dash.cloudflare.com → profile → API tokens → Workers Edit).</p><pre><code>CLOUDFLARE_API_TOKEN=xxxx npx nanotab deploy --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js
 # → https://my-api.&lt;you&gt;.workers.dev  ✅ live</code></pre><p style="margin-top:12px"><b>Own-VPS path:</b> run your server anywhere with a public HTTPS URL (Hetzner + Caddy, Fly.io, Render…). The 402 response must show the public <b>https://</b> URL, not localhost.</p></div>
@@ -227,6 +196,37 @@ const data = await nanotabFetch('https://my-api.&lt;you&gt;.workers.dev/keyword?
 console.log(data); // 200 + JSON ✅</code></pre></div>
 </div>
 </section>
+<section id="generate">
+<div class="eyebrow">The generator</div>
+<h2>Three fields. One prompt.<br>Money in.</h2>
+<p class="secsub">Tell us where to send the money and what you're selling. We write the brief your agent needs.</p>
+<div class="genwrap" id="generate-box">
+<label for="wallet">Wallet address <span style="color:var(--mut);font-weight:400">— payouts go here</span></label>
+<input id="wallet" placeholder="0x..." autocomplete="off" spellcheck="false">
+<label for="desc">What should your endpoint do?</label>
+<textarea id="desc" placeholder="e.g. creator lookup from my sqlite db"></textarea>
+<div class="hint">No API yet? Say so — e.g. "I have no API yet — build one that…". Your agent will build it.</div>
+<div class="row">
+<div><label for="price">Price per call (USD)</label><input id="price" placeholder="0.02" inputmode="decimal" autocomplete="off"></div>
+<div><label for="model">Agent SDK <span style="color:var(--mut);font-weight:400">(optional)</span></label><input id="model" value="@nanotab/agent-sdk" autocomplete="off" spellcheck="false"></div>
+</div>
+<div class="btns">
+<button type="button" class="btn" id="genBtn">Generate prompt ✨</button>
+<button type="button" class="btn ghost" id="copyBtn" style="display:none">Copy</button>
+</div>
+<div id="out"><pre><code id="promptText"></code></pre></div>
+</div>
+</section>
+<section id="how" class="reveal">
+<div class="eyebrow">How it works</div>
+<h2>Agent does the work.<br>You get paid.</h2>
+<p class="secsub">From zero to a monetised API in one paste.</p>
+<div class="steps3" style="margin-top:44px">
+<div class="step"><span class="num">01</span><h3>Fill in the form</h3><p>Wallet, what your endpoint should do, price per call. Get a copy-paste setup prompt.</p></div>
+<div class="step"><span class="num">02</span><h3>Paste it to your agent</h3><p>Any coding agent — it builds your endpoint if needed, wraps it with <code>npx nanotab protect</code>, deploys it with public HTTPS, and verifies the 402 + paid-200 flow.</p></div>
+<div class="step"><span class="num">03</span><h3>Collect USDC</h3><p>Every call pays straight to your wallet on Base. No ETH, no gas, no signup — gas comes out of the USDC via the Circle paymaster.</p></div>
+</div>
+</section>
 <section id="proof" class="reveal">
 <div class="eyebrow">Live proof</div>
 <h2>Real money. Real chain.</h2>
@@ -234,15 +234,15 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <div class="proofgrid" style="margin-top:44px">
 <div class="proof"><div class="tag">◆ Live endpoint</div><h3>SaveShare · $0.05/call</h3><p>Unpaid call returns 402 with the payment spec. Try it:<br><a href="https://nanotab.dev/saveshare/creator/adm.jay">nanotab.dev/saveshare/creator/adm.jay ↗</a></p></div>
 <div class="proof"><div class="tag">◆ Paid call</div><h3>0.001 USDC · Base mainnet</h3><p>Buyer paid, merchant got it. Agent wallet: 0 ETH.<br><a href="https://basescan.org/tx/0x0b39b4ec4a6ef4562cfd9efe10c3bba5858c486ac4c3f0c92fcb91caef23f5b2">tx 0x0b39b4…23f5b2 ↗</a></p></div>
-<div class="proof"><div class="tag">◆ Fee settled</div><h3>0.5% onchain · EIP-7702</h3><p>5 units to NanoTab. Circle paymaster + Pimlico.<br><a href="https://basescan.org/tx/0x0e85cf9dc38a50ec9ff17ccc1e7b761bb94ac43ac9ccc526973f94738e947370">tx 0x0e85cf…e947370 ↗</a></p></div>
-<div class="proof"><div class="tag">◆ Atomic split</div><h3>$0.05 in one tx · fee enforced</h3><p>Single UserOp: [49750 → merchant, 250 → fee]. One tx, 0 ETH.<br><a href="https://basescan.org/tx/0x47ac3dd59e13d5ad0b3dc226dbb3ff77775f5257343cf134f50aad5c243b60b8">tx 0x47ac3d…243b60b8 ↗</a></p></div>
+<div class="proof"><div class="tag">◆ Fee settled</div><h3>0.1% onchain · EIP-7702</h3><p>1 unit to NanoTab. Circle paymaster + Pimlico.<br><a href="https://basescan.org/tx/0x0e85cf9dc38a50ec9ff17ccc1e7b761bb94ac43ac9ccc526973f94738e947370">tx 0x0e85cf…e947370 ↗</a></p></div>
+<div class="proof"><div class="tag">◆ Atomic split</div><h3>$0.05 in one tx · fee enforced</h3><p>Single UserOp: [49950 → merchant, 50 → fee]. One tx, 0 ETH.<br><a href="https://basescan.org/tx/0x47ac3dd59e13d5ad0b3dc226dbb3ff77775f5257343cf134f50aad5c243b60b8">tx 0x47ac3d…243b60b8 ↗</a></p></div>
 </div>
 <h3 style="margin:36px 0 12px;font-size:17px">Unpaid → <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">402</span></h3>
 <pre><code>curl https://nanotab.dev/saveshare/creator/adm.jay
 {"x402Version":1,"accepts":[{"scheme":"exact","network":"base",
 "maxAmountRequired":"5","resource":"https://nanotab.dev/saveshare/creator/adm.jay",
 "payTo":"0xc47b6d6a4137373ab169aeeedb95971d4939ef0b",
-"asset":"0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5","fee":"0.5%"}]}</code></pre>
+"asset":"0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5","fee":"0.1%"}]}</code></pre>
 <h3 style="margin:28px 0 12px;font-size:17px">Paid → <span style="font-family:'JetBrains Mono',monospace;color:var(--acc)">200</span></h3>
 <pre><code>curl -H "X-Payment: &lt;base64-proof&gt;" https://nanotab.dev/saveshare/creator/moneywithkatie
 {"handle":"moneywithkatie","video_count":17,"avg_views":580.8,
@@ -253,13 +253,34 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <div class="eyebrow">Pricing</div>
 <h2>One number.</h2>
 <div class="pricecard" style="margin-top:36px">
-<div class="pct">0.5%</div>
+<div class="pct">0.1%</div>
 <p>per settled call. Merchant sets the price.<br>No monthly fee, no signup, no lock-in.</p>
 </div>
 </section>
 <div class="final reveal">
 <h2>Your content is worth something.<br>Start charging for it.</h2>
 <div class="herobtns"><a class="btn" href="#generate">Build my setup prompt →</a><a class="btn ghost" href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+<div style="max-width:760px;margin:34px auto 0;text-align:center">
+<button type="button" class="btn ghost" id="tryLiveBtn">Try the live gateway ⚡</button>
+<pre id="liveOut" style="display:none;text-align:left;margin-top:16px"><code id="liveOutCode"></code></pre>
+<p class="hint" id="liveHint" style="display:none">↑ real 402 response, live from the gateway on Base mainnet. No payment sent — this is the paywall challenge your agent would answer.</p>
+</div>
+<script>
+document.getElementById('tryLiveBtn').addEventListener('click', async function(){
+  var out = document.getElementById('liveOut'), code = document.getElementById('liveOutCode'),
+      hint = document.getElementById('liveHint'), btn = this;
+  btn.textContent = 'Querying gateway…'; out.style.display = 'block';
+  code.textContent = 'GET https://gateway.nanotab.dev/keyword?q=solar …';
+  try {
+    var r = await fetch('https://gateway.nanotab.dev/keyword?q=solar');
+    var t = await r.text(), pretty = t;
+    try { pretty = JSON.stringify(JSON.parse(t), null, 2); } catch(e) {}
+    code.textContent = 'HTTP ' + r.status + ' ' + (r.status === 402 ? 'Payment Required' : '') + '\n\n' + pretty;
+    hint.style.display = 'block';
+  } catch(e) { code.textContent = 'Error: ' + e.message + '\nIs the gateway up? Try: curl https://gateway.nanotab.dev/keyword?q=solar'; }
+  btn.textContent = 'Try the live gateway ⚡';
+});
+</script>
 </div>
 <footer><span>NanoTab — live on Base mainnet.</span><span><a href="https://github.com/HectorTries/nanotab">Docs</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
 <script>
@@ -273,7 +294,7 @@ var d=document.getElementById('desc').value.trim()||'[describe your endpoint]';
 var p=document.getElementById('price').value.trim()||'0.02';
 var s=document.getElementById('model').value.trim()||'@nanotab/agent-sdk';
 var t='Set up a NanoTab paywall for my API.\n\n'
-+'CONTEXT: NanoTab wraps any HTTP API in an x402-style paywall. Agents pay per call in USDC on Base mainnet; I keep 99.5% (0.5% fee). No ETH needed anywhere — gas comes out of the USDC via the Circle paymaster.\n\n'
++'CONTEXT: NanoTab wraps any HTTP API in an x402-style paywall. Agents pay per call in USDC on Base mainnet; I keep 99.9% (0.1% fee). No ETH needed anywhere — gas comes out of the USDC via the Circle paymaster.\n\n'
 +'MY ENDPOINT: '+d+'\n'
 +'PRICE PER CALL: $'+p+' USD\n'
 +'PAYOUT WALLET: '+w+'\n\n'
