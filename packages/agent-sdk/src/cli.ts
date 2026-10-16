@@ -121,10 +121,11 @@ async function cmdInit(): Promise<void> {
   }
   const wallet = createSmartWallet(key);
   const ownedAddr = existing?.walletAddress && existing.walletAddress !== wallet.address ? existing.walletAddress : undefined;
+  const isBuyInit = process.argv[2] === 'buy-init';
   const cfg = {
     walletAddress: wallet.address,
     network: 'base' as const,
-    totalBudget: parseUsd(flag('budget') ?? '$1.00'),
+    totalBudget: parseUsd(flag('budget') ?? (isBuyInit ? '$5.00' : '$1.00')),
     maxPerCall: parseUsd(flag('per-call') ?? '$0.10'),
     allowlist: flag('allowlist')?.split(',').map((s) => s.trim()).filter(Boolean),
     maxCallsPerMinute: flag('calls-per-min') ? Number(flag('calls-per-min')) : 30,
@@ -138,6 +139,23 @@ async function cmdInit(): Promise<void> {
   console.log('fund with USDC on Base, that is it — no ETH needed (gas is paid in USDC via the Circle paymaster).');
   console.log(`onramp: ${ONRAMP_LINK}  (buy USDC on Base directly into this wallet)`);
   console.log(`wrote ${p}`);
+  // One-click summary: wallet address + fund instructions + backup path in one block.
+  let bakPath = autoBak;
+  if (keySaved && !bakPath) {
+    try { bakPath = backupKeyFile(keyPath); } catch { /* key just written; backup best-effort */ }
+  }
+  console.log('');
+  console.log('─── ONE-CLICK BUYER SETUP COMPLETE ───');
+  console.log(`  wallet:  ${wallet.address}`);
+  console.log(`  fund:    send USDC on Base to the wallet above (no ETH needed)`);
+  console.log(`  onramp:  ${ONRAMP_LINK}`);
+  if (!process.env.NANOTAB_WALLET_KEY) {
+    console.log(`  key:     ${keyLabel} (mode 0600 — keep secret, never commit)`);
+    if (bakPath) console.log(`  backup:  ${shortLabel(bakPath)}`);
+  } else {
+    console.log('  key:     NANOTAB_WALLET_KEY env (secret-manager mode — back it up in your secret manager)');
+  }
+  console.log(`  config:  ${p} (budget $${cfg.totalBudget}, $${cfg.maxPerCall}/call)`);
   console.log(JSON.stringify(cfg, null, 2));
 }
 
@@ -160,8 +178,9 @@ async function main(): Promise<void> {
     cmdBackup(keyPath);
     return;
   }
-  if (cmd !== 'init') {
+  if (cmd !== 'init' && cmd !== 'buy-init') {
     console.log('Usage:');
+    console.log('  nanotab buy-init                                   # ONE-CLICK buyer setup: wallet + config + backup ($5 budget, $0.10/call)');
     console.log('  nanotab init --budget \'$1.00\' --per-call \'$0.10\' [--allowlist host1,host2] [--calls-per-min 20] [--key-path <path>] [--force]');
     console.log('  nanotab export [--key-path <path>]   # key path + backup instructions (never prints the key)');
     console.log('  nanotab backup [--key-path <path>]   # timestamped .bak copy of the key file');
@@ -172,7 +191,7 @@ async function main(): Promise<void> {
     console.log('       NANOTAB_KEY_PATH=<path> (override default ~/.nanotab.key)');
     process.exit(1);
   }
-  await cmdInit();
+  await cmdInit(); // handles both `init` and `buy-init` (buy-init = one-click defaults: $5 budget, $0.10/call)
 }
 
 main().catch((e) => {

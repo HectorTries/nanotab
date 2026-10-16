@@ -196,9 +196,30 @@ console.log(await res.json()); // your data</code></pre></div>
 <div class="eyebrow">For buyers · fund your agent</div>
 <h2>Set up your agent with<br>its own wallet in one click.</h2>
 <p class="secsub">In plain English: your agent gets its own spending wallet, you put a few dollars of <b style="color:var(--fg)">USDC on the Base network</b> into it, then it buys whatever API calls it needs. Three steps: A helper called <b style="color:var(--fg)">nanotabFetch</b> handles the paying automatically — first try gets a price tag (HTTP 402), it pays it, retries, and your data comes back (HTTP 200). You never touch ETH or gas.</p>
+<div class="oneclick" style="max-width:760px;margin:0 auto 34px;background:linear-gradient(180deg,rgba(93,242,184,.09),rgba(124,108,246,.07));border:1px solid rgba(93,242,184,.35);border-radius:20px;padding:clamp(22px,4vw,36px);text-align:center;box-shadow:0 20px 80px rgba(0,0,0,.45)">
+<div style="font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--acc);font-weight:600">One-click setup</div>
+<h3 style="font-size:clamp(20px,3vw,28px);letter-spacing:-.02em;margin:10px 0 6px">One command. Wallet + config + backup.</h3>
+<p style="color:var(--mut);font-size:15px;max-width:560px;margin:0 auto 18px">Paste this in a terminal (Node 18+, npm, git). Creates a buyer wallet with sensible defaults — <b style="color:var(--fg)">$5 budget, $0.10/call</b> — writes the config, backs up the key, and prints your wallet address + fund instructions.</p>
+<pre style="text-align:left" id="buyCmdWrap"><code id="buyCmd">curl -fsSL https://nanotab.dev/buy.sh | bash</code></pre>
+<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px">
+<button type="button" class="btn" id="buyCopyBtn">Copy command 📋</button>
+<button type="button" class="btn ghost" id="browserWalletBtn">No terminal? Generate in browser →</button>
+</div>
+<div id="browserWallet" style="display:none;text-align:left;margin-top:20px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:18px">
+<p style="font-size:14px;color:var(--mut);margin-bottom:10px">Generated <b style="color:var(--fg)">locally in your browser</b> — the key never leaves this page. Save it, fund the address with USDC on Base, then run the one-click command above (it will reuse your key via <span style="font-family:'JetBrains Mono',monospace">NANOTAB_WALLET_KEY</span>).</p>
+<pre><code id="browserKeyOut">click “Generate” — your key appears here, once.</code></pre>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+<button type="button" class="btn" id="genKeyBtn">Generate wallet 🔑</button>
+<button type="button" class="btn ghost" id="copyKeyBtn" style="display:none">Copy key</button>
+<button type="button" class="btn ghost" id="dlCfgBtn" style="display:none">Download config</button>
+</div>
+<p class="hint" id="browserAddrOut" style="margin-top:10px"></p>
+</div>
+</div>
 <div class="howto">
-<div class="howstep"><span class="num">01 · Wallet</span><h3>Create a buyer wallet</h3><p>Generates a local key + address. <b>--budget</b> caps total spend, <b>--per-call</b> caps a single call.</p><pre><code>npx nanotab init --budget '$1.00' --per-call '$0.10'
-# → wallet 0x…  (saved locally as .nanotab.key)</code></pre></div>
+<div class="howstep"><span class="num">01 · Wallet</span><h3>Create a buyer wallet</h3><p>Generates a local key + address. <b>--budget</b> caps total spend, <b>--per-call</b> caps a single call.</p><pre><code>npx nanotab buy-init
+# → wallet 0x… + fund instructions + backup path
+# (custom: nanotab init --budget '$5.00' --per-call '$0.10')</code></pre></div>
 <div class="howstep"><span class="num">02 · Fund</span><h3>Top up with USDC on Base</h3><p>Send USDC (Base network) to the address above. Just enough to cover your calls — <b>no ETH needed</b>, the Circle paymaster covers gas out of the USDC.</p><pre><code># from any exchange or wallet → send USDC (Base) to:
 0xYOUR_NEW_WALLET_ADDRESS</code></pre></div>
 <div class="howstep"><span class="num">03 · Call</span><h3>Fetch from code</h3><p><b>nanotabFetch</b> handles the whole 402 → pay → retry loop. One function, paid 200 back.</p><pre><code>const { nanotabFetch } = require('@nanotab/agent-sdk');
@@ -263,7 +284,7 @@ var t='Set up a NanoTab paywall for my API.\n\n'
 +'4. Deploy it with public HTTPS so agents can reach it — ZERO-SERVER PATH (recommended): npx nanotab deploy --price '+p+' --wallet '+w+' ./server.js — it bundles with esbuild, writes wrangler.toml, and ships to Cloudflare Workers. You will be asked for a CLOUDFLARE_API_TOKEN (create at dash.cloudflare.com/profile/api-tokens, Workers Edit). Prefer a plain fetch handler (export default { async fetch(req, env) {...} }); Express needs the @cloudflare/express adapter. ADVANCED PATH: Hetzner/VPS + Caddy reverse-proxy with automatic TLS, or any host giving a public https:// URL. The 402 resource field must show the public https URL, not localhost.\n'
 +'5. Verify: unauthenticated curl returns HTTP 402 with a payment spec; a paid call returns 200. Report the public URL.\n\n'
 +'AGENT PATH (verify as a buyer):\n'
-+'6. Create a buyer wallet: npx nanotab init --budget \'$1.00\' --per-call \'$0.10\' (fund with USDC on Base, no ETH).\n'
++'6. Create a buyer wallet in ONE command: curl -fsSL https://nanotab.dev/buy.sh | bash — or: npx nanotab buy-init (wallet + config + backup, $5 budget, $0.10/call; fund with USDC on Base, no ETH).\n'
 +'7. Make a paid call with nanotabFetch(url) and confirm it returns 200. Report the tx hashes on Base.\n\n'
 +'DELIVERABLES: public URL, 402 proof, paid-200 proof, tx hashes.';
 document.getElementById('promptText').textContent=t;
@@ -271,6 +292,49 @@ document.getElementById('out').style.display='block';
 document.getElementById('copyBtn').style.display='inline-block';
 document.getElementById('out').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+// one-click buyer box: copy command + client-side wallet generator fallback
+(function(){
+var copyBtn=document.getElementById('buyCopyBtn');
+if(copyBtn){copyBtn.addEventListener('click',function(){
+var t=document.getElementById('buyCmd').textContent;
+function done(){copyBtn.textContent='Copied ✓';setTimeout(function(){copyBtn.textContent='Copy command 📋'},2000)}
+if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done)}else{var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);done()}
+})}
+var toggle=document.getElementById('browserWalletBtn');
+if(toggle){toggle.addEventListener('click',function(){
+var b=document.getElementById('browserWallet');
+var open=b.style.display!=='none';
+b.style.display=open?'none':'block';
+toggle.textContent=open?'No terminal? Generate in browser →':'Hide browser generator';
+})}
+// lazy-load ethers (CDN) for local secp256k1+keccak address derivation
+function ensureEthers(cb){
+if(window.ethers&&window.ethers.Wallet){cb(true);return}
+var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.min.js';
+s.onload=function(){cb(!!(window.ethers&&window.ethers.Wallet))};s.onerror=function(){cb(false)};
+document.head.appendChild(s)}
+var genBtn=document.getElementById('genKeyBtn');
+if(genBtn){genBtn.addEventListener('click',function(){
+try{
+var bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
+var hex='0x'+Array.from(bytes).map(function(x){return x.toString(16).padStart(2,'0')}).join('');
+document.getElementById('browserKeyOut').textContent=hex+'\n(address: deriving…)';
+ensureEthers(function(ok){
+var addrLine='';
+if(ok){try{var w=new window.ethers.Wallet(hex);addrLine='\naddress: '+w.address;}catch(e){addrLine='\n(address derivation failed: '+e.message+')'}}else{addrLine='\n(address: offline — run buy-init with this key to print it)'};
+document.getElementById('browserKeyOut').textContent=hex+addrLine;
+var a=document.getElementById('browserAddrOut');
+if(a&&ok&&addrLine.indexOf('0x')>=0){var am=addrLine.match(/0x[0-9a-fA-F]{40}/);if(am){a.innerHTML='Fund this address with USDC on Base (no ETH needed):<br><b style="color:var(--fg);font-family:JetBrains Mono,monospace">'+am[0]+'</b>'}}});
+var ck=document.getElementById('copyKeyBtn');ck.style.display='inline-block';
+ck.onclick=function(){var t=hex;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){ck.textContent='Copied ✓'})}else{var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta)}};
+var dl=document.getElementById('dlCfgBtn');dl.style.display='inline-block';
+dl.onclick=function(){var cfg=JSON.stringify({walletAddress:'(run: NANOTAB_WALLET_KEY='+hex.slice(0,10)+'… nanotab buy-init)',network:'base',totalBudget:5,maxPerCall:0.1,maxCallsPerMinute:30},null,2);
+var blob=new Blob([cfg],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nanotab.config.json';a.click();setTimeout(function(){URL.revokeObjectURL(a.href)},5000)};
+document.getElementById('browserAddrOut').innerHTML='Key generated locally — never sent anywhere. To see its wallet address + finish setup, run:<br><span style="font-family:JetBrains Mono,monospace">NANOTAB_WALLET_KEY='+hex.slice(0,14)+'… curl -fsSL https://nanotab.dev/buy.sh | bash</span><br>Then fund the printed address with USDC on Base.';
+genKeyBtn.textContent='Regenerate 🔑';
+}catch(e){document.getElementById('browserKeyOut').textContent='ERROR: '+e.message}
+})}
+})();
 document.getElementById("genBtn").addEventListener("click",gen);
 document.getElementById("copyBtn").addEventListener("click",copyOut);
 function copyOut(){
