@@ -39,6 +39,26 @@ h1 .grad{background:linear-gradient(100deg,var(--acc) 10%,#a5f3d0 35%,var(--acc2
 .sub{color:var(--mut);font-size:clamp(16px,2.2vw,20px);margin:24px auto 0;max-width:640px;line-height:1.65}
 .sub b{color:var(--fg)}
 .herobtns{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:40px}.herobtns .btn{font-size:19px;padding:20px 46px;border-radius:16px}
+/* ecosystem stat block — hero-adjacent, impossible to miss */
+.ecostats{max-width:1060px;margin:48px auto 0;padding:0 28px}
+.ecostats-inner{background:linear-gradient(180deg,rgba(93,242,184,.10),rgba(124,108,246,.09));border:1px solid rgba(93,242,184,.4);border-radius:24px;padding:clamp(28px,4.5vw,46px) clamp(20px,4vw,44px);box-shadow:0 0 70px rgba(93,242,184,.14),0 30px 90px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);position:relative;overflow:hidden}
+.ecostats-inner::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--acc),var(--gold),var(--acc2))}
+.ecostats-kicker{text-align:center;font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:var(--acc);font-weight:700}
+.ecostats-title{text-align:center;font-size:clamp(22px,3.4vw,32px);font-weight:700;letter-spacing:-.02em;margin:10px 0 4px}
+.ecostats-title .hl{color:var(--gold)}
+.ecostats-sub{text-align:center;color:var(--mut);font-size:15px;margin-bottom:30px}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:860px){.statgrid{grid-template-columns:repeat(2,1fr)}}
+.stat{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px 14px;text-align:center;position:relative}
+.stat.hot{border-color:rgba(255,212,121,.55);box-shadow:0 0 34px rgba(255,212,121,.16)}
+.stat .num{font-size:clamp(30px,4.6vw,46px);font-weight:700;letter-spacing:-.04em;line-height:1;background:linear-gradient(120deg,#fff 20%,var(--acc) 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat.hot .num{background:linear-gradient(120deg,#fff 10%,var(--gold) 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .lbl{margin-top:8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.12em;font-weight:600}
+.stat .sub2{margin-top:4px;font-size:12.5px;color:var(--mut)}
+.stat .ratio{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#04160e;background:linear-gradient(135deg,var(--gold),#ffb84d);border-radius:99px;padding:4px 14px}
+.ecostats-cta{text-align:center;margin-top:26px;font-size:15px;color:var(--mut)}
+.ecostats-cta a{color:var(--acc);font-weight:700;text-decoration:none;border-bottom:2px solid rgba(93,242,184,.4)}
+.ecostats-cta a:hover{border-color:var(--acc)}
 a.btn,button.btn{background:linear-gradient(135deg,var(--acc),#3ee89e);color:#04160e;font-weight:700;padding:15px 34px;border-radius:14px;text-decoration:none;border:none;font-size:16px;cursor:pointer;transition:transform .2s,box-shadow .2s;display:inline-block;box-shadow:0 4px 40px rgba(93,242,184,.28)}
 a.btn:hover,button.btn:hover{transform:translateY(-2px);box-shadow:0 10px 50px rgba(93,242,184,.42)}
 a.btn.ghost,button.btn.ghost{background:rgba(255,255,255,.05);color:var(--fg);border:1px solid var(--line);box-shadow:none}
@@ -115,7 +135,7 @@ footer a{color:var(--acc);text-decoration:none}
 </head>
 <body>
 <div class="bg"></div><div class="grid"></div>
-<div class="eco" style="text-align:center;font-size:13px;color:var(--mut);padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.04)">🤖→💰 The x402 economy is live: <b style="color:var(--acc)">$24.2M</b> settled onchain · <b style="color:var(--fg)">94K</b> agent-txns vs 22K last quarter · NanoTab takes just <b style="color:var(--acc)">0.1%</b> — <a href="#proof" style="color:var(--acc)">see live proof ↓</a></div>
+<div class="eco" style="text-align:center;font-size:13.5px;color:var(--mut);padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.05);letter-spacing:.02em">⚡ THE <b style="color:var(--acc)">x402 ECONOMY</b> IS LIVE — <b style="color:var(--acc)">$24.2M</b> settled onchain · <b style="color:var(--fg)">75M+</b> agent transactions · <b style="color:var(--gold)">4× more buyers than sellers</b> — <a href="#eco-stats" style="color:var(--acc);font-weight:700">see the numbers ↓</a></div>
 <nav>
 <div class="logo"><i>◒</i> NanoTab</div>
 <div class="navlinks"><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="#generate">Start collecting →</a></div>
@@ -131,6 +151,20 @@ footer a{color:var(--acc);text-decoration:none}
 <a class="btn ghost" href="#buy">Buy (agent wallet) →</a>
 </div>
 </header>
+<div class="ecostats" id="eco-stats">
+<div class="ecostats-inner">
+<div class="ecostats-kicker">⚡ The x402 economy · live onchain</div>
+<div class="ecostats-title">Agents are already paying. <span class="hl">Sellers are scarce.</span></div>
+<p class="ecostats-sub">Real settlement volume on Base — and a buyer-to-seller imbalance that favours anyone selling first.</p>
+<div class="statgrid">
+<div class="stat"><div class="num">$24.2M</div><div class="lbl">Settled volume</div><div class="sub2">USDC on Base, onchain</div></div>
+<div class="stat"><div class="num">75M+</div><div class="lbl">Agent transactions</div><div class="sub2">and climbing every day</div></div>
+<div class="stat hot"><div class="num">94K : 22K</div><div class="lbl">Buyers vs sellers</div><span class="ratio">4-TO-1 · SELLERS WIN</span></div>
+<div class="stat"><div class="num">0.1%</div><div class="lbl">NanoTab fee</div><div class="sub2">you keep 99.9% of every call</div></div>
+</div>
+<div class="ecostats-cta">94K buyers chasing 22K sellers — <a href="#sell">list your API now →</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#proof">see live proof ↓</a></div>
+</div>
+</div>
 <div class="ticker"><div class="track" id="tick">
 <span><b>402</b> payment required → paywall served</span><span><b>200</b> paid call settled on Base</span><span><b>0.1%</b> fee · you keep 99.9%</span><span><b>0 ETH</b> needed · Circle paymaster covers gas</span><span><b>USDC</b> straight to your wallet</span>
 </div></div>
