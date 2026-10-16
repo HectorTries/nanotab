@@ -271,13 +271,14 @@ document.getElementById('tryLiveBtn').addEventListener('click', async function()
       hint = document.getElementById('liveHint'), btn = this;
   btn.textContent = 'Querying gateway…'; out.style.display = 'block';
   code.textContent = 'GET https://gateway.nanotab.dev/keyword?q=solar …';
+  var url = 'https://gateway.nanotab.dev/keyword?q=solar';
   try {
-    var r = await fetch('https://gateway.nanotab.dev/keyword?q=solar');
+    var r = await fetch(url);
     var t = await r.text(), pretty = t;
     try { pretty = JSON.stringify(JSON.parse(t), null, 2); } catch(e) {}
-    code.textContent = 'HTTP ' + r.status + ' ' + (r.status === 402 ? 'Payment Required' : '') + '\n\n' + pretty;
+    code.textContent = 'GET ' + url + '\nHTTP ' + r.status + ' ' + (r.status === 402 ? 'Payment Required' : '') + '\n\n' + pretty;
     hint.style.display = 'block';
-  } catch(e) { code.textContent = 'Error: ' + e.message + '\nIs the gateway up? Try: curl https://gateway.nanotab.dev/keyword?q=solar'; }
+  } catch(e) { code.textContent = 'GET ' + url + '\n\nLive 402 (paste in terminal):\ncurl ' + url + '\n\n(Browser blocked the cross-origin fetch — the gateway will send CORS headers after its next deploy. The curl above returns the same JSON.)'; }
   btn.textContent = 'Try the live gateway ⚡';
 });
 </script>
