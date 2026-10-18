@@ -26,6 +26,22 @@ Paywalls **any** origin API with x402-style 402s. Zero code changes on the merch
 
 `NETWORK`/`ASSET` are pinned to `base` / USDC mainnet contract in code.
 
+## Stats (public `GET /stats`)
+
+Every successful paid verification logs fire-and-forget counters to a KV
+namespace: `total_paid_calls`, `total_volume_usdc_units`, `merchant:<addr>`,
+`day:YYYY-MM-DD`. `GET /stats` returns
+`{total_paid_calls, total_volume_usdc, by_merchant (top 20), last_7_days, fee_wallet, fee_bps}` —
+public, no auth (marketing numbers), cached 60s. Works with zero KV too
+(all zeros when `NANOTAB_STATS` is unbound).
+
+One-time setup:
+
+```bash
+wrangler kv namespace create NANOTAB_STATS
+# paste the returned id into wrangler.toml under [[kv_namespaces]] (already stubbed, commented out)
+```
+
 ## Deploy
 
 ```bash

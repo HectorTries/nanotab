@@ -16,5 +16,11 @@ NANOTAB_FEE_BPS = "10"
 NETWORK = "base"
 ASSET = "0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5"
 
+# Paid-call stats (public GET /stats). Create once, then paste the id here:
+#   wrangler kv namespace create NANOTAB_STATS
+# [[kv_namespaces]]
+# binding = "NANOTAB_STATS"
+# id = "<paste-id-here>"
+
 [dev]
 port = 8787

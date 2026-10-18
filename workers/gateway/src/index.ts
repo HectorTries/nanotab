@@ -38,6 +38,20 @@ import {
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
+// Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
+// wrangler/workerd provide the real globals at runtime).
+declare global {
+  interface KVNamespace {
+    get(key: string): Promise<string | null>;
+    put(key: string, value: string): Promise<void>;
+    list(opts?: { prefix?: string }): Promise<{ keys: { name: string }[] }>;
+  }
+  interface ExecutionContext {
+    waitUntil(promise: Promise<unknown>): void;
+  }
+}
+export {};
+
 interface Env {
   ORIGIN_URL: string; // e.g. https://api.theirsite.com (no trailing slash)
   PRICE_USD_CENTS: string; // e.g. "2" = $0.02/call
@@ -48,6 +62,7 @@ interface Env {
   FEE_WALLET?: string; // NanoTab fee recipient override (optional; defaults to NANOTAB_PROTOCOL_WALLET)
   SETTLER_KEY?: string; // settler private key (wrangler secret ONLY) — enables on-chain merchant transfer
   BASE_RPC_URL?: string; // optional custom Base RPC
+  NANOTAB_STATS?: KVNamespace; // paid-call counters (wrangler kv namespace create NANOTAB_STATS)
 }
 
 // Non-optional NanoTab protocol fee: 0.1% of every paid call goes here,
@@ -302,8 +317,87 @@ async function settleOnChain(env: Env, amountCents: string): Promise<{ txHash: s
   return { txHash, feeTxHash, net: netUnits.toString(), fee: feeUnits.toString(), feeTo };
 }
 
+// --- Paid-call stats (KV-backed marketing numbers, public via GET /stats) ---
+// Keys: total_paid_calls, total_volume_usdc_units, merchant:<addr-lc>, day:YYYY-MM-DD.
+// Fire-and-forget: never blocks the paid response; all KV errors swallowed.
+async function kvIncr(kv: KVNamespace, key: string, by: number): Promise<void> {
+  const cur = Number((await kv.get(key)) ?? 0);
+  await kv.put(key, String(cur + by));
+}
+
+function recordPaidCall(ctx: ExecutionContext | undefined, env: Env, grossUnits: bigint): void {
+  const kv = env.NANOTAB_STATS;
+  if (!kv) return;
+  const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const merchantKey = `merchant:${env.MERCHANT_WALLET.toLowerCase()}`;
+  const p = (async () => {
+    try {
+      await Promise.all([
+        kvIncr(kv, 'total_paid_calls', 1),
+        kvIncr(kv, 'total_volume_usdc_units', Number(grossUnits)),
+        kvIncr(kv, merchantKey, 1),
+        kvIncr(kv, `day:${day}`, 1),
+      ]);
+    } catch (e) {
+      console.log(`[nanotab-gw] stats-log failed (non-fatal): ${(e as Error).message}`);
+    }
+  })();
+  try {
+    if (ctx?.waitUntil) ctx.waitUntil(p);
+    else p.catch(() => {}); // no ctx (e.g. tests) — still don't block
+  } catch { /* waitUntil threw: stats are best-effort */ }
+}
+
+async function serveStats(req: Request, env: Env): Promise<Response> {
+  let cache: any = null;
+  try { cache = (globalThis as any).caches?.default ?? null; } catch { cache = null; }
+  if (cache) {
+    const hit = await cache.match(req).catch(() => null);
+    if (hit) return hit;
+  }
+  const kv = env.NANOTAB_STATS;
+  const num = async (k: string) => Number((await kv?.get(k).catch(() => null)) ?? 0);
+  const total_paid_calls = await num('total_paid_calls');
+  const total_volume_usdc = (await num('total_volume_usdc_units')) / 1e6;
+  let by_merchant: { merchant: string; paid_calls: number }[] = [];
+  try {
+    const listed = await kv?.list({ prefix: 'merchant:' }).catch(() => null);
+    const keys = (listed?.keys ?? []).map((k) => k.name);
+    const counts = await Promise.all(keys.map(async (k) => ({ merchant: k.slice('merchant:'.length), paid_calls: await num(k) })));
+    by_merchant = counts.sort((a, b) => b.paid_calls - a.paid_calls).slice(0, 20);
+  } catch { /* best-effort */ }
+  const last_7_days: { day: string; paid_calls: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10);
+    last_7_days.push({ day: d, paid_calls: await num(`day:${d}`) });
+  }
+  const body = JSON.stringify({
+    total_paid_calls,
+    total_volume_usdc,
+    by_merchant,
+    last_7_days,
+    fee_wallet: feeRecipient(env),
+    fee_bps: Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS)),
+  });
+  const res = new Response(body, {
+    headers: {
+      'content-type': 'application/json',
+      'access-control-allow-origin': '*',
+      'cache-control': 'public, max-age=60',
+    },
+  });
+  if (cache) {
+    try { await cache.put(req, res.clone()); } catch { /* non-fatal */ }
+  }
+  return res;
+}
+
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+    // Public marketing numbers — no auth, cached 60s.
+    if (req.method === 'GET' && new URL(req.url).pathname === '/stats') {
+      return serveStats(req, env);
+    }
     if (!env.ORIGIN_URL || !env.PRICE_USD_CENTS || !env.MERCHANT_WALLET) {
       return Response.json(
         { error: 'gateway misconfigured: set ORIGIN_URL, PRICE_USD_CENTS, MERCHANT_WALLET' },
@@ -383,6 +477,9 @@ export default {
         `[nanotab-gw] authorized $${gross.toFixed(2)} → ${env.MERCHANT_WALLET} (fee ${(feeBps / 100).toFixed(2)}% $${fee.toFixed(4)}, net $${(gross - fee).toFixed(4)}, sig ${proof.signature.slice(0, 18)}… from ${proof.from ?? 'unknown'}) [${settleNote}]`
       );
     }
+
+    // Paid verification succeeded → log stats (fire-and-forget, non-blocking).
+    recordPaidCall(ctx, env, centsToUnits(env.PRICE_USD_CENTS));
 
     const origin = new URL(req.url);
     const target = new URL(env.ORIGIN_URL + origin.pathname + origin.search);
