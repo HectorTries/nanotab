@@ -10,7 +10,7 @@ compatibility_date = "2025-06-01"
 #   wrangler secret put FEE_WALLET        (NanoTab fee recipient)
 [vars]
 ORIGIN_URL = "https://origin.nanotab.dev"
-PRICE_USD_CENTS = "2"
+PRICE_USD_CENTS = "5"
 MERCHANT_WALLET = "0xc47b6d6a4137373ab169aeeedb95971d4939ef0b"
 NANOTAB_FEE_BPS = "10"
 NETWORK = "base"

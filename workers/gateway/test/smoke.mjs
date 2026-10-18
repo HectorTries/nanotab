@@ -75,4 +75,24 @@ if (devKey && process.env.FEE_WALLET) {
   console.log('SKIP fee-split cases (need NANOTAB_TEST_KEY + FEE_WALLET env)');
 }
 
+// --- Listing-readiness: free discovery + price ($0.05 = 50000 units) ---
+r = await fetch(`${GW}/.well-known/x402`);
+t = await j(r);
+try {
+  const s = JSON.parse(t.body);
+  check('well-known → 200 + accepts', r.status === 200 && Array.isArray(s.accepts));
+  check('well-known bazaar inputSchema', !!s.accepts?.[0]?.bazaar?.inputSchema);
+} catch { check('well-known JSON', false); }
+
+r = await fetch(`${GW}/openapi.json`);
+t = await j(r);
+try {
+  const s = JSON.parse(t.body);
+  check('openapi → 200, 3.0.0, paths / + /stats, components',
+    r.status === 200 && s.openapi === '3.0.0' && !!s.paths?.['/'] && !!s.paths?.['/stats'] && !!s.components);
+} catch { check('openapi JSON', false); }
+
+r = await fetch(`${GW}/stats`);
+check('stats → 200', r.status === 200);
+
 process.exit(fail ? 1 : 0);

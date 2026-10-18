@@ -110,24 +110,66 @@ function feeRecipient(env: Env): string {
   return env.FEE_WALLET || NANOTAB_PROTOCOL_WALLET;
 }
 
+function acceptsFor(req: Request, env: Env) {
+  return [
+    {
+      scheme: 'exact',
+      network: NANOTAB_NETWORK,
+      maxAmountRequired: centsToUnits(env.PRICE_USD_CENTS).toString(),
+      resource: req.url,
+      payTo: env.MERCHANT_WALLET,
+      asset: USDC_BASE_MAINNET,
+      fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`,
+      feeTo: feeRecipient(env),
+      bazaar: {
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            method: { type: 'string', default: 'GET' },
+          },
+          required: [],
+        },
+      },
+    },
+  ];
+}
+
 function challenge(req: Request, env: Env): Response {
+  return Response.json({ x402Version: 1, accepts: acceptsFor(req, env) }, { status: 402 });
+}
+
+function serveWellKnown(req: Request, env: Env): Response {
+  return Response.json(
+    { x402Version: 1, accepts: acceptsFor(req, env) },
+    { headers: { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }
+  );
+}
+
+function serveOpenApi(req: Request, env: Env): Response {
+  const origin = new URL(req.url).origin;
   return Response.json(
     {
-      x402Version: 1,
-      accepts: [
-        {
-          scheme: 'exact',
-          network: NANOTAB_NETWORK,
-          maxAmountRequired: env.PRICE_USD_CENTS,
-          resource: req.url,
-          payTo: env.MERCHANT_WALLET,
-          asset: USDC_BASE_MAINNET,
-          fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`,
-          feeTo: feeRecipient(env),
+      openapi: '3.0.0',
+      info: { title: 'NanoTab Gateway', version: '0.1.0' },
+      servers: [{ url: origin }],
+      paths: {
+        '/': {
+          get: {
+            summary: 'Proxied origin API (x402 paid)',
+            responses: { '402': { description: 'Payment required' } },
+          },
         },
-      ],
+        '/stats': {
+          get: {
+            summary: 'Paid-call stats (free)',
+            responses: { '200': { description: 'Stats JSON' } },
+          },
+        },
+      },
+      components: {},
     },
-    { status: 402 }
+    { headers: { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }
   );
 }
 
@@ -394,8 +436,16 @@ async function serveStats(req: Request, env: Env): Promise<Response> {
 
 export default {
   async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
+    // Free discovery routes (before the paywall):
+    const pathname = new URL(req.url).pathname;
+    if (req.method === 'GET' && pathname === '/.well-known/x402') {
+      return serveWellKnown(req, env);
+    }
+    if (req.method === 'GET' && pathname === '/openapi.json') {
+      return serveOpenApi(req, env);
+    }
     // Public marketing numbers — no auth, cached 60s.
-    if (req.method === 'GET' && new URL(req.url).pathname === '/stats') {
+    if (req.method === 'GET' && pathname === '/stats') {
       return serveStats(req, env);
     }
     if (!env.ORIGIN_URL || !env.PRICE_USD_CENTS || !env.MERCHANT_WALLET) {
