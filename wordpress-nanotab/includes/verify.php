@@ -29,8 +29,11 @@ function nanotab_verify_payment($tx_hash) {
         if (strcasecmp($log['address'], NANOTAB_USDC_BASE) !== 0) continue;
         if (empty($log['topics'][0]) || strcasecmp($log['topics'][0], $transfer_topic) !== 0) continue;
         if (empty($log['topics'][2]) || strcasecmp($log['topics'][2], $merchant_padded) !== 0) continue;
-        $amount = hexdec(ltrim($log['data'], '0x') ?: '0');
-        if ($amount >= $min_amount) return true;
+        // Compare as hex strings: hexdec() overflows on large uint256 values.
+        $amount_hex = ltrim(preg_replace('/^0x/i', '', (string) $log['data']), '0') ?: '0';
+        $min_hex = ltrim(dechex($min_amount), '0') ?: '0';
+        $la = strlen($amount_hex); $lm = strlen($min_hex);
+        if ($la > $lm || ($la === $lm && strcmp($amount_hex, $min_hex) >= 0)) return true;
     }
     return false;
 }
