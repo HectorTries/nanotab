@@ -1,0 +1,19 @@
+runtime: "typescript"
+startCommand:
+  type: "stdio"
+  configSchema:
+    type: "object"
+    properties:
+      walletKey:
+        type: "string"
+        title: "Wallet Private Key"
+        description: "Private key for Base-mainnet USDC signing"
+    required: ["walletKey"]
+  commandFunction: |-
+    (config) => ({
+      command: "npx",
+      args: ["-y", "@nanotab/mcp-server"],
+      env: { NANOTAB_WALLET_KEY: config.walletKey }
+    })
+  exampleConfig:
+    walletKey: "0x..."
