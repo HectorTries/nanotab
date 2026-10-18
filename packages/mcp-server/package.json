@@ -1,0 +1,43 @@
+{
+  "name": "@nanotab/mcp-server",
+  "version": "0.1.1",
+  "description": "NanoTab MCP server — pay-per-fetch web content via USDC on Base (x402)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "nanotab-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HectorTries/nanotab.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://nanotab.dev",
+  "keywords": [
+    "mcp",
+    "x402",
+    "usdc",
+    "payments",
+    "nanotab",
+    "model-context-protocol"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "@nanotab/agent-sdk": "^0.1.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
