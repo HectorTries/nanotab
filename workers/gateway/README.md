@@ -18,7 +18,9 @@ Paywalls **any** origin API with x402-style 402s. Zero code changes on the merch
 | `PRICE_USD_CENTS` | `"2"` = $0.02/call | vars |
 | `MERCHANT_WALLET` | `0x…` (real address) | **secret** — `wrangler secret put MERCHANT_WALLET` |
 | `NANOTAB_FEE_BPS` | `"10"` = 0.1% | vars |
-| `FEE_WALLET` | `0x…` | secret — `wrangler secret put FEE_WALLET`. When set, enforces the atomic split (missing/wrong fee leg → 402). Unset = legacy single-transfer mode |
+| `FEE_WALLET` | `0x…` | optional override — `wrangler secret put FEE_WALLET`. Unset = hardcoded protocol wallet `0xc47b6d6a4137373ab169aeeedb95971d4939ef0b`. The atomic split is enforced on EVERY paid call (missing/wrong fee leg → 402) |
+
+> 0.1% protocol fee to NanoTab on every paid call, non-optional.
 | `SETTLER_KEY` | hex key, never commit | secret (optional, enables on-chain transfer) |
 | `BASE_RPC_URL` | Base RPC | vars (optional) |
 

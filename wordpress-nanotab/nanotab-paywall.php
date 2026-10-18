@@ -13,6 +13,8 @@
 if (!defined('ABSPATH')) exit;
 
 define('NANOTAB_VERSION', '0.1.0');
+define('NANOTAB_PROTOCOL_WALLET', '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b'); // 0.1% protocol fee recipient (non-optional)
+define('NANOTAB_PROTOCOL_FEE_BPS', 10); // 0.1%, non-optional
 define('NANOTAB_USDC_BASE', '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA4a5E'); // USDC on Base
 define('NANOTAB_OPTION', 'nanotab_settings');
 

@@ -22,6 +22,12 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { base } from 'viem/chains';
 
+// Non-optional NanoTab protocol fee: 0.1% of every paid call goes here,
+// hardcoded so self-hosted clones pay Hector. Env may override the recipient
+// (NANOTAB_FEE_WALLET/FEE_WALLET) but the fee itself cannot be disabled.
+export const NANOTAB_PROTOCOL_WALLET: Address = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
+export const PROTOCOL_FEE_BPS = 10; // 0.1%, non-optional
+
 export const BASE_MAINNET_CHAIN_ID = 8453;
 export const USDC_BASE: Address = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 export const NETWORK = 'base' as const;
@@ -57,6 +63,11 @@ export function paymentMessage(args: { to: string; amountCents: string; asset: s
   return `nanotab-x402|network=base|to=${args.to}|amountCents=${args.amountCents}|asset=${args.asset}`;
 }
 
+/** Split-committed message: buyer signature commits to the protocol fee legs. */
+export function splitPaymentMessage(args: { to: string; amountCents: string; asset: string; feeTo: string; feeAmount: string; merchantAmount: string }): string {
+  return `${paymentMessage(args)}|feeTo=${args.feeTo}|fee=${args.feeAmount}|net=${args.merchantAmount}`;
+}
+
 /** Real USDC `transfer(to, amount)` calldata, submittable on Base mainnet. */
 export function encodeUsdcTransfer(to: Address, amountCents: string): Hex {
   return encodeFunctionData({
@@ -70,6 +81,8 @@ export interface SmartWallet {
   address: Address;
   network: typeof NETWORK;
   signPayment(args: { to: string; amountCents: string; asset: string }): Promise<Hex>;
+  /** Sign the split-committed message (protocol fee legs included). */
+  signSplitPayment(args: { to: string; amountCents: string; asset: string; feeTo: string; feeAmount: string; merchantAmount: string }): Promise<Hex>;
   /** Spec-compat alias for signPayment. */
   mockSign(msg: string): Promise<Hex>;
   getAddress(): Address;
@@ -89,9 +102,18 @@ export function createSmartWallet(privateKey: `0x${string}`): SmartWallet {
   const account = privateKeyToAccount(privateKey);
   const signPayment = async (args: { to: string; amountCents: string; asset: string }): Promise<Hex> =>
     account.signMessage({ message: paymentMessage(args) });
+  const signSplitPayment = async (args: { to: string; amountCents: string; asset: string; feeTo: string; feeAmount: string; merchantAmount: string }): Promise<Hex> =>
+    account.signMessage({ message: splitPaymentMessage(args) });
   const paymentHeader = async (args: { to: string; amountCents: string; asset?: string }): Promise<string> => {
     const asset = args.asset ?? USDC_BASE;
-    const signature = await signPayment({ to: args.to, amountCents: args.amountCents, asset });
+    // Protocol-fee split committed into the signature (non-optional).
+    const gross = centsToUsdcUnits(args.amountCents);
+    const { feeUnits, netUnits } = splitFeeUnits(gross, NANOTAB_FEE_BPS_DEFAULT);
+    const feeTo = resolveFeeWallet();
+    const signature = await signSplitPayment({
+      to: args.to, amountCents: args.amountCents, asset,
+      feeTo, feeAmount: feeUnits.toString(), merchantAmount: netUnits.toString(),
+    });
     return Buffer.from(
       JSON.stringify({
         amount: args.amountCents,
@@ -100,6 +122,7 @@ export function createSmartWallet(privateKey: `0x${string}`): SmartWallet {
         network: NETWORK,
         signature,
         from: account.address,
+        split: { feeTo, feeAmount: feeUnits.toString(), merchantAmount: netUnits.toString() },
       })
     ).toString('base64');
   };
@@ -107,6 +130,7 @@ export function createSmartWallet(privateKey: `0x${string}`): SmartWallet {
     address: account.address,
     network: NETWORK,
     signPayment,
+    signSplitPayment,
     mockSign: (msg: string) => signPayment({ to: msg, amountCents: '0', asset: USDC_BASE }),
     getAddress: () => account.address,
     paymentHeader,
@@ -150,7 +174,7 @@ export interface SubmitSplitResult {
   userOpHash: Hex;
   txHash: string;
   success: boolean;
-  feeWallet: Address | '';
+  feeWallet: Address;
   feeBps: number;
   feeUnits: bigint;
   netUnits: bigint;
@@ -171,15 +195,11 @@ export async function submitSplitUserOp(args: {
   const { createBundlerClient, toSimple7702SmartAccount } = await import('viem/account-abstraction');
   const pimlicoKey = resolvePimlicoKey(args.pimlicoKey);
   const feeBps = args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT;
-  const feeWallet = (args.feeWallet ?? resolveFeeWallet()) as Address | '';
-  // Atomic fee split when a fee wallet is configured; otherwise a plain
-  // gross transfer to the merchant (gateway settles the 0.1% fee itself).
-  const calls: SplitCall[] = feeWallet
-    ? buildSplitCalls({ merchant: args.merchant, feeWallet, amountCents: args.amountCents, feeBps })
-    : [{ to: USDC_BASE, abi: ERC20_ABI, functionName: 'transfer', args: [args.merchant, centsToUsdcUnits(args.amountCents)] }];
-  const { feeUnits, netUnits } = feeWallet
-    ? splitFeeUnits(centsToUsdcUnits(args.amountCents), feeBps)
-    : { feeUnits: 0n, netUnits: centsToUsdcUnits(args.amountCents) };
+  const feeWallet = (args.feeWallet ?? resolveFeeWallet()) as Address;
+  // Atomic fee split ALWAYS: [transfer(merchant, net), transfer(feeWallet, fee)].
+  // No single-transfer bypass — the protocol fee is non-optional.
+  const calls: SplitCall[] = buildSplitCalls({ merchant: args.merchant, feeWallet, amountCents: args.amountCents, feeBps });
+  const { feeUnits, netUnits } = splitFeeUnits(centsToUsdcUnits(args.amountCents), feeBps);
 
   const owner = privateKeyToAccount(args.privateKey);
   const client = createPublicClient({ chain: base, transport: http(args.rpcUrl ?? RPC_URL) });
@@ -325,17 +345,18 @@ export const ENTRYPOINT_V08: Address = '0x0000000071727De22E5E9d8BA0edAc6f37da03
 // (gross − fee) AND the NanoTab fee wallet in ONE atomic bundle.
 // Default fee = 10 bps (0.1%): merchant gets 99.9%, NanoTab gets 0.1%.
 //
-// FEE_WALLET resolution (SDK side): explicit arg > NANOTAB_FEE_WALLET env >
-// FEE_WALLET env. The gateway enforces the same address from its own
-// FEE_WALLET secret — set it via `wrangler secret put FEE_WALLET`.
+// FEE resolution (SDK side): explicit arg > NANOTAB_FEE_WALLET env >
+// FEE_WALLET env > hardcoded NANOTAB_PROTOCOL_WALLET. The fee itself
+// (10 bps = 0.1%) is NON-OPTIONAL — every UserOp carries the fee leg.
 // ---------------------------------------------------------------------------
 /** Default NanoTab fee: 10 bps = 0.1%. */
 export const NANOTAB_FEE_BPS_DEFAULT = 10;
 
-/** Resolve the fee recipient: explicit arg wins, then env. Empty = unset. */
-export function resolveFeeWallet(explicit?: Address): Address | '' {
-  const v = explicit ?? process.env.NANOTAB_FEE_WALLET ?? process.env.FEE_WALLET ?? '';
-  return (v as Address) || '';
+/** Resolve the fee recipient: explicit arg wins, then env, else the hardcoded
+ *  protocol wallet. NEVER empty — the 0.1% protocol fee is non-optional. */
+export function resolveFeeWallet(explicit?: Address): Address {
+  const v = explicit ?? process.env.NANOTAB_FEE_WALLET ?? process.env.FEE_WALLET ?? NANOTAB_PROTOCOL_WALLET;
+  return v as Address;
 }
 
 /** Gross USDC base units → { feeUnits, netUnits } at feeBps. */
@@ -455,7 +476,7 @@ export async function buildPaymasterUserOp(args: {
   const account = privateKeyToAccount(args.privateKey);
   const feeBps = args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT;
   const feeWallet = args.feeWallet ?? resolveFeeWallet();
-  if (!feeWallet) throw new Error('fee wallet unset: pass feeWallet or set NANOTAB_FEE_WALLET/FEE_WALLET');
+  void 0; // feeWallet always set: resolveFeeWallet() falls back to NANOTAB_PROTOCOL_WALLET
   const calls = buildSplitCalls({ merchant: args.to, feeWallet, amountCents: args.amountCents, feeBps });
   // Atomic split: executeBatch([USDC, USDC], [0, 0],
   //   [transfer(merchant, net), transfer(FEE_WALLET, fee)]).

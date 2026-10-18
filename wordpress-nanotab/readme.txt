@@ -16,6 +16,7 @@ NanoTab Paywall locks full post content and a REST endpoint behind a USDC paymen
 * Paying readers send USDC to your wallet, then reload with an `X-Payment: <tx_hash>` header.
 * The plugin verifies the tx on-chain via `eth_getTransactionReceipt` and checks the USDC `Transfer` log.
 * REST clients get a machine-readable `402` JSON with the full payment spec at `/wp-json/nanotab/v1/post/<id>`.
+* 0.1% protocol fee to NanoTab on every paid call, non-optional.
 
 == Installation ==
 

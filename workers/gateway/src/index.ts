@@ -18,9 +18,9 @@
 //     the settler sends TWO transfers: net → merchant, fee → fee recipient.
 //     Fee = NANOTAB_FEE_BPS (default 10 = 0.1%).
 //
-// FEE RECIPIENT: env.FEE_WALLET when set, else MERCHANT_WALLET (back-compat —
-// fee accrues with merchant). Every path (buyer-tx verify, split verify,
-// settler) resolves via feeRecipient(env); never hardcode.
+// FEE RECIPIENT: env.FEE_WALLET when set, else NANOTAB_PROTOCOL_WALLET
+// (hardcoded 0.1% protocol fee, non-optional). Every path (buyer-tx verify,
+// split verify, settler) resolves via feeRecipient(env); never MERCHANT_WALLET.
 //
 // PRICE: the gateway is price-agnostic — PRICE_USD_CENTS sets the per-call
 // price for whatever origin it fronts. SaveShare ($0.05/call) = deploy this
@@ -45,10 +45,17 @@ interface Env {
   NANOTAB_FEE_BPS?: string; // e.g. "10" = 0.1% (default 10)
   NETWORK?: string; // must be "base"
   ASSET?: string; // must be USDC mainnet contract
-  FEE_WALLET?: string; // NanoTab fee recipient (optional; defaults to MERCHANT_WALLET)
+  FEE_WALLET?: string; // NanoTab fee recipient override (optional; defaults to NANOTAB_PROTOCOL_WALLET)
   SETTLER_KEY?: string; // settler private key (wrangler secret ONLY) — enables on-chain merchant transfer
   BASE_RPC_URL?: string; // optional custom Base RPC
 }
+
+// Non-optional NanoTab protocol fee: 0.1% of every paid call goes here,
+// hardcoded so self-hosted clones pay Hector. NOT overridable to zero —
+// env.FEE_WALLET may point fees elsewhere (e.g. a dedicated wallet Hector
+// controls) but NEVER falls through to MERCHANT_WALLET.
+const NANOTAB_PROTOCOL_WALLET = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
+const PROTOCOL_FEE_BPS = 10; // 0.1%, non-optional
 
 const USDC_BASE_MAINNET = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
 const NANOTAB_NETWORK = 'base';
@@ -62,7 +69,7 @@ interface PaymentProof {
   signature: string;
   from?: string;
   txHash?: string; // optional: payer's on-chain transfer hash for confirmation
-  // Atomic fee-split legs (REQUIRED when gateway FEE_WALLET is set).
+  // Atomic fee-split legs (REQUIRED on every paid call — protocol fee is non-optional).
   // Amounts in USDC base units. feeTo must equal FEE_WALLET, feeAmount +
   // merchantAmount must equal gross, feeAmount must equal feeBps math.
   split?: { feeTo: string; feeAmount: string; merchantAmount: string };
@@ -82,9 +89,10 @@ function splitPaymentMessage(p: { to: string; amount: string; asset: string; fee
   return `${paymentMessage(p)}|feeTo=${p.feeTo}|fee=${p.feeAmount}|net=${p.merchantAmount}`;
 }
 
-/** Fee recipient: explicit FEE_WALLET, else merchant (back-compat). Empty-string var counts as unset. */
+/** Fee recipient: explicit FEE_WALLET, else the hardcoded protocol wallet.
+ *  NEVER falls through to MERCHANT_WALLET — the 0.1% protocol fee is mandatory. */
 function feeRecipient(env: Env): string {
-  return env.FEE_WALLET || env.MERCHANT_WALLET;
+  return env.FEE_WALLET || NANOTAB_PROTOCOL_WALLET;
 }
 
 function challenge(req: Request, env: Env): Response {
@@ -132,23 +140,20 @@ function verifyPayment(header: string, to: string, amountCents: string): Payment
 
 /**
  * Atomic fee-split enforcement (NanoTab 10bps default).
- * Fee recipient = FEE_WALLET, defaulting to MERCHANT_WALLET (back-compat).
+ * Fee recipient = FEE_WALLET override, else NANOTAB_PROTOCOL_WALLET.
  * The X-Payment proof MUST carry `split` with:
  *   - split.feeTo == fee recipient (exact)
  *   - split.feeAmount == floor(gross * feeBps / 10_000) in USDC base units
  *   - split.merchantAmount == gross − fee
- * Missing/wrong split → 402. When no explicit FEE_WALLET is set, the fee
- * leg targets the merchant (dedicated single-recipient wallets) — still
- * exactly 2 legs, fee accounted separately in logs/headers.
+ * Missing/wrong split → 402. No exceptions, no single-transfer bypass.
  */
 function verifyFeeSplit(proof: PaymentProof, amountCents: string, env: Env): { feeUnits: bigint; netUnits: bigint; feeTo: string } {
-  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '10');
+  const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
   const gross = centsToUnits(amountCents);
   const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
   const netUnits = gross - feeUnits;
-  // Back-compat: FEE_WALLET unset → legacy single-transfer mode, split
-  // optional, fee accrues with merchant. Set → atomic split mandatory.
-  if (!env.FEE_WALLET) return { feeUnits, netUnits, feeTo: env.MERCHANT_WALLET };
+  // Protocol fee is NON-OPTIONAL: every paid call carries the split.
+  // No back-compat single-transfer bypass.
   const feeTo = feeRecipient(env);
   const s = proof.split;
   if (!s?.feeTo || !s?.feeAmount || !s?.merchantAmount) {
@@ -223,14 +228,10 @@ async function verifyBuyerTx(
   );
   const merchantLc = env.MERCHANT_WALLET.toLowerCase();
   const feeLc = feeTo.toLowerCase();
-  const sameRecipient = feeLc === merchantLc;
-  // Back-compat single-recipient mode (FEE_WALLET unset → fee accrues with
-  // merchant): tx carries ONE leg of the FULL gross to the merchant.
-  // Split mode: EXACTLY 2 legs [merchant-net, fee→fee wallet].
-  if (legs.length !== (sameRecipient ? 1 : 2)) {
-    throw new Error(sameRecipient
-      ? `tx must contain exactly 1 USDC transfer of ${gross} units to ${env.MERCHANT_WALLET} (got ${legs.length} legs)`
-      : `tx must contain exactly 2 USDC transfers (got ${legs.length})`);
+  // Mandatory split: EXACTLY 2 legs [merchant-net, fee→protocol wallet].
+  // No single-transfer bypass.
+  if (legs.length !== 2) {
+    throw new Error(`tx must contain exactly 2 USDC transfers (got ${legs.length})`);
   }
   const seen = new Map<string, bigint>();
   let payer: string | null = null;
@@ -241,11 +242,6 @@ async function verifyBuyerTx(
     if (payer === null) payer = from;
     else if (payer !== from) throw new Error('transfer legs have different senders');
     seen.set(to, (seen.get(to) ?? 0n) + value);
-  }
-  if (sameRecipient) {
-    const got = seen.get(merchantLc);
-    if (got !== gross) throw new Error(`merchant leg wrong (need ${gross} units to ${env.MERCHANT_WALLET}, got ${got ?? 'missing'})`);
-    return { payer: payer as string };
   }
   const gotNet = seen.get(merchantLc);
   const gotFee = seen.get(feeLc);
@@ -260,10 +256,9 @@ async function verifyBuyerTx(
 
 /**
  * On-chain settlement (legacy SETTLER_KEY path): settler sends TWO USDC
- * transfers on Base — net → MERCHANT_WALLET, fee → fee recipient
- * (FEE_WALLET, defaulting to MERCHANT_WALLET). In single-recipient mode
- * the fee transfer is skipped (net == gross − fee accrues with merchant
- * via the single transfer of the FULL gross). Returns tx hashes.
+ * transfers on Base — net → MERCHANT_WALLET, fee → protocol wallet.
+ * Both legs always sent (feeUnits may be 0n only if price rounds to zero).
+ * Returns tx hashes.
  */
 const ERC20_ABI_SETTLE = [
   {
@@ -285,19 +280,16 @@ async function settleOnChain(env: Env, amountCents: string): Promise<{ txHash: s
   const rpc = env.BASE_RPC_URL ?? 'https://mainnet.base.org';
   void createPublicClient;
   const wallet = createWalletClient({ account, chain: base, transport: http(rpc) });
-  const sameRecipient = feeTo.toLowerCase() === env.MERCHANT_WALLET.toLowerCase();
-  // Single-recipient mode: one transfer of the FULL gross to the merchant.
-  const merchantAmount = sameRecipient ? netUnits + feeUnits : netUnits;
   const txHash = await wallet.writeContract({
     address: USDC_BASE_MAINNET as Address,
     abi: ERC20_ABI_SETTLE,
     functionName: 'transfer',
-    args: [env.MERCHANT_WALLET as Address, merchantAmount],
+    args: [env.MERCHANT_WALLET as Address, netUnits],
     account,
     chain: base,
   });
   let feeTxHash: string | null = null;
-  if (!sameRecipient && feeUnits > 0n) {
+  if (feeUnits > 0n) {
     feeTxHash = await wallet.writeContract({
       address: USDC_BASE_MAINNET as Address,
       abi: ERC20_ABI_SETTLE,
@@ -343,9 +335,7 @@ export default {
       // Atomic split enforcement: fee leg present + exact BEFORE signature.
       ({ feeUnits, netUnits, feeTo } = verifyFeeSplit(proof, env.PRICE_USD_CENTS, env));
       if (proof.from) {
-        // Split-aware message when the payer committed to legs; legacy
-        // single-transfer message otherwise (back-compat when split unset
-        // and FEE_WALLET unset).
+        // Split-committed message (split is mandatory on every paid call).
         const msg = proof.split?.feeTo
           ? splitPaymentMessage({
               to: proof.to, amount: proof.amount, asset: proof.asset,
@@ -381,7 +371,7 @@ export default {
     } else if (env.SETTLER_KEY) {
       try {
         const s = await settleOnChain(env, env.PRICE_USD_CENTS);
-        settleNote = `on-chain merchant transfer ${s.txHash} (net ${s.net} units; fee ${s.fee} units → ${s.feeTo}${s.feeTxHash ? ` in ${s.feeTxHash}` : ' (same-recipient mode: gross in merchant transfer)'})`;
+        settleNote = `on-chain merchant transfer ${s.txHash} (net ${s.net} units; fee ${s.fee} units → ${s.feeTo}${s.feeTxHash ? ` in ${s.feeTxHash}` : ' (fee rounds to zero)'})`;
         console.log(`[nanotab-gw] settled $${gross.toFixed(2)} → ${env.MERCHANT_WALLET}: ${settleNote}`);
       } catch (e) {
         settleNote = `on-chain settlement FAILED (${(e as Error).message}); fee accounting logged, merchant settle retry required`;

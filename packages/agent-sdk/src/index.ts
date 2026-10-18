@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { PolicyEngine, PolicyConfig, parseUsd } from './policy';
-import { createMockWallet, createSmartWallet, submitSplitUserOp, resolveFeeWallet } from './wallet';
+import { createMockWallet, createSmartWallet, submitSplitUserOp, resolveFeeWallet, splitFeeUnits, centsToUsdcUnits } from './wallet';
 import { loadConfig } from './config';
 
 export { PolicyEngine, parseUsd, createMockWallet };
@@ -117,12 +117,17 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
   const walletKey = process.env.NANOTAB_WALLET_KEY as `0x${string}` | undefined;
   let signature: string;
   let fromAddr: string;
+  // Mandatory protocol-fee split: computed up-front, committed into the signature.
+  const feeTo = resolveFeeWallet();
+  const { feeUnits, netUnits } = splitFeeUnits(centsToUsdcUnits(accept.maxAmountRequired));
+  const split = { feeTo, feeAmount: feeUnits.toString(), merchantAmount: netUnits.toString() };
   if (walletKey) {
     const wallet = createSmartWallet(walletKey);
-    signature = await wallet.signPayment({
+    signature = await wallet.signSplitPayment({
       to: accept.payTo,
       amountCents: accept.maxAmountRequired,
       asset: accept.asset,
+      feeTo: split.feeTo, feeAmount: split.feeAmount, merchantAmount: split.merchantAmount,
     });
     fromAddr = wallet.address;
   } else if (walletAddress) {
@@ -160,6 +165,7 @@ export async function nanotabFetch(url: string, opts: FetchOptions = {}): Promis
       network: accept.network,
       signature,
       from: fromAddr,
+      split,
       ...(userOp ? { userOpHash: userOp.userOpHash, txHash: userOp.txHash } : {}),
     })
   ).toString('base64');
