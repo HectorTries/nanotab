@@ -33,9 +33,12 @@ let t = await j(r);
 check('no-header → 402', r.status === 402, t.body.slice(0, 100));
 try {
   const s = JSON.parse(t.body);
-  check('402 schema (x402Version/accepts/scheme exact, base, USDC contract)',
-    s.x402Version === 1 && s.accepts?.[0]?.scheme === 'exact' &&
-    s.accepts[0].network === 'base' && s.accepts[0].asset === USDC);
+  check('402 schema (v2 + resource, eip155:8453, amount, USDC contract)',
+    s.x402Version === 2 && !!s.resource?.url && !!s.resource?.description &&
+    s.accepts?.[0]?.scheme === 'exact' &&
+    s.accepts[0].network === 'eip155:8453' && s.accepts[0].asset === USDC &&
+    typeof s.accepts[0].amount === 'string' &&
+    typeof s.accepts[0].maxTimeoutSeconds === 'number');
 } catch { check('402 schema JSON', false); }
 
 r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': '!!!notbase64' } });

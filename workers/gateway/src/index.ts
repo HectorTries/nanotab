@@ -110,38 +110,62 @@ function feeRecipient(env: Env): string {
   return env.FEE_WALLET || NANOTAB_PROTOCOL_WALLET;
 }
 
-function acceptsFor(req: Request, env: Env) {
-  return [
-    {
-      scheme: 'exact',
-      network: NANOTAB_NETWORK,
-      maxAmountRequired: centsToUnits(env.PRICE_USD_CENTS).toString(),
-      resource: req.url,
-      payTo: env.MERCHANT_WALLET,
-      asset: USDC_BASE_MAINNET,
-      fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`,
-      feeTo: feeRecipient(env),
-      bazaar: {
-        inputSchema: {
-          type: 'object',
-          properties: {
-            path: { type: 'string' },
-            method: { type: 'string', default: 'GET' },
-          },
-          required: [],
-        },
+const NANOTAB_NETWORK_CAIP2 = 'eip155:8453'; // Base mainnet (x402 v2 CAIP-2)
+
+function paymentRequiredBody(req: Request, env: Env) {
+  const priceUnits = centsToUnits(env.PRICE_USD_CENTS).toString();
+  const priceUsd = (Number(env.PRICE_USD_CENTS) / 100).toFixed(2);
+  const desc = `NanoTab gateway API call ($${priceUsd} USDC on Base)`;
+  // x402scan/agentcash discovery shape:
+  // extensions.bazaar.schema.properties.{input.properties.{body|queryParams}, output.properties.example}
+  const inputBody = {
+    type: 'object',
+    properties: {
+      path: { type: 'string' },
+      method: { type: 'string', default: 'GET' },
+    },
+    required: [],
+  };
+  const bazaarSchema = {
+    schema: {
+      properties: {
+        input: { properties: { body: inputBody, queryParams: inputBody } },
+        output: { properties: { example: { type: 'object' } } },
       },
     },
-  ];
+  };
+  const bazaar = { inputSchema: inputBody }; // legacy alias (some clients read accepts[].bazaar.inputSchema)
+  return {
+    x402Version: 2,
+    resource: { url: req.url, description: desc, mimeType: 'application/json' },
+    accepts: [
+      {
+        scheme: 'exact',
+        network: NANOTAB_NETWORK_CAIP2,
+        amount: priceUnits,
+        maxAmountRequired: priceUnits,
+        asset: USDC_BASE_MAINNET,
+        payTo: env.MERCHANT_WALLET,
+        maxTimeoutSeconds: 300,
+        description: desc,
+        mimeType: 'application/json',
+        fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`,
+        feeTo: feeRecipient(env),
+        bazaar,
+        extra: { fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`, feeTo: feeRecipient(env) },
+      },
+    ],
+    extensions: { bazaar: bazaarSchema },
+  };
 }
 
 function challenge(req: Request, env: Env): Response {
-  return Response.json({ x402Version: 1, accepts: acceptsFor(req, env) }, { status: 402 });
+  return Response.json(paymentRequiredBody(req, env), { status: 402 });
 }
 
 function serveWellKnown(req: Request, env: Env): Response {
   return Response.json(
-    { x402Version: 1, accepts: acceptsFor(req, env) },
+    paymentRequiredBody(req, env),
     { headers: { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=300' } }
   );
 }
@@ -157,13 +181,50 @@ function serveOpenApi(req: Request, env: Env): Response {
         '/': {
           get: {
             summary: 'Proxied origin API (x402 paid)',
-            responses: { '402': { description: 'Payment required' } },
+            parameters: [
+              { name: 'path', in: 'query', required: false, schema: { type: 'string' } },
+              { name: 'method', in: 'query', required: false, schema: { type: 'string', default: 'GET' } },
+            ],
+            requestBody: {
+              required: false,
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      path: { type: 'string' },
+                      method: { type: 'string', default: 'GET' },
+                    },
+                  },
+                },
+              },
+            },
+            'x-payment-info': {
+              price: { mode: 'fixed', currency: 'USD', amount: (Number(env.PRICE_USD_CENTS) / 100).toFixed(2) },
+              protocols: [{ x402: {} }],
+            },
+            responses: {
+              '200': { description: 'Proxied origin response' },
+              '402': { description: 'Payment Required' },
+            },
           },
         },
         '/stats': {
           get: {
             summary: 'Paid-call stats (free)',
             responses: { '200': { description: 'Stats JSON' } },
+          },
+        },
+        '/openapi.json': {
+          get: {
+            summary: 'Discovery document (free)',
+            responses: { '200': { description: 'OpenAPI JSON' } },
+          },
+        },
+        '/.well-known/x402': {
+          get: {
+            summary: 'Payment spec (free)',
+            responses: { '200': { description: 'x402 payment spec' } },
           },
         },
       },
