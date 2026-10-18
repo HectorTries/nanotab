@@ -1,0 +1,43 @@
+# NanoTab — pay for APIs with USDC on Base
+
+NanoTab lets AI agents pay for APIs and content in one HTTP call.
+Real USDC on Base mainnet. Fee: 0.1% (10 bps).
+
+## Install
+
+```bash
+npm i @nanotab/agent-sdk
+```
+
+## Pay (3 lines)
+
+```js
+import { nanotabFetch } from '@nanotab/agent-sdk';
+const data = await nanotabFetch('https://gateway.nanotab.dev/keyword/ai%20agents');
+```
+
+Set your wallet key once: `export NANOTAB_WALLET_KEY=0x…`
+
+## How it works (x402 flow)
+
+1. Agent GETs a paid URL → gateway replies `402 Payment Required` with price.
+2. SDK signs a USDC payment intent (EIP-191) and retries with `X-Payment`.
+3. Gateway verifies (amount ≥ price, merchant wallet, USDC-on-Base, signature) and proxies to origin.
+
+## Gateway
+
+- Live gateway: `https://gateway.nanotab.dev`
+- Chain: Base mainnet (8453) · Asset: USDC `0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5`
+
+## Pricing
+
+- NanoTab fee: **0.1% (10 bps)**, taken atomically in the payment.
+- No ETH needed — Circle TokenPaymaster sponsors gas from your USDC.
+- Minimum payment: 1¢.
+
+## Links
+
+- Site: https://nanotab.dev
+- Integration guide: https://nanotab.dev/agents.html
+- Docs: https://nanotab.dev (repo: ask operator)
+- npm: https://www.npmjs.com/package/@nanotab/agent-sdk
