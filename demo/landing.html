@@ -143,32 +143,36 @@ footer a{color:var(--acc);text-decoration:none}
 </head>
 <body>
 <div class="bg"></div><div class="grid"></div>
-<div class="eco" style="text-align:center;font-size:13.5px;color:var(--mut);padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.05);letter-spacing:.02em">⚡ THE <b style="color:var(--acc)">x402 ECONOMY</b> IS LIVE — <b style="color:var(--acc)">$24.2M</b> settled onchain (last 30 days) · <b style="color:var(--fg)">75M+</b> agent txs (last 30 days) · <b style="color:var(--gold)">4× more buyers than sellers</b> — <a href="#eco-stats" style="color:var(--acc);font-weight:700">see the numbers ↓</a></div>
-<nav>
+<div class="eco" style="text-align:center;font-size:13.5px;color:var(--mut);padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.05);letter-spacing:.02em">⚡ THE <b style="color:var(--acc)">x402 ECONOMY</b> IS LIVE — <b style="color:var(--acc)">$24.2M</b> settled onchain (last 30 days) · <b style="color:var(--fg)">75M+</b> agent txs (last 30 days) · <b style="color:var(--gold)">4× more buyers than sellers</b> — <a href="#eco-stats" style="color:var(--acc);font-weight:700">see the numbers ↓</a> (as of <time datetime="2026-10">Oct 2026</time>)</div>
+<nav aria-label="Primary">
 <div class="logo"><i>◒</i> NanoTab</div>
 <div class="navlinks"><a href="/agents.html">Agents</a><a href="/micropayments.html">Micropayments</a><a href="/wordpress.html">WordPress</a><a href="/stripe-alternative.html">vs Stripe</a><a href="/mcp.html">MCP</a><a href="/facilitator.html">Facilitator</a><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="#generate">Start collecting →</a></div>
 </nav>
+<main>
 <header class="hero">
 <div class="blob" style="width:420px;height:420px;left:-120px;top:-40px;background:#7c6cf6;animation:float 9s ease-in-out infinite"></div>
 <div class="blob" style="width:340px;height:340px;right:-100px;top:60px;background:#12b981;animation:float 11s ease-in-out infinite"></div>
 <div class="live"><span class="dot"></span> x402 · USDC on Base mainnet · live</div>
 <h1>Set up agentic payments<br><span class="grad">in one click.</span></h1>
-<p class="sub">Got data or an API? One prompt turns it into a pay-per-call endpoint — agents pay you in <b>USDC on Base</b>, straight to your wallet. <b>No ETH. No gas. No signup.</b> Or flip it around: give <b>your agent its own wallet in one click</b> and let it buy the API calls it needs.</p>
+<p class="sub">Got data or an API? One prompt turns it into a pay-per-call endpoint — agents pay you in <b>USDC on Base</b>, straight to your wallet. <b>No ETH. No gas. No signup.</b> Or flip it around: give <b>your agent its own wallet in one click</b> and let it buy the API calls it needs. NanoTab is a paywall for APIs: it wraps any HTTP endpoint so AI agents must pay USDC per call (x402 protocol on Base) before getting a response.</p>
 <div class="herobtns">
 <a class="btn" href="#sell">Sell (get paid) →</a>
 <a class="btn ghost" href="#buy">Buy (agent wallet) →</a>
 </div>
 </header>
+<section id="who-is-it-for" aria-label="Who NanoTab is for" style="max-width:760px;margin:0 auto;padding:44px 28px 0;color:var(--mut);font-size:16px;line-height:1.7">
+<p>It depends on what you're selling. NanoTab is for you if you have an API, dataset, or content feed and want AI agents to pay per call in USDC on Base — no signup, no ETH for gas, you keep 99.9% self-hosting or 98% through the managed gateway. Indie developers, researchers, and small teams can go from endpoint to paid endpoint in an afternoon. It is not for you if you need card payments, subscriptions, or SaaS billing (use Stripe), enterprise KYC and procurement controls (use Skyfire), or a full agent marketplace (use Nevermined). Start with the generator below if that sounds like you.</p>
+</section>
 <div class="ecostats" id="eco-stats">
 <div class="ecostats-inner">
 <div class="ecostats-kicker">⚡ The x402 economy · live onchain</div>
 <div class="ecostats-title">Agents are already paying. <span class="hl">Sellers are scarce.</span></div>
 <p class="ecostats-sub">Real settlement volume on Base — and a buyer-to-seller imbalance that favours anyone selling first.</p>
 <div class="statgrid">
-<div class="stat"><div class="num">$24.2M</div><div class="lbl">Settled volume</div><div class="sub2">USDC on Base · last 30 days</div></div>
-<div class="stat"><div class="num">75M+</div><div class="lbl">Agent transactions</div><div class="sub2">last 30 days · climbing daily</div></div>
-<div class="stat hot"><div class="num">94K : 22K</div><div class="lbl">Buyers vs sellers</div><span class="ratio">4-TO-1 · SELLERS WIN</span></div>
-<div class="stat"><div class="num">0.1% / 2%</div><div class="lbl">NanoTab fee</div><div class="sub2">self-host 0.1% · managed gateway 2%</div></div>
+<div class="stat"><div class="num">$24.2M</div><div class="lbl">Settled volume</div><div class="sub2">USDC on Base · last 30 days · as of <time datetime="2026-10">Oct 2026</time></div></div>
+<div class="stat"><div class="num">75M+</div><div class="lbl">Agent transactions</div><div class="sub2">last 30 days · climbing daily · as of <time datetime="2026-10">Oct 2026</time></div></div>
+<div class="stat hot"><div class="num">94K : 22K</div><div class="lbl">Buyers vs sellers</div><span class="ratio">4-TO-1 · SELLERS WIN</span><div class="sub2">as of <time datetime="2026-10">Oct 2026</time></div></div>
+<div class="stat"><div class="num">0.1% / 2%</div><div class="lbl">NanoTab fee</div><div class="sub2">self-host 0.1% · managed gateway 2% · as of <time datetime="2026-10">Oct 2026</time></div></div>
 </div>
 <div class="ecostats-cta">94K buyers chasing 22K sellers — <a href="#sell">list your API now →</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#proof">see live proof ↓</a></div>
 </div>
@@ -178,7 +182,7 @@ footer a{color:var(--acc);text-decoration:none}
 </div></div>
 <section id="sell" class="reveal">
 <div class="eyebrow">For merchants · get paid by agents</div>
-<h2>Get paid for your data<br>by agents in one prompt.</h2>
+<h2>How do I get paid when AI agents use my API?</h2>
 <p class="secsub">Fill in the form, hand the prompt to any coding agent, and your API starts charging per call. You keep 99.9% of every call, settled in USDC on Base — straight to your wallet. Four steps, plain and simple:</p>
 <div class="howto">
 <div class="howstep"><span class="num">Step 1 · Wallet address</span><h3>Where should the money go?</h3><p>Any Ethereum-style address you control — MetaMask, Coinbase Wallet, whatever. Payouts land here in <b>USDC on Base</b>. That’s the only thing you need to decide up front:</p><pre><code>0xYOUR_ADDRESS   ← paste this into step 2</code></pre></div>
@@ -215,16 +219,16 @@ console.log(await res.json()); // your data</code></pre></div>
 <p style="color:var(--mut);font-size:15px;max-width:560px;margin:0 auto 18px">Paste this in a terminal (Node 18+, npm, git). Creates a buyer wallet with sensible defaults — <b style="color:var(--fg)">$5 budget, $0.10/call</b> — writes the config, backs up the key, and prints your wallet address + fund instructions.</p>
 <pre style="text-align:left" id="buyCmdWrap"><code id="buyCmd">curl -fsSL https://nanotab.dev/buy.sh | bash</code></pre>
 <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:16px">
-<button type="button" class="btn" id="buyCopyBtn">Copy command 📋</button>
-<button type="button" class="btn ghost" id="browserWalletBtn">No terminal? Generate in browser →</button>
+<button type="button" class="btn" id="buyCopyBtn" aria-label="Copy command">Copy command 📋</button>
+<button type="button" class="btn ghost" id="browserWalletBtn" aria-label="No terminal? Generate in browser">No terminal? Generate in browser →</button>
 </div>
 <div id="browserWallet" style="display:none;text-align:left;margin-top:20px;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:18px">
 <p style="font-size:14px;color:var(--mut);margin-bottom:10px">Generated <b style="color:var(--fg)">locally in your browser</b> — the key never leaves this page. Save it, fund the address with USDC on Base, then run the one-click command above (it will reuse your key via <span style="font-family:'JetBrains Mono',monospace">NANOTAB_WALLET_KEY</span>).</p>
 <pre><code id="browserKeyOut">click “Generate” — your key appears here, once.</code></pre>
 <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
-<button type="button" class="btn" id="genKeyBtn">Generate wallet 🔑</button>
-<button type="button" class="btn ghost" id="copyKeyBtn" style="display:none">Copy key</button>
-<button type="button" class="btn ghost" id="dlCfgBtn" style="display:none">Download config</button>
+<button type="button" class="btn" id="genKeyBtn" aria-label="Generate wallet">Generate wallet 🔑</button>
+<button type="button" class="btn ghost" id="copyKeyBtn" style="display:none" aria-label="Copy key">Copy key</button>
+<button type="button" class="btn ghost" id="dlCfgBtn" style="display:none" aria-label="Download config">Download config</button>
 </div>
 <p class="hint" id="browserAddrOut" style="margin-top:10px"></p>
 </div>
@@ -255,8 +259,8 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <div><label for="model">Agent SDK <span style="color:var(--mut);font-weight:400">(optional)</span></label><input id="model" value="@nanotab/agent-sdk" autocomplete="off" spellcheck="false"></div>
 </div>
 <div class="btns">
-<button type="button" class="btn" id="genBtn">Generate prompt ✨</button>
-<button type="button" class="btn ghost" id="copyBtn" style="display:none">Copy</button>
+<button type="button" class="btn" id="genBtn" aria-label="Generate prompt">Generate prompt ✨</button>
+<button type="button" class="btn ghost" id="copyBtn" style="display:none" aria-label="Copy">Copy</button>
 </div>
 <div id="out"><pre><code id="promptText"></code></pre></div>
 </div>
@@ -274,14 +278,15 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <section id="proof" class="reveal">
 <div class="eyebrow">Live proof</div>
 <h2>Real money. Real chain.</h2>
-<p class="secsub">Settled on Base mainnet, 15 Oct 2026. Click through to BaseScan.</p>
+<p class="secsub">Settled on Base mainnet, <time datetime="2026-10-15">15 Oct 2026</time>. Click through to BaseScan.</p>
 <div class="proofgrid" style="margin-top:44px">
 <div class="proof"><div class="tag">◆ Live endpoint</div><h3>SaveShare · $0.05/call</h3><p>Unpaid call returns 402 with the payment spec. Try it:<br><a href="https://nanotab.dev/saveshare/creator/adm.jay">nanotab.dev/saveshare/creator/adm.jay ↗</a></p></div>
 <div class="proof"><div class="tag">◆ Paid call</div><h3>0.001 USDC · Base mainnet</h3><p>Buyer paid, merchant got it. Agent wallet: 0 ETH.<br><a href="https://basescan.org/tx/0x0b39b4ec4a6ef4562cfd9efe10c3bba5858c486ac4c3f0c92fcb91caef23f5b2">tx 0x0b39b4…23f5b2 ↗</a></p></div>
 <div class="proof"><div class="tag">◆ Fee settled</div><h3>0.1% onchain · EIP-7702</h3><p>1 unit to NanoTab. Circle paymaster + Pimlico.<br><a href="https://basescan.org/tx/0x0e85cf9dc38a50ec9ff17ccc1e7b761bb94ac43ac9ccc526973f94738e947370">tx 0x0e85cf…e947370 ↗</a></p></div>
 <div class="proof"><div class="tag">◆ Atomic split</div><h3>$0.05 in one tx · fee enforced</h3><p>Single UserOp: [49950 → merchant, 50 → fee]. One tx, 0 ETH.<br><a href="https://basescan.org/tx/0x47ac3dd59e13d5ad0b3dc226dbb3ff77775f5257343cf134f50aad5c243b60b8">tx 0x47ac3d…243b60b8 ↗</a></p></div>
 </div>
-<h3 style="margin:36px 0 12px;font-size:17px">Unpaid → <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">402</span> <button type="button" class="btn ghost" id="curlCopyBtn" style="font-size:13px;padding:7px 16px;margin-left:10px;vertical-align:middle">Copy curl 📋</button></h3>
+<blockquote style="max-width:700px;margin:28px auto 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px"><p style="color:var(--fg);font-size:15.5px;margin:0 0 8px">"First paid call settled while I watched BaseScan — the buyer wallet held zero ETH and the merchant got the USDC. Took an afternoon to wire up."</p><cite style="color:var(--mut);font-size:13.5px;font-style:normal">— early user running a keyword API on the NanoTab gateway</cite></blockquote>
+<h3 style="margin:36px 0 12px;font-size:17px">Unpaid → <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">402</span> <button type="button" class="btn ghost" id="curlCopyBtn" style="font-size:13px;padding:7px 16px;margin-left:10px;vertical-align:middle" aria-label="Copy curl">Copy curl 📋</button></h3>
 <pre><code id="curl402">curl https://nanotab.dev/saveshare/creator/adm.jay
 {"x402Version":1,"accepts":[{"scheme":"exact","network":"base",
 "maxAmountRequired":"5","resource":"https://nanotab.dev/saveshare/creator/adm.jay",
@@ -312,14 +317,14 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <h2>One number.</h2>
 <div class="pricecard" style="margin-top:36px">
 <div class="pct">0.1% / 2%</div>
-<p>per settled call — 0.1% self-host, 2% managed gateway. Merchant sets the price.<br>No monthly fee, no signup, no lock-in.</p>
+<p>per settled call — 0.1% self-host, 2% managed gateway (as of <time datetime="2026-10">Oct 2026</time>). Merchant sets the price.<br>No monthly fee, no signup, no lock-in.</p>
 </div>
 </section>
 <div class="final reveal">
 <h2>Your content is worth something.<br>Start charging for it.</h2>
 <div class="herobtns"><a class="btn" href="#generate">Build my setup prompt →</a><a class="btn ghost" href="https://github.com/HectorTries/nanotab">GitHub</a></div>
 <div style="max-width:760px;margin:34px auto 0;text-align:center">
-<button type="button" class="btn ghost" id="tryLiveBtn">Try the live gateway ⚡</button>
+<button type="button" class="btn ghost" id="tryLiveBtn" aria-label="Try the live gateway">Try the live gateway ⚡</button>
 <pre id="liveOut" style="display:none;text-align:left;margin-top:16px"><code id="liveOutCode"></code></pre>
 <p class="hint" id="liveHint" style="display:none">↑ real 402 response, live from the gateway on Base mainnet. No payment sent — this is the paywall challenge your agent would answer.</p>
 </div>
@@ -341,6 +346,7 @@ document.getElementById('tryLiveBtn').addEventListener('click', async function()
 });
 </script>
 </div>
+</main>
 <footer><span>NanoTab — live on Base mainnet.</span><span><a href="https://github.com/HectorTries/nanotab">Docs</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
 <script>
 // duplicate ticker content for seamless loop
