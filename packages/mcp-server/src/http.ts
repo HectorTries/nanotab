@@ -104,7 +104,7 @@ app.get('/.well-known/mcp/server-card.json', (_req, res) => {
   });
 });
 
-app.post('/mcp', async (req, res) => {
+async function handleMcp(req: any, res: any) {
   const server = buildServer();
   const prev = process.env.NANOTAB_WALLET_KEY;
   const override = requestWalletKey(req);
@@ -128,7 +128,9 @@ app.post('/mcp', async (req, res) => {
       else process.env.NANOTAB_WALLET_KEY = prev;
     }
   }
-});
+}
+app.post('/mcp', handleMcp);
+app.post('/', handleMcp);
 
 // SSE GET / DELETE are not used in stateless mode — 405 per MCP spec guidance.
 app.get('/mcp', (_req, res) => {
