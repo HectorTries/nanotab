@@ -63,6 +63,8 @@ interface Env {
   SETTLER_KEY?: string; // settler private key (wrangler secret ONLY) — enables on-chain merchant transfer
   BASE_RPC_URL?: string; // optional custom Base RPC
   NANOTAB_STATS?: KVNamespace; // paid-call counters (wrangler kv namespace create NANOTAB_STATS)
+  NANOTAB_JEV_ENABLED?: string; // "1" = opt-in SafeSpend-lite risk scoring (log-only, never blocks)
+  TYPESAFE_API_KEY?: string; // TypeSafe API key (wrangler secret ONLY) — Jev risk gate
 }
 
 // Managed-gateway NanoTab fee (2% of every paid call) goes here;
@@ -420,6 +422,79 @@ async function settleOnChain(env: Env, amountCents: string): Promise<{ txHash: s
   return { txHash, feeTxHash, net: netUnits.toString(), fee: feeUnits.toString(), feeTo };
 }
 
+// --- SafeSpend-lite: Jev risk gate (opt-in, log-only, NEVER blocks) ---
+// When env.NANOTAB_JEV_ENABLED === "1" and TYPESAFE_API_KEY is set, every
+// paid call is scored by Jev BEFORE proxying to the origin:
+//   state  = { amount_usdc, merchant, payer, auth_path, time_utc }
+//   risk    = Score 1-5 (fraud/abuse degree)
+//   anomaly = Noul yes/no (anomalous vs normal micropayment traffic)
+// Outcome: allow always; score >= JEV_FLAG_SCORE (2.5) or anomaly >= 0.7
+//   → console log + `x-risk-score` / `x-risk-flag` response headers.
+// No cold wallet, no vault, no pending queue — scoring + logging only.
+const JEV_API_URL = 'https://api.typesafe.ai/v1/systemone';
+const JEV_FLAG_SCORE = 2.5;
+const JEV_FLAG_ANOMALY = 0.7;
+
+interface JevVerdict { score: number | null; anomaly: number | null; flag: boolean; raw?: string }
+
+async function jevRiskScore(env: Env, opts: {
+  amountUsdc: number; merchant: string; payer: string; authPath: string;
+}): Promise<JevVerdict> {
+  const key = env.TYPESAFE_API_KEY;
+  if (!key) return { score: null, anomaly: null, flag: false, raw: 'no-key' };
+  const state = {
+    amount_usdc: opts.amountUsdc,
+    merchant: opts.merchant,
+    payer: opts.payer,
+    auth_path: opts.authPath, // "buyer-tx" | "settler" | "authorized-logged"
+    buyer_history: 'lite-mode: no per-payer history yet (stateless gateway); treat first-seen payers as new',
+    time_utc: new Date().toISOString(),
+  };
+  const body = {
+    model: 'jev-latest',
+    state,
+    questions: {
+      risk: {
+        type: 'score',
+        instructions: 'Rate the payment fraud/abuse risk of this micropayment.',
+        criteria: [
+          'Routine low-value payment from a normal buyer, no red flags',
+          'Minor oddity (new buyer or unusual time) but amount trivial',
+          'Notably unusual pattern worth a closer look',
+          'Suspicious: likely abuse, testing, or stolen funds',
+          'Clearly fraudulent or abusive',
+        ],
+      },
+      anomaly: {
+        type: 'noul',
+        instructions: 'Is this payment anomalous compared to normal micropayment traffic?',
+        criteria: { true: 'Unusual amount, velocity, or pattern', false: 'Normal micropayment' },
+      },
+    },
+  };
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000); // never stall a paid call on scoring
+    let res: Response;
+    try {
+      res = await fetch(JEV_API_URL, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+    } finally { clearTimeout(t); }
+    if (!res.ok) return { score: null, anomaly: null, flag: false, raw: `http-${res.status}` };
+    const j: any = await res.json();
+    const score: number | null = typeof j?.answers?.risk?.score === 'number' ? j.answers.risk.score : null;
+    const anomaly: number | null = typeof j?.answers?.anomaly?.noul === 'number' ? j.answers.anomaly.noul : null;
+    const flag = (score !== null && score >= JEV_FLAG_SCORE) || (anomaly !== null && anomaly >= JEV_FLAG_ANOMALY);
+    return { score, anomaly, flag };
+  } catch (e) {
+    return { score: null, anomaly: null, flag: false, raw: `error:${(e as Error).message}` };
+  }
+}
+
 // --- Paid-call stats (KV-backed marketing numbers, public via GET /stats) ---
 // Keys: total_paid_calls, total_volume_usdc_units, merchant:<addr-lc>, day:YYYY-MM-DD.
 // Fire-and-forget: never blocks the paid response; all KV errors swallowed.
@@ -592,6 +667,27 @@ export default {
     // Paid verification succeeded → log stats (fire-and-forget, non-blocking).
     recordPaidCall(ctx, env, centsToUnits(env.PRICE_USD_CENTS));
 
+    // SafeSpend-lite risk gate (opt-in; log-only, NEVER blocks the paid call).
+    let riskScoreHeader = 'off';
+    let riskFlagHeader = '0';
+    if (env.NANOTAB_JEV_ENABLED === '1') {
+      const authPath = proof.txHash ? 'buyer-tx' : env.SETTLER_KEY ? 'settler' : 'authorized-logged';
+      const verdict = await jevRiskScore(env, {
+        amountUsdc: Number(env.PRICE_USD_CENTS) / 100,
+        merchant: env.MERCHANT_WALLET,
+        payer: proof.from ?? 'unknown',
+        authPath,
+      });
+      riskScoreHeader = verdict.score !== null
+        ? `${verdict.score.toFixed(2)}/a=${verdict.anomaly !== null ? verdict.anomaly.toFixed(2) : '?'}`
+        : (verdict.raw ?? 'unavailable');
+      riskFlagHeader = verdict.flag ? '1' : '0';
+      console.log(
+        `[nanotab-gw][jev] score=${riskScoreHeader} flag=${riskFlagHeader} ` +
+        `amount=$${gross.toFixed(2)} payer=${proof.from ?? 'unknown'} path=${authPath}`
+      );
+    }
+
     const origin = new URL(req.url);
     const target = new URL(env.ORIGIN_URL + origin.pathname + origin.search);
     const fwd = new Headers(req.headers);
@@ -606,6 +702,10 @@ export default {
     out.set('access-control-allow-origin', '*');
     out.set('x-nanotab', proof.txHash ? nanotabHeader! : env.SETTLER_KEY ? 'settled-onchain' : 'authorized-logged');
     out.set('x-nanotab-settle', settleNote);
+    if (env.NANOTAB_JEV_ENABLED === '1') {
+      out.set('x-risk-score', riskScoreHeader);
+      out.set('x-risk-flag', riskFlagHeader);
+    }
     return new Response(proxied.body, { status: proxied.status, headers: out });
   },
 };
