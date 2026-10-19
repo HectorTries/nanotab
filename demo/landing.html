@@ -12,7 +12,7 @@ gtag("config", "G-0THZ48CWKF");
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NanoTab — give this to your agent to start collecting money for your content</title>
-<meta name="description" content="Fill in the form, paste the prompt to your agent, collect USDC per call on Base. 0.1% fee.">
+<meta name="description" content="Fill in the form, paste the prompt to your agent, collect USDC per call on Base. Self-host 0.1%, managed gateway 2%.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -168,13 +168,13 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="stat"><div class="num">$24.2M</div><div class="lbl">Settled volume</div><div class="sub2">USDC on Base · last 30 days</div></div>
 <div class="stat"><div class="num">75M+</div><div class="lbl">Agent transactions</div><div class="sub2">last 30 days · climbing daily</div></div>
 <div class="stat hot"><div class="num">94K : 22K</div><div class="lbl">Buyers vs sellers</div><span class="ratio">4-TO-1 · SELLERS WIN</span></div>
-<div class="stat"><div class="num">0.1%</div><div class="lbl">NanoTab fee</div><div class="sub2">you keep 99.9% of every call</div></div>
+<div class="stat"><div class="num">0.1% / 2%</div><div class="lbl">NanoTab fee</div><div class="sub2">self-host 0.1% · managed gateway 2%</div></div>
 </div>
 <div class="ecostats-cta">94K buyers chasing 22K sellers — <a href="#sell">list your API now →</a>&nbsp;&nbsp;·&nbsp;&nbsp;<a href="#proof">see live proof ↓</a></div>
 </div>
 </div>
 <div class="ticker"><div class="track" id="tick">
-<span><b>402</b> payment required → paywall served</span><span><b>200</b> paid call settled on Base</span><span><b>0.1%</b> fee · you keep 99.9%</span><span><b>0 ETH</b> needed · Circle paymaster covers gas</span><span><b>USDC</b> straight to your wallet</span>
+<span><b>402</b> payment required → paywall served</span><span><b>200</b> paid call settled on Base</span><span><b>0.1%</b> self-host · <b>2%</b> managed gateway</span><span><b>0 ETH</b> needed · Circle paymaster covers gas</span><span><b>USDC</b> straight to your wallet</span>
 </div></div>
 <section id="sell" class="reveal">
 <div class="eyebrow">For merchants · get paid by agents</div>
@@ -182,7 +182,7 @@ footer a{color:var(--acc);text-decoration:none}
 <p class="secsub">Fill in the form, hand the prompt to any coding agent, and your API starts charging per call. You keep 99.9% of every call, settled in USDC on Base — straight to your wallet. Four steps, plain and simple:</p>
 <div class="howto">
 <div class="howstep"><span class="num">Step 1 · Wallet address</span><h3>Where should the money go?</h3><p>Any Ethereum-style address you control — MetaMask, Coinbase Wallet, whatever. Payouts land here in <b>USDC on Base</b>. That’s the only thing you need to decide up front:</p><pre><code>0xYOUR_ADDRESS   ← paste this into step 2</code></pre></div>
-<div class="howstep"><span class="num">Step 2 · Price per call</span><h3>You set the price</h3><p>A flat USD price per API call — <b>$0.01</b>, <b>$0.05</b>, whatever your data is worth. Buyers pay exactly this; NanoTab takes <b>0.1%</b> automatically, you keep the rest.</p><pre><code>--price 0.05   ← five cents per call</code></pre></div>
+<div class="howstep"><span class="num">Step 2 · Price per call</span><h3>You set the price</h3><p>A flat USD price per API call — <b>$0.01</b>, <b>$0.05</b>, whatever your data is worth. Buyers pay exactly this; NanoTab takes its fee automatically (0.1% self-host, 2% managed gateway), you keep the rest.</p><pre><code>--price 0.05   ← five cents per call</code></pre></div>
 <div class="howstep"><span class="num">Step 3 · Your endpoint file</span><h3>Point at your server code</h3><p>One command wraps your existing endpoint with the paywall. It shows you a diff and asks before changing anything — nothing happens silently.</p><pre><code>npx nanotab protect --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js</code></pre></div>
 <div class="howstep"><span class="num">Step 4 · Deploy</span><h3>Ship it — two ways</h3><p><b>Easy path:</b> one command deploys to Cloudflare Workers. You’ll need a free <b>CLOUDFLARE_API_TOKEN</b> (dash.cloudflare.com → profile → API tokens → Workers Edit).</p><pre><code>CLOUDFLARE_API_TOKEN=xxxx npx nanotab deploy --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js
 # → https://my-api.&lt;you&gt;.workers.dev  ✅ live</code></pre><p style="margin-top:12px"><b>Own-VPS path:</b> run your server anywhere with a public HTTPS URL (Hetzner + Caddy, Fly.io, Render…). The 402 response must show the public <b>https://</b> URL, not localhost.</p></div>
@@ -297,8 +297,8 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 <div class="eyebrow">Pricing</div>
 <h2>One number.</h2>
 <div class="pricecard" style="margin-top:36px">
-<div class="pct">0.1%</div>
-<p>per settled call. Merchant sets the price.<br>No monthly fee, no signup, no lock-in.</p>
+<div class="pct">0.1% / 2%</div>
+<p>per settled call — 0.1% self-host, 2% managed gateway. Merchant sets the price.<br>No monthly fee, no signup, no lock-in.</p>
 </div>
 </section>
 <div class="final reveal">
@@ -339,7 +339,7 @@ var d=document.getElementById('desc').value.trim()||'[describe your endpoint]';
 var p=document.getElementById('price').value.trim()||'0.02';
 var s=document.getElementById('model').value.trim()||'@nanotab/agent-sdk';
 var t='Set up a NanoTab paywall for my API.\n\n'
-+'CONTEXT: NanoTab wraps any HTTP API in an x402-style paywall. Agents pay per call in USDC on Base mainnet; I keep 99.9% (0.1% fee). No ETH needed anywhere — gas comes out of the USDC via the Circle paymaster.\n\n'
++'CONTEXT: NanoTab wraps any HTTP API in an x402-style paywall. Agents pay per call in USDC on Base mainnet; I keep 99.9% self-host (0.1% fee) or 98% via the managed gateway (2% fee). No ETH needed anywhere — gas comes out of the USDC via the Circle paymaster.\n\n'
 +'MY ENDPOINT: '+d+'\n'
 +'PRICE PER CALL: $'+p+' USD\n'
 +'PAYOUT WALLET: '+w+'\n\n'

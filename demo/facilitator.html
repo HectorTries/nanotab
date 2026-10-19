@@ -37,8 +37,8 @@ footer a{color:var(--mut)}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"What is an x402 facilitator?","acceptedAnswer":{"@type":"Answer","text":"The service that verifies USDC payments on behalf of sellers: it checks amount, merchant, asset, and signature, then lets the request through to the origin. NanoTab runs a public facilitator at gateway.nanotab.dev."}},
-{"@type":"Question","name":"How do I charge per API call?","acceptedAnswer":{"@type":"Answer","text":"Return HTTP 402 with a machine-readable price instead of 401. Buyers sign a USDC payment and retry; the facilitator verifies and proxies to your endpoint. Minimum price 1¢, fee 0.1%."}},
-{"@type":"Question","name":"How does the fee split work?","acceptedAnswer":{"@type":"Answer","text":"The 0.1% protocol fee is split atomically inside the same USDC transfer — you receive the net amount in the same transaction, with no invoicing or payout delay."}}]}
+{"@type":"Question","name":"How do I charge per API call?","acceptedAnswer":{"@type":"Answer","text":"Return HTTP 402 with a machine-readable price instead of 401. Buyers sign a USDC payment and retry; the facilitator verifies and proxies to your endpoint. Minimum price 1¢, fee 0.1% self-host (2% managed gateway)."}},
+{"@type":"Question","name":"How does the fee split work?","acceptedAnswer":{"@type":"Answer","text":"The protocol fee (0.1% self-host, 2% managed gateway) is split atomically inside the same USDC transfer — you receive the net amount in the same transaction, with no invoicing or payout delay."}}]}
 </script>
 </head>
 <body>
@@ -49,7 +49,7 @@ footer a{color:var(--mut)}
 </nav>
 
 <h1>x402 facilitator: how to charge per API call</h1>
-<p>An <b>x402 facilitator</b> is the missing piece of <b>pay per API call</b> billing: it verifies stablecoin payments so you can sell individual calls — 5¢, 1¢, any price — without accounts, API keys, or invoicing. NanoTab runs a public facilitator on Base mainnet at 0.1%.</p>
+<p>An <b>x402 facilitator</b> is the missing piece of <b>pay per API call</b> billing: it verifies stablecoin payments so you can sell individual calls — 5¢, 1¢, any price — without accounts, API keys, or invoicing. NanoTab runs a public facilitator on Base mainnet at 2% managed (0.1% when you self-host).</p>
 
 <h2>1 · Protect your endpoint</h2>
 <p>Point your paid route at the NanoTab gateway (or self-host the verifier). Unpaid requests get a machine-readable <code>402</code>:</p>
@@ -71,7 +71,7 @@ footer a{color:var(--mut)}
 <div class="flow">
 <ol>
 <li><b>4.995¢ → you</b> (the merchant wallet you configured). Settles instantly — no 2-day payout hold.</li>
-<li><b>0.005¢ → protocol</b> (the 0.1% facilitator fee, 10 basis points).</li>
+<li><b>0.005¢ → protocol self-host</b> (0.1%, 10 bps) · <b>0.1¢ on the managed gateway</b> (2%).</li>
 <li><b>Zero fixed fee</b> — unlike Stripe's 30¢, there is no per-transaction floor, so 1¢ prices stay profitable.</li>
 </ol>
 </div>
@@ -89,9 +89,9 @@ footer a{color:var(--mut)}
 <dt>What is an x402 facilitator?</dt>
 <dd>The service that verifies USDC payments for sellers — checking amount, merchant, asset, and signature — then proxies to the origin. NanoTab's public facilitator lives at <code>gateway.nanotab.dev</code>.</dd>
 <dt>How do I charge per API call?</dt>
-<dd>Return 402 with a machine-readable price. Buyers pay USDC and retry; the facilitator verifies and forwards. Minimum 1¢, fee 0.1%.</dd>
+<dd>Return 402 with a machine-readable price. Buyers pay USDC and retry; the facilitator verifies and forwards. Minimum 1¢, fee 0.1% self-host (2% managed gateway).</dd>
 <dt>How does the fee split work?</dt>
-<dd>The 0.1% is split atomically in the same transfer — you get the net amount instantly, no invoicing or payout delay.</dd>
+<dd>The fee (0.1% self-host, 2% gateway) is split atomically in the same transfer — you get the net amount instantly, no invoicing or payout delay.</dd>
 </dl>
 
 <p class="more">Related: <a href="stripe-alternative.html">Cheaper than Stripe</a> · <a href="micropayments.html">Micropayments for APIs</a> · <a href="mcp.html">Give your agent a wallet</a> · <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a></p>

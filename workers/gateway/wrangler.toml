@@ -12,7 +12,7 @@ compatibility_date = "2025-06-01"
 ORIGIN_URL = "https://origin.nanotab.dev"
 PRICE_USD_CENTS = "5"
 MERCHANT_WALLET = "0xc47b6d6a4137373ab169aeeedb95971d4939ef0b"
-NANOTAB_FEE_BPS = "10"
+NANOTAB_FEE_BPS = "200"
 NETWORK = "base"
 ASSET = "0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5"
 

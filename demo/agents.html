@@ -42,7 +42,7 @@ footer a{color:var(--mut)}
 </nav>
 
 <h1>Agents: pay for APIs in one call</h1>
-<p>NanoTab lets your agent pay for any paywalled API with USDC on Base mainnet. No ETH needed, no wallet UI — one function call handles the whole HTTP 402 flow. Fee: 0.1%.</p>
+<p>NanoTab lets your agent pay for any paywalled API with USDC on Base mainnet. No ETH needed, no wallet UI — one function call handles the whole HTTP 402 flow. Fee: 0.1% self-host · 2% managed gateway.</p>
 
 <h2>1 · Install</h2>
 <pre><button class="copy" data-copy="npm i @nanotab/agent-sdk">Copy</button><code>npm i @nanotab/agent-sdk</code></pre>
@@ -67,7 +67,7 @@ const data = await nanotabFetch('https://gateway.nanotab.dev/keyword/ai%20agents
 <ul>
 <li>Gateway: <code>https://gateway.nanotab.dev</code></li>
 <li>Chain: Base mainnet (8453) · USDC <code>0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5</code></li>
-<li>Fee: 0.1% (10 bps), split atomically in the payment</li>
+<li>Fee: 0.1% self-host (10 bps) · 2% managed gateway, split atomically in the payment</li>
 <li>Optional budget guard: <code>npx nanotab init --budget '$1.00' --per-call '$0.10'</code></li>
 <li>Agent skill: <code>nanotab-pay</code> · Machine-readable: <a href="/llms.txt" style="color:var(--acc)">llms.txt</a></li>
 </ul>
@@ -79,7 +79,7 @@ const data = await nanotabFetch('https://gateway.nanotab.dev/keyword/ai%20agents
 <dt>What is the minimum payment?</dt>
 <dd>1¢ (one USDC cent).</dd>
 <dt>What does NanoTab charge?</dt>
-<dd>0.1% (10 basis points), taken atomically inside the same payment — the merchant receives the net amount.</dd>
+<dd>0.1% self-host (10 bps) or 2% managed gateway, taken atomically inside the same payment — the merchant receives the net amount.</dd>
 <dt>What if the payment is wrong?</dt>
 <dd>The gateway returns 402 again with the reason (underpay, wrong asset, bad signature). Nothing is charged on-chain until verification passes.</dd>
 <dt>Is my private key safe?</dt>

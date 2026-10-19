@@ -12,7 +12,7 @@ gtag("config", "G-0THZ48CWKF");
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cheaper than Stripe for micropayments — Stripe x402 alternative | NanoTab</title>
-<meta name="description" content="Stripe minimum payment workaround: NanoTab charges 0.1% with a 1¢ minimum. Fee comparison table, 5¢ worked example, and how Stripe x402-style flows work.">
+<meta name="description" content="Stripe minimum payment workaround: NanoTab self-host charges 0.1% with a 1¢ minimum. Fee comparison table, 5¢ worked example, and how Stripe x402-style flows work.">
 <style>
 :root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.6}
@@ -39,7 +39,7 @@ footer a{color:var(--mut)}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Why can't Stripe do micropayments?","acceptedAnswer":{"@type":"Answer","text":"Stripe charges 2.9% plus a fixed 30¢ per transaction. On a 5¢ payment the fixed fee alone is 6× the price, so micropayments under ~$1 are economically impossible on Stripe."}},
-{"@type":"Question","name":"What is cheaper than Stripe for micropayments?","acceptedAnswer":{"@type":"Answer","text":"NanoTab charges a flat 0.1% with no fixed fee and a 1¢ minimum — a 5¢ payment costs $0.00005 in fees and settles instantly in USDC on Base."}},
+{"@type":"Question","name":"What is cheaper than Stripe for micropayments?","acceptedAnswer":{"@type":"Answer","text":"NanoTab self-host charges a flat 0.1% with no fixed fee and a 1¢ minimum — a 5¢ payment costs $0.00005 in fees and settles instantly in USDC on Base."}},
 {"@type":"Question","name":"What is the Stripe minimum payment workaround?","acceptedAnswer":{"@type":"Answer","text":"Common workarounds are bundling micro-charges into a monthly invoice or requiring wallet top-ups. NanoTab removes the need: true per-call billing works natively via HTTP 402 at 0.1%."}}]}
 </script>
 </head>
@@ -51,15 +51,15 @@ footer a{color:var(--mut)}
 </nav>
 
 <h1>Cheaper than Stripe for micropayments</h1>
-<p>Stripe is great for $20 checkouts. It is structurally incapable of micropayments: <b>2.9% + 30¢</b> means a 5¢ charge costs you 33¢ in fees. NanoTab is the <b>Stripe x402 alternative</b> built for per-call billing — a flat <b>0.1%</b>, no fixed fee, 1¢ minimum, settled instantly in USDC.</p>
+<p>Stripe is great for $20 checkouts. It is structurally incapable of micropayments: <b>2.9% + 30¢</b> means a 5¢ charge costs you 33¢ in fees. NanoTab is the <b>Stripe x402 alternative</b> built for per-call billing — a flat <b>0.1% self-host</b> (2% via the managed gateway), no fixed fee, 1¢ minimum, settled instantly in USDC.</p>
 
 <h2>Fee comparison</h2>
 <table>
-<tr><th>Price</th><th>Stripe (2.9%+30¢)</th><th>NanoTab (0.1%)</th></tr>
-<tr><td>5¢</td><td>30.1¢ fee — <b>you lose money</b></td><td>0.005¢ fee — you keep 4.995¢</td></tr>
-<tr><td>25¢</td><td>30.7¢ fee — <b>you lose money</b></td><td>0.025¢ fee</td></tr>
-<tr><td>$1.00</td><td>32.9¢ fee (33%)</td><td>0.1¢ fee (0.1%)</td></tr>
-<tr><td>$10.00</td><td>59¢ fee (5.9%)</td><td>1¢ fee (0.1%)</td></tr>
+<tr><th>Price</th><th>Stripe (2.9%+30¢)</th><th>NanoTab self-host (0.1%)</th><th>NanoTab gateway (2%)</th></tr>
+<tr><td>5¢</td><td>30.1¢ fee — <b>you lose money</b></td><td>0.005¢ fee — you keep 4.995¢</td><td>0.1¢ fee — you keep 4.9¢</td></tr>
+<tr><td>25¢</td><td>30.7¢ fee — <b>you lose money</b></td><td>0.025¢ fee</td><td>0.5¢ fee</td></tr>
+<tr><td>$1.00</td><td>32.9¢ fee (33%)</td><td>0.1¢ fee (0.1%)</td><td>2¢ fee (2%)</td></tr>
+<tr><td>$10.00</td><td>59¢ fee (5.9%)</td><td>1¢ fee (0.1%)</td><td>20¢ fee (2%)</td></tr>
 </table>
 <p>Below ~$10, Stripe's fixed 30¢ dominates. NanoTab stays at a tenth of a percent at every price point.</p>
 
@@ -67,7 +67,7 @@ footer a{color:var(--mut)}
 <p>Say your API costs 5¢ per call and serves 100,000 calls a month ($5,000 gross):</p>
 <ul>
 <li><b>Stripe:</b> impossible — fees ($30,145) exceed revenue. The classic <b>Stripe minimum payment workaround</b> is bundling into monthly invoices, which means credit risk, dunning, and engineering overhead.</li>
-<li><b>NanoTab:</b> $5.00 in total fees. Each call returns <code>402</code> with a 5¢ price; the caller's agent pays USDC and retries automatically. No invoices, no accounts, no dunning.</li>
+<li><b>NanoTab self-host:</b> $5.00 in total fees. Each call returns <code>402</code> with a 5¢ price; the caller's agent pays USDC and retries automatically. No invoices, no accounts, no dunning.</li>
 </ul>
 
 <h2>How the Stripe-x402-style flow works</h2>
@@ -83,7 +83,7 @@ const res = await nanotabFetch('https://your-api.example.com/v1/score');</code><
 <dt>Why can't Stripe do micropayments?</dt>
 <dd>The fixed 30¢ per-transaction fee exceeds the price of anything under ~$1. Micropayments on Stripe lose money on every charge.</dd>
 <dt>What is cheaper than Stripe for micropayments?</dt>
-<dd>NanoTab at flat 0.1% with no fixed fee — a 5¢ payment costs five-thousandths of a cent and settles instantly in USDC on Base.</dd>
+<dd>NanoTab self-host at flat 0.1% with no fixed fee — a 5¢ payment costs five-thousandths of a cent and settles instantly in USDC on Base.</dd>
 <dt>What is the Stripe minimum payment workaround?</dt>
 <dd>Usually bundling micro-charges into monthly invoices or prepaid wallet top-ups. NanoTab removes the need entirely with true per-call billing over HTTP 402.</dd>
 </dl>

@@ -16,10 +16,10 @@
 //  4. Merchant-side settlement via SETTLER_KEY is DEPRECATED now the buyer
 //     pays on-chain directly; kept only as a legacy fallback. When used,
 //     the settler sends TWO transfers: net → merchant, fee → fee recipient.
-//     Fee = NANOTAB_FEE_BPS (default 10 = 0.1%).
+//     Fee = NANOTAB_FEE_BPS (default 200 = 2% managed gateway; self-host middleware stays 10 = 0.1%).
 //
 // FEE RECIPIENT: env.FEE_WALLET when set, else NANOTAB_PROTOCOL_WALLET
-// (hardcoded 0.1% protocol fee, non-optional). Every path (buyer-tx verify,
+// (hardcoded protocol fee recipient — every path (buyer-tx verify,
 // split verify, settler) resolves via feeRecipient(env); never MERCHANT_WALLET.
 //
 // PRICE: the gateway is price-agnostic — PRICE_USD_CENTS sets the per-call
@@ -56,7 +56,7 @@ interface Env {
   ORIGIN_URL: string; // e.g. https://api.theirsite.com (no trailing slash)
   PRICE_USD_CENTS: string; // e.g. "2" = $0.02/call
   MERCHANT_WALLET: string; // 0x… — set via wrangler secret/variable, never hardcoded
-  NANOTAB_FEE_BPS?: string; // e.g. "10" = 0.1% (default 10)
+  NANOTAB_FEE_BPS?: string; // e.g. "200" = 2% (default 200 managed; self-host middleware uses 10 = 0.1%)
   NETWORK?: string; // must be "base"
   ASSET?: string; // must be USDC mainnet contract
   FEE_WALLET?: string; // NanoTab fee recipient override (optional; defaults to NANOTAB_PROTOCOL_WALLET)
@@ -65,12 +65,12 @@ interface Env {
   NANOTAB_STATS?: KVNamespace; // paid-call counters (wrangler kv namespace create NANOTAB_STATS)
 }
 
-// Non-optional NanoTab protocol fee: 0.1% of every paid call goes here,
+// Managed-gateway NanoTab fee (2% of every paid call) goes here;
 // hardcoded so self-hosted clones pay Hector. NOT overridable to zero —
 // env.FEE_WALLET may point fees elsewhere (e.g. a dedicated wallet Hector
 // controls) but NEVER falls through to MERCHANT_WALLET.
 const NANOTAB_PROTOCOL_WALLET = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
-const PROTOCOL_FEE_BPS = 10; // 0.1%, non-optional
+const PROTOCOL_FEE_BPS = 200; // 2% managed-gateway fee, non-optional (self-host middleware: 10 = 0.1%)
 
 const USDC_BASE_MAINNET = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
 const NANOTAB_NETWORK = 'base';
@@ -105,7 +105,7 @@ function splitPaymentMessage(p: { to: string; amount: string; asset: string; fee
 }
 
 /** Fee recipient: explicit FEE_WALLET, else the hardcoded protocol wallet.
- *  NEVER falls through to MERCHANT_WALLET — the 0.1% protocol fee is mandatory. */
+ *  NEVER falls through to MERCHANT_WALLET — the protocol fee is mandatory. */
 function feeRecipient(env: Env): string {
   return env.FEE_WALLET || NANOTAB_PROTOCOL_WALLET;
 }
@@ -149,10 +149,10 @@ function paymentRequiredBody(req: Request, env: Env) {
         maxTimeoutSeconds: 300,
         description: desc,
         mimeType: 'application/json',
-        fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`,
+        fee: `${Number(env.NANOTAB_FEE_BPS ?? '200') / 100}%`,
         feeTo: feeRecipient(env),
         bazaar,
-        extra: { fee: `${Number(env.NANOTAB_FEE_BPS ?? '10') / 100}%`, feeTo: feeRecipient(env) },
+        extra: { fee: `${Number(env.NANOTAB_FEE_BPS ?? '200') / 100}%`, feeTo: feeRecipient(env) },
       },
     ],
     extensions: { bazaar: bazaarSchema },
@@ -257,7 +257,7 @@ function verifyPayment(header: string, to: string, amountCents: string): Payment
 }
 
 /**
- * Atomic fee-split enforcement (NanoTab 10bps default).
+ * Atomic fee-split enforcement (NanoTab 200bps managed-gateway default; self-host 10bps).
  * Fee recipient = FEE_WALLET override, else NANOTAB_PROTOCOL_WALLET.
  * The X-Payment proof MUST carry `split` with:
  *   - split.feeTo == fee recipient (exact)
@@ -330,7 +330,7 @@ async function verifyBuyerTx(
 ): Promise<{ payer: string }> {
   if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error('invalid txHash format');
   const feeTo = feeRecipient(env);
-  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '10');
+  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '200');
   const gross = centsToUnits(amountCents);
   const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
   const netUnits = gross - feeUnits;
@@ -391,7 +391,7 @@ const ERC20_ABI_SETTLE = [
   },
 ] as const;
 async function settleOnChain(env: Env, amountCents: string): Promise<{ txHash: string; feeTxHash: string | null; net: string; fee: string; feeTo: string }> {
-  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '10');
+  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '200');
   const { feeUnits, netUnits } = split(amountCents, feeBps);
   const feeTo = feeRecipient(env);
   const account = privateKeyToAccount(env.SETTLER_KEY as `0x${string}`);
@@ -515,7 +515,7 @@ export default {
         { status: 500 }
       );
     }
-    const feeBps = Number(env.NANOTAB_FEE_BPS ?? '10');
+    const feeBps = Number(env.NANOTAB_FEE_BPS ?? '200');
 
     if (req.method === 'OPTIONS') {
       return new Response(null, {

@@ -1,6 +1,6 @@
 # NanoTab — mainnet (Base, USDC)
 
-Agent-side wallet + merchant middleware + Cloudflare gateway for x402-style HTTP 402 payments in **real USDC on Base mainnet**. Our fee: 0.1% (10 bps).
+Agent-side wallet + merchant middleware + Cloudflare gateway for x402-style HTTP 402 payments in **real USDC on Base mainnet**. Our fee: **0.1% self-host** (10 bps, merchant middleware) · **2% managed gateway** (200 bps).
 
 - Chain: Base mainnet (chain id 8453)
 - Asset: USDC `0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5`
@@ -77,14 +77,14 @@ Required config (`wrangler.toml` `[vars]` or secrets):
 | `ORIGIN_URL` | vars | e.g. `https://origin.nanotab.dev` |
 | `PRICE_USD_CENTS` | vars | `"2"` = $0.02/call |
 | `MERCHANT_WALLET` | **secret** | `wrangler secret put MERCHANT_WALLET` — Hector must set the real merchant address; placeholder in repo is NOT a real address |
-| `NANOTAB_FEE_BPS` | vars | `10` = 0.1% |
+| `NANOTAB_FEE_BPS` | vars | `200` = 2% (managed gateway default; self-host middleware uses `10` = 0.1%) |
 | `FEE_WALLET` | secret (see below) | NanoTab fee recipient. **When set, EVERY X-Payment must carry the fee-split legs or the gateway returns 402.** Unset = legacy single-transfer mode, fee logged to fee-ledger |
 
 **`FEE_WALLET` setup (atomic fee split):**
 
 1. `wrangler secret put FEE_WALLET` in `workers/gateway` (mainnet fee recipient).
 2. SDK side: pass `feeWallet` to `buildPaymasterUserOp()` or set `NANOTAB_FEE_WALLET` / `FEE_WALLET` env — `resolveFeeWallet()` picks explicit arg > `NANOTAB_FEE_WALLET` > `FEE_WALLET`.
-3. The buyer UserOp then batches `[transfer(merchant, net), transfer(FEE_WALLET, fee)]` atomically — fee = 10 bps (0.1%) default, override via `feeBps` / `NANOTAB_FEE_BPS`.
+3. The buyer UserOp then batches `[transfer(merchant, net), transfer(FEE_WALLET, fee)]` atomically — fee = 200 bps (2%) managed default, override via `feeBps` / `NANOTAB_FEE_BPS` (self-host: `10` = 0.1%).
 4. The payer also signs the split legs (`…|feeTo=…|fee=…|net=…` appended to the canonical message); the gateway re-checks recipient + exact amounts and rejects (402) if the fee leg is missing, mis-addressed, or short.
 | `SETTLER_KEY` | secret (optional) | settler private key — enables on-chain merchant transfer per call; **NEVER commit** |
 | `BASE_RPC_URL` | vars (optional) | defaults to `https://mainnet.base.org` |
@@ -99,7 +99,7 @@ paymaster, live on Base mainnet; +10% gas surcharge in USDC).
 agent signs UserOp ──▶ Circle paymaster takes ETH-gas equivalent from user's USDC
         │
         ▼
-USDC transfer executes on Base ──▶ merchant gets USDC minus 0.1% NanoTab fee
+USDC transfer executes on Base ──▶ merchant gets USDC minus the NanoTab fee (2% managed gateway, 0.1% self-host)
 ```
 
 1. **Default (paymaster path):** `buildPaymasterUserOp()` in
@@ -116,7 +116,7 @@ USDC transfer executes on Base ──▶ merchant gets USDC minus 0.1% NanoTab f
    `[transfer(merchant, net), transfer(FEE_WALLET, fee)]` — submitted as
    one UserOp (`calls` array also exposed for the viem-7702
    `sendUserOperation({ calls })` pattern in `/tmp/sa/7702.mjs`). The
-   gateway enforces both legs (recipient + exact 10bps math) and signs
+   gateway enforces both legs (recipient + exact bps math) and signs
    the split into the payer message, so the fee cannot be stripped
    without invalidating the signature. Rejects with 402 if the fee leg
    is missing/wrong. Fee < 1 base unit reverts at build time (dust guard).
@@ -129,7 +129,7 @@ once the paymaster route is live end-to-end.
 
 1. **Authorization (always on):** payer signs the canonical message; gateway recovers signer via EIP-191 and enforces amount/asset/merchant. Tampered sigs, underpays, wrong asset/network → 402.
 2. **On-chain merchant transfer (when `SETTLER_KEY` set):** gateway submits `USDC.transfer(MERCHANT_WALLET, gross − fee)` on Base and logs the tx hash (`x-nanotab-settle` response header). One transfer per call keeps gas simple.
-3. **Fee handling:** the 0.1% fee is computed in USDC base units per call and logged (`fee → FEE_WALLET` when set, else fee-ledger for batch sweep by ops). No dust transfers per call.
+3. **Fee handling:** the fee (2% managed / 0.1% self-host) is computed in USDC base units per call and logged (`fee → FEE_WALLET` when set, else fee-ledger for batch sweep by ops). No dust transfers per call.
 4. **Without `SETTLER_KEY`:** payer authorization is verified + logged with the merchant-net/fee split; the payer submits the on-chain USDC transfer themselves. Response header `x-nanotab: authorized-logged` vs `settled-onchain` makes the mode explicit.
 
 ## Test with real money (small amounts)

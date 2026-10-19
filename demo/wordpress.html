@@ -40,7 +40,7 @@ footer a{color:var(--mut)}
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"How do I add a crypto paywall to WordPress?","acceptedAnswer":{"@type":"Answer","text":"Install the NanoTab WordPress plugin, set your USDC wallet address on Base, and wrap premium content in the [nanotab price=0.05] shortcode. Readers pay in USDC via the x402 flow — no Stripe account needed."}},
-{"@type":"Question","name":"What fees does a WordPress USDC paywall charge?","acceptedAnswer":{"@type":"Answer","text":"NanoTab charges 0.1% per payment. A $1 paywall costs you $0.001, versus $0.33 (2.9% + 30¢) on Stripe."}},
+{"@type":"Question","name":"What fees does a WordPress USDC paywall charge?","acceptedAnswer":{"@type":"Answer","text":"NanoTab self-host charges 0.1% per payment (2% via the managed gateway). A $1 paywall costs you $0.001 self-host, versus $0.33 (2.9% + 30¢) on Stripe."}},
 {"@type":"Question","name":"Do readers need an account or credit card?","acceptedAnswer":{"@type":"Answer","text":"No. Readers pay USDC from any Base-compatible wallet. AI agents can also pay programmatically through the same x402 endpoint."}}]}
 </script>
 </head>
@@ -68,14 +68,14 @@ footer a{color:var(--mut)}
 <ol>
 <li>A reader (or agent) requests the protected URL. The plugin returns <code>402 Payment Required</code> with price, merchant wallet, and the USDC-on-Base asset id.</li>
 <li>The reader signs a USDC payment intent and resubmits with an <code>X-Payment</code> header.</li>
-<li>The NanoTab facilitator verifies the payment, the plugin unlocks the content, and funds settle to your wallet minus a 0.1% fee.</li>
+<li>The NanoTab facilitator verifies the payment, the plugin unlocks the content, and funds settle to your wallet minus the fee (0.1% self-host, 2% managed gateway).</li>
 </ol>
 </div>
 
 <h2>x402 for WordPress vs Stripe</h2>
 <table>
 <tr><th></th><th>Stripe</th><th>NanoTab x402</th></tr>
-<tr><td>Fee on a $1 sale</td><td>$0.33 (2.9% + 30¢)</td><td>$0.001 (0.1%)</td></tr>
+<tr><td>Fee on a $1 sale</td><td>$0.33 (2.9% + 30¢)</td><td>$0.001 (0.1% self-host)</td><td>$0.02 (2% gateway)</td></tr>
 <tr><td>Minimum viable price</td><td>~$1 (fixed fee eats micros)</td><td>1¢</td></tr>
 <tr><td>Payout delay</td><td>2–7 days</td><td>Instant, on-chain</td></tr>
 <tr><td>Chargebacks</td><td>Yes</td><td>Impossible (push payment)</td></tr>
@@ -87,7 +87,7 @@ footer a{color:var(--mut)}
 <dt>How do I add a crypto paywall to WordPress?</dt>
 <dd>Install the NanoTab plugin, set your wallet address, and use the <code>[nanotab]</code> shortcode around premium content. Readers pay USDC — no Stripe needed.</dd>
 <dt>What fees does a WordPress USDC paywall charge?</dt>
-<dd>0.1% per payment. A $1 article costs you a tenth of a cent, versus 33¢ on Stripe.</dd>
+<dd>0.1% self-host (2% managed gateway) per payment. A $1 article costs you a tenth of a cent self-host, versus 33¢ on Stripe.</dd>
 <dt>Do readers need an account or credit card?</dt>
 <dd>No. Any Base-compatible wallet works, and AI agents can pay through the same endpoint programmatically.</dd>
 </dl>

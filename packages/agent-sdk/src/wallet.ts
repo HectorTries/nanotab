@@ -22,11 +22,11 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { base } from 'viem/chains';
 
-// Non-optional NanoTab protocol fee: 0.1% of every paid call goes here,
+// NanoTab protocol fee recipient: self-host tier pays 0.1% here;
 // hardcoded so self-hosted clones pay Hector. Env may override the recipient
 // (NANOTAB_FEE_WALLET/FEE_WALLET) but the fee itself cannot be disabled.
 export const NANOTAB_PROTOCOL_WALLET: Address = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
-export const PROTOCOL_FEE_BPS = 10; // 0.1%, non-optional
+export const PROTOCOL_FEE_BPS = 10; // 0.1% self-host tier recipient default
 
 export const BASE_MAINNET_CHAIN_ID = 8453;
 export const USDC_BASE: Address = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -343,17 +343,19 @@ export const ENTRYPOINT_V08: Address = '0x0000000071727De22E5E9d8BA0edAc6f37da03
 // ---------------------------------------------------------------------------
 // NanoTab atomic fee split: every buyer UserOp pays the merchant net
 // (gross − fee) AND the NanoTab fee wallet in ONE atomic bundle.
-// Default fee = 10 bps (0.1%): merchant gets 99.9%, NanoTab gets 0.1%.
+// Default fee = 200 bps (2% managed gateway): merchant gets 98%, NanoTab gets 2%.
+// Self-host middleware (@nanotab/merchant) pays 10 bps (0.1%).
 //
 // FEE resolution (SDK side): explicit arg > NANOTAB_FEE_WALLET env >
 // FEE_WALLET env > hardcoded NANOTAB_PROTOCOL_WALLET. The fee itself
-// (10 bps = 0.1%) is NON-OPTIONAL — every UserOp carries the fee leg.
+// The fee leg is NON-OPTIONAL — every UserOp carries it (200bps default,
+// override via feeBps / NANOTAB_FEE_BPS for self-host 10bps).
 // ---------------------------------------------------------------------------
-/** Default NanoTab fee: 10 bps = 0.1%. */
-export const NANOTAB_FEE_BPS_DEFAULT = 10;
+/** Default NanoTab fee: 200 bps = 2% (managed gateway). Self-host: pass feeBps=10. */
+export const NANOTAB_FEE_BPS_DEFAULT = 200;
 
 /** Resolve the fee recipient: explicit arg wins, then env, else the hardcoded
- *  protocol wallet. NEVER empty — the 0.1% protocol fee is non-optional. */
+ *  protocol wallet. NEVER empty — the fee leg is non-optional. */
 export function resolveFeeWallet(explicit?: Address): Address {
   const v = explicit ?? process.env.NANOTAB_FEE_WALLET ?? process.env.FEE_WALLET ?? NANOTAB_PROTOCOL_WALLET;
   return v as Address;
@@ -467,7 +469,7 @@ export async function buildPaymasterUserOp(args: {
   paymaster?: Address;
   /** NanoTab fee recipient. Defaults to NANOTAB_FEE_WALLET/FEE_WALLET env. */
   feeWallet?: Address;
-  /** Fee in basis points (default 10 = 0.1%). */
+  /** Fee in basis points (default 200 = 2% managed gateway; pass 10 for self-host 0.1%). */
   feeBps?: number;
   /** Also expose the viem-7702 `calls` array shape (see buildSplitCalls). */
   includeCalls?: boolean;

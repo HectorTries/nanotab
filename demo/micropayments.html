@@ -12,7 +12,7 @@ gtag("config", "G-0THZ48CWKF");
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Agent micropayments & USDC micropayments for APIs — HTTP 402 payments | NanoTab</title>
-<meta name="description" content="Micropayments for APIs via HTTP 402: how USDC micropayments and AI agent wallets enable pay-per-call billing at 0.1%. Overview + guides.">
+<meta name="description" content="Micropayments for APIs via HTTP 402: how USDC micropayments and AI agent wallets enable pay-per-call billing at 0.1% self-host / 2% managed. Overview + guides.">
 <style>
 :root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.6}
@@ -38,7 +38,7 @@ footer a{color:var(--mut)}
 </style>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"What are agent micropayments?","acceptedAnswer":{"@type":"Answer","text":"Tiny per-call payments (1¢ and up) that AI agents make to APIs via the HTTP 402 protocol — no subscriptions, no API keys. NanoTab settles them in USDC on Base at 0.1%."}},
+{"@type":"Question","name":"What are agent micropayments?","acceptedAnswer":{"@type":"Answer","text":"Tiny per-call payments (1¢ and up) that AI agents make to APIs via the HTTP 402 protocol — no subscriptions, no API keys. NanoTab settles them in USDC on Base at 0.1% self-host (2% managed gateway)."}},
 {"@type":"Question","name":"What is an AI agent wallet?","acceptedAnswer":{"@type":"Answer","text":"A crypto wallet controlled by an AI agent, holding USDC for autonomous API payments. NanoTab's agent-sdk manages signing, budget caps, and spend logging."}},
 {"@type":"Question","name":"How do HTTP 402 payments work?","acceptedAnswer":{"@type":"Answer","text":"The server returns 402 Payment Required with a machine-readable price; the buyer signs a USDC payment and retries with an X-Payment header; the facilitator verifies and proxies to the origin."}}]}
 </script>
@@ -51,7 +51,7 @@ footer a{color:var(--mut)}
 </nav>
 
 <h1>Agent micropayments: USDC micropayments for APIs</h1>
-<p><b>Agent micropayments</b> are the missing business model of the AI economy: tiny per-call payments — 1¢, 5¢, 25¢ — that AI agents pay to APIs over <b>HTTP 402 payments</b>. No subscriptions, no API keys, no $20/mo seats for a bot that makes three calls. NanoTab settles <b>USDC micropayments</b> on Base mainnet at a flat 0.1%, and every agent carries its own <b>AI agent wallet</b>.</p>
+<p><b>Agent micropayments</b> are the missing business model of the AI economy: tiny per-call payments — 1¢, 5¢, 25¢ — that AI agents pay to APIs over <b>HTTP 402 payments</b>. No subscriptions, no API keys, no $20/mo seats for a bot that makes three calls. NanoTab settles <b>USDC micropayments</b> on Base mainnet at a flat 0.1% self-host (2% managed gateway), and every agent carries its own <b>AI agent wallet</b>.</p>
 
 <h2>Why micropayments, why now</h2>
 <p>Credit-card rails can't price below ~$1 (Stripe's 30¢ fixed fee kills it). Stablecoins on L2s can: a 1¢ USDC transfer costs a fraction of a cent in gas, and a paymaster can sponsor even that. The x402 protocol turns this into a web standard — <code>402 Payment Required</code>, machine-readable, payable by humans and agents alike. Sellers finally get true pay-per-call billing; buyers finally pay only for what they use.</p>
@@ -67,7 +67,7 @@ footer a{color:var(--mut)}
 <h2>Guides</h2>
 <div class="cards">
 <a class="card" href="wordpress.html"><b>x402 for WordPress →</b><p>Crypto paywall plugin: shortcode install, 402 flow, Stripe fee comparison.</p></a>
-<a class="card" href="stripe-alternative.html"><b>Cheaper than Stripe →</b><p>Fee table (2.9%+30¢ vs 0.1%), 5¢ worked example, minimum-payment workaround.</p></a>
+<a class="card" href="stripe-alternative.html"><b>Cheaper than Stripe →</b><p>Fee table (2.9%+30¢ vs 0.1% / 2%), 5¢ worked example, minimum-payment workaround.</p></a>
 <a class="card" href="mcp.html"><b>Give your agent a wallet →</b><p>x402 MCP integration, agent-sdk code, per-call budget guards.</p></a>
 <a class="card" href="facilitator.html"><b>Run a facilitator →</b><p>How to charge per API call: protect endpoints, gateway verification, fee split.</p></a>
 </div>
@@ -75,7 +75,7 @@ footer a{color:var(--mut)}
 <h2>Key facts</h2>
 <ul>
 <li><b>Asset:</b> USDC on Base mainnet (8453) <code>0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5</code></li>
-<li><b>Fee:</b> 0.1% (10 bps), split atomically · <b>Minimum:</b> 1¢</li>
+<li><b>Fee:</b> 0.1% self-host (10 bps) · 2% managed gateway, split atomically · <b>Minimum:</b> 1¢</li>
 <li><b>Gas:</b> sponsored — wallets hold USDC only, 0 ETH works</li>
 <li><b>Machine-readable:</b> <a href="/llms.txt" style="color:var(--acc)">llms.txt</a> · SDK: <code>@nanotab/agent-sdk</code> · Gateway: <code>gateway.nanotab.dev</code></li>
 </ul>
@@ -83,7 +83,7 @@ footer a{color:var(--mut)}
 <h2>FAQ</h2>
 <dl class="faq">
 <dt>What are agent micropayments?</dt>
-<dd>Tiny per-call payments (from 1¢) that AI agents make to APIs via HTTP 402 — no subscriptions or API keys. NanoTab settles them in USDC at 0.1%.</dd>
+<dd>Tiny per-call payments (from 1¢) that AI agents make to APIs via HTTP 402 — no subscriptions or API keys. NanoTab settles them in USDC at 0.1% self-host (2% managed gateway).</dd>
 <dt>What is an AI agent wallet?</dt>
 <dd>A wallet controlled by an agent holding USDC for autonomous payments. NanoTab's SDK handles signing, budget caps, and spend logging.</dd>
 <dt>How do HTTP 402 payments work?</dt>

@@ -68,7 +68,7 @@ if (devKey && process.env.FEE_WALLET) {
     p.signature = await signFn(leg(p.to, p.amount, p.asset, split));
     return Buffer.from(JSON.stringify(p)).toString('base64');
   };
-  r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': await paySplit({ feeTo: FEE, feeAmount: '100', merchantAmount: '19900' }) } });
+  r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': await paySplit({ feeTo: FEE, feeAmount: '400', merchantAmount: '19600' }) } });
   check('split-valid → passes verify (non-402)', r.status !== 402, `status=${r.status}`);
   r = await fetch(`${GW}/keyword/solar`, { headers: { 'X-Payment': await pay() } });
   check('split-missing → 402', r.status === 402, (await r.text()).slice(0, 90));

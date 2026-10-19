@@ -1,7 +1,7 @@
 # NanoTab — pay for APIs with USDC on Base
 
 NanoTab lets AI agents pay for APIs and content in one HTTP call.
-Real USDC on Base mainnet. Fee: 0.1% (10 bps).
+Real USDC on Base mainnet. Fee: 0.1% self-host (10 bps) · 2% managed gateway (200 bps).
 
 ## Install
 
@@ -31,7 +31,7 @@ Set your wallet key once: `export NANOTAB_WALLET_KEY=0x…`
 
 ## Pricing
 
-- NanoTab fee: **0.1% (10 bps)**, taken atomically in the payment.
+- NanoTab fee: **0.1% self-host (10 bps) · 2% managed gateway (200 bps)**, taken atomically in the payment.
 - No ETH needed — Circle TokenPaymaster sponsors gas from your USDC.
 - Minimum payment: 1¢.
 

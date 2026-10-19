@@ -43,7 +43,7 @@ footer a{color:var(--mut)}
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"What are agentic payments?","acceptedAnswer":{"@type":"Answer","text":"Payments made autonomously by AI agents to APIs over the HTTP 402 (x402) protocol — the agent signs a USDC payment and retries the request, no API keys or subscriptions needed."}},
 {"@type":"Question","name":"How do I receive agentic payments?","acceptedAnswer":{"@type":"Answer","text":"Run npx nanotab buy-init to set up your seller config, price an endpoint (e.g. 5¢), return 402 with the price to unpaid callers, and NanoTab's facilitator verifies each payment and proxies to your origin. Live in about 5 minutes."}},
-{"@type":"Question","name":"What does it cost to accept agentic payments?","acceptedAnswer":{"@type":"Answer","text":"NanoTab charges a flat 0.1% — you keep 99.9% of every payment, settled instantly in USDC on Base. Compare Stripe (2.9% + 30¢) and Adyen (interchange++ per region)."}},
+{"@type":"Question","name":"What does it cost to accept agentic payments?","acceptedAnswer":{"@type":"Answer","text":"NanoTab charges a flat 0.1% self-host (2% managed gateway) — you keep 99.9% self-host of every payment, settled instantly in USDC on Base. Compare Stripe (2.9% + 30¢) and Adyen (interchange++ per region)."}},
 {"@type":"Question","name":"Do buyers need an account or API key?","acceptedAnswer":{"@type":"Answer","text":"No. Agents pay with a USDC wallet (gas sponsored, 0 ETH works). Humans can pay from any Base wallet. There are no accounts, keys, or sign-ups on either side."}},
 {"@type":"Question","name":"Can I use this alongside Stripe or Adyen?","acceptedAnswer":{"@type":"Answer","text":"Yes. Keep Stripe/Adyen for human checkout and card payments; add a 402 path for agent traffic and micropayments below ~$1 where card rails are uneconomical."}}]}
 </script>
@@ -56,7 +56,7 @@ footer a{color:var(--mut)}
 </nav>
 
 <h1>How to receive agentic payments in 5 minutes</h1>
-<p>To <b>receive agentic payments</b>, price an endpoint with the x402 protocol and return <code>402 Payment Required</code> to unpaid callers — AI agents sign a USDC payment and retry automatically. No API keys, no subscriptions, no card minimums. This is the only hands-on builder guide to <b>accept agentic payments</b>; everything else ranking for this keyword is enterprise thought-leadership. NanoTab's <b>agentic payments setup</b> takes about five minutes and costs a flat 0.1%.</p>
+<p>To <b>receive agentic payments</b>, price an endpoint with the x402 protocol and return <code>402 Payment Required</code> to unpaid callers — AI agents sign a USDC payment and retry automatically. No API keys, no subscriptions, no card minimums. This is the only hands-on builder guide to <b>accept agentic payments</b>; everything else ranking for this keyword is enterprise thought-leadership. NanoTab's <b>agentic payments setup</b> takes about five minutes and costs a flat 0.1% self-host (2% managed gateway).</p>
 
 <h2>What agentic payments are</h2>
 <p>Agentic payments are purchases made <em>by software</em>: an AI agent with a wallet calls your API, sees a machine-readable price in the <code>402</code> response, signs a USDC transfer, and retries with an <code>X-Payment</code> header. A facilitator verifies the payment and proxies the request to your origin. The agent's budget caps, signing, and spend logs are handled by its SDK — you just collect USDC on Base mainnet, settled instantly, keeping 99.9%.</p>
@@ -71,7 +71,7 @@ footer a{color:var(--mut)}
 // unpaid callers get 402 + machine-readable price; paid ones pass through</code></pre>
 <ol start="3">
 <li><b>Point DNS at the gateway</b> — <code>gateway.nanotab.dev</code> verifies each <code>X-Payment</code> and proxies to your origin.</li>
-<li><b>Collect USDC</b> — every payment settles instantly to your wallet at 0.1%. Try the <a href="https://gateway.nanotab.dev/keyword?q=solar" style="color:var(--acc)">live gateway example</a> to see the full 402 flow in your browser.</li>
+<li><b>Collect USDC</b> — every payment settles instantly to your wallet at 0.1% self-host (2% managed gateway). Try the <a href="https://gateway.nanotab.dev/keyword?q=solar" style="color:var(--acc)">live gateway example</a> to see the full 402 flow in your browser.</li>
 </ol>
 
 <h2>Live gateway example</h2>
@@ -83,7 +83,7 @@ footer a{color:var(--mut)}
 <h2>NanoTab vs Stripe vs Adyen</h2>
 <table>
 <tr><th></th><th>NanoTab</th><th>Stripe</th><th>Adyen</th></tr>
-<tr><td>Fee on $0.05</td><td><b>0.005¢</b> (0.1%)</td><td>30.1¢ (2.9%+30¢ — loses money)</td><td>~30¢+ (interchange++ floor)</td></tr>
+<tr><td>Fee on $0.05</td><td><b>0.005¢</b> (0.1% self-host)</td><td>30.1¢ (2.9%+30¢ — loses money)</td><td>~30¢+ (interchange++ floor)</td></tr>
 <tr><td>Fee on $5</td><td><b>0.5¢</b></td><td>44.5¢</td><td>~15–25¢</td></tr>
 <tr><td>Minimum viable</td><td><b>1¢</b></td><td>~$1</td><td>~$1</td></tr>
 <tr><td>Settlement</td><td><b>Instant USDC</b></td><td>2–7 days</td><td>2–3 days</td></tr>
@@ -94,7 +94,7 @@ footer a{color:var(--mut)}
 <div class="cards">
 <a class="card" href="micropayments.html"><b>Micropayments for APIs →</b><p>USDC micropayments via HTTP 402: why card rails fail below $1, facilitator flow.</p></a>
 <a class="card" href="facilitator.html"><b>Charge per API call →</b><p>Protect endpoints, gateway verification, fee split.</p></a>
-<a class="card" href="stripe-alternative.html"><b>Cheaper than Stripe →</b><p>Fee table (2.9%+30¢ vs 0.1%), 5¢ worked example.</p></a>
+<a class="card" href="stripe-alternative.html"><b>Cheaper than Stripe →</b><p>Fee table (2.9%+30¢ vs 0.1% / 2%), 5¢ worked example.</p></a>
 <a class="card" href="agents.html"><b>Agents integration →</b><p>Give your agent a wallet: SDK code, budget guards, MCP.</p></a>
 </div>
 
@@ -105,7 +105,7 @@ footer a{color:var(--mut)}
 <dt>How do I receive agentic payments?</dt>
 <dd>Run <code>npx nanotab buy-init</code>, price an endpoint, return 402 to unpaid callers, and point at <code>gateway.nanotab.dev</code>. Live in ~5 minutes.</dd>
 <dt>What does it cost to accept agentic payments?</dt>
-<dd>Flat 0.1% — you keep 99.9%, settled instantly in USDC on Base. Stripe takes 2.9%+30¢; Adyen charges interchange++ per region.</dd>
+<dd>Flat 0.1% self-host (2% managed gateway) — you keep 99.9% self-host, settled instantly in USDC on Base. Stripe takes 2.9%+30¢; Adyen charges interchange++ per region.</dd>
 <dt>Do buyers need an account or API key?</dt>
 <dd>No. Agents pay from a USDC wallet (gas sponsored); humans pay from any Base wallet. No accounts or sign-ups either side.</dd>
 <dt>Can I use this alongside Stripe or Adyen?</dt>
