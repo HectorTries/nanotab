@@ -81,7 +81,10 @@ function requestWalletKey(req: express.Request): string | undefined {
   return undefined;
 }
 
-const app = createMcpExpressApp({ host: '0.0.0.0', allowedHosts: ['mcp.nanotab.dev', '127.0.0.1', 'localhost'] });
+const app = createMcpExpressApp({
+  host: '0.0.0.0',
+  allowedHosts: ['mcp.nanotab.dev', 'nanotab.dev', 'www.nanotab.dev', '127.0.0.1', 'localhost'],
+});
 // NOTE: createMcpExpressApp already installs a JSON body parser — do NOT add another.
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'nanotab-mcp', version: VERSION }));
