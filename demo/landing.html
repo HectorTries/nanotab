@@ -293,6 +293,20 @@ console.log(data); // 200 + JSON ✅</code></pre></div>
 "top_hook":"Okay, whose email ends in this or maybe this? ..."}</code></pre>
 <p class="secsub" style="margin-top:24px">Full walkthrough in the <a href="https://github.com/HectorTries/nanotab" style="color:var(--acc)">docs ↗</a>.</p>
 </section>
+<section id="safespend" class="reveal">
+<div class="eyebrow">SafeSpend · live trial</div>
+<h2>Every payment risk-scored.<br>Your agent can pause itself.</h2>
+<p class="secsub">Each call is scored by <b style="color:var(--fg)">Jev</b> (TypeSafe) before it settles. Your agent reads the score and decides: proceed, pause, or escalate to you.</p>
+<div class="steps3" style="margin-top:44px">
+<div class="step"><span class="num">x-risk-score</span><h3>Score on every call</h3><p>Paid and unpaid responses carry <code>x-risk-score</code> (0–1) and <code>x-risk-flag</code> headers, plus a <code>risk</code> object in the JSON body with the reason.</p></div>
+<div class="step"><span class="num">agent-side</span><h3>Pause or escalate itself</h3><p>One <code>if</code> in your loop: score above your threshold → stop spending and ping you. No dashboard babysitting required.</p></div>
+<div class="step"><span class="num">2% / BYO</span><h3>Included in the gateway</h3><p>Managed gateway: scoring bundled in the 2% fee. Self-host: bring your own TypeSafe key, pay TypeSafe directly.</p></div>
+</div>
+<pre style="margin-top:26px"><code>curl -H "X-Payment: &lt;base64-proof&gt;" https://gateway.nanotab.dev/keyword?q=solar
+# → x-risk-score: 0.07   x-risk-flag: clean
+{"result":…, "risk":{"score":0.07,"flag":"clean","reason":"known buyer, usual pattern"}}</code></pre>
+<p class="secsub" style="margin-top:22px;font-size:14.5px">Honest status: live trial — log-only, never blocks a payment. Per-wallet spend caps coming next.</p>
+</section>
 <section class="reveal">
 <div class="eyebrow">Pricing</div>
 <h2>One number.</h2>
