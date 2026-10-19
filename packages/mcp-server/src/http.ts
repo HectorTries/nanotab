@@ -76,6 +76,8 @@ function requestWalletKey(req: express.Request): string | undefined {
     const k = auth.slice(7).trim();
     if (k) return k;
   }
+  const xwk = req.get('x-wallet-key');
+  if (xwk?.trim()) return xwk.trim();
   const q = req.query.walletKey;
   if (typeof q === 'string' && q) return q;
   return undefined;
