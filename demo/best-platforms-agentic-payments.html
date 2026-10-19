@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Best Platforms for Agentic Payments in 2026 (11 Compared) | NanoTab</title>
+<meta name="description" content="11 agentic payment platforms compared for 2026: Nevermined, NanoTab, Stripe, Skyfire, Coinbase x402, PayPal, Visa, Mastercard, Payman, Prava, Nekuda. Fees, chains, who each is for.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;position:relative;font-size:14px}
+pre code{background:none;padding:0}
+.copy{position:absolute;top:10px;right:10px;background:#1e2836;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer}
+.copy:hover{border-color:var(--acc)}
+h2.plat{font-size:22px;margin:44px 0 6px;color:var(--fg)}
+h2.plat .n{color:var(--acc)}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;margin-left:8px;vertical-align:middle}
+.badge.green{background:rgba(93,242,184,.12);color:var(--acc);border:1px solid rgba(93,242,184,.3)}
+.badge.gold{background:rgba(255,212,121,.1);color:#ffd479;border:1px solid rgba(255,212,121,.3)}
+.meta{font-size:13.5px;color:var(--mut);margin:0 0 10px}
+.meta b{color:var(--fg)}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+.more a{color:var(--acc)}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/#generate">Generator</a><a href="agents.html">Agents</a><a href="stripe-alternative.html">vs Stripe</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<p class="date">October 2026 · 9 min read</p>
+<h1>Best Platforms for Agentic Payments in 2026</h1>
+<p>McKinsey estimates agentic commerce could reach <b>$3–5 trillion by 2030</b>. Millions of AI agents already browse, call APIs, and consume each other's services — but most still can't pay for anything. The payment rail for the agent economy is being built right now, by a dozen very different companies, and picking the wrong one means rebuilding later.</p>
+<p>We compared 11 platforms across fees, chains, standards, and who each is actually for — including our own <b>NanoTab</b>, because we'd rather be judged honestly in a fair list than pretend competitors don't exist.</p>
+
+<h2 class="plat"><span class="n">1.</span> Nevermined</h2>
+<p class="meta"><b>Best for:</b> teams building agent-to-agent marketplaces · <b>Standard:</b> proprietary + x402-compatible · <b>Pricing:</b> custom</p>
+<p>Nevermined is the closest thing the agent economy has to an incumbent: a payments and access-control layer purpose-built for AI agents buying from each other. Their headline feature is per-call metering with usage-based access tokens — an agent pays, gets a token, consumes the API, and the whole loop is auditable. They published one of the first serious roundups of this space, which is partly why you're reading this one. If you're building a marketplace where agents discover, pay, and rate each other, Nevermined is the most mature starting point. The trade-off is complexity: it's a platform to integrate, not a snippet to paste.</p>
+
+<h2 class="plat"><span class="n">2.</span> NanoTab <span class="badge green">OUR PICK · SIMPLEST ONBOARDING</span></h2>
+<p class="meta"><b>Best for:</b> anyone who wants to sell per API call this afternoon · <b>Chain:</b> Base + USDC · <b>Standard:</b> x402 · <b>Pricing:</b> 0.1% self-host, 2% managed gateway</p>
+<p>NanoTab is the simplest way to put a price on an API call. One prompt — <i>"add pay-per-call at $0.05"</i> — wraps any endpoint in an x402 paywall that settles in USDC on Base mainnet. Buyers pay with a single SDK call (<code>paidFetch</code>), an MCP tool (<code>nanotab_pay</code>), or a WordPress plugin. The agent holds zero ETH: EIP-7702 smart accounts plus a Circle paymaster sponsor gas, so a $0.05 payment actually costs $0.05. Live endpoints run at <code>gateway.nanotab.dev</code> and <code>mcp.nanotab.dev</code>, with real mainnet transactions settling today. Early traction — 372 GitHub clones and ~500 npm pulls in week one — suggests the "just charge per call" pitch resonates. NanoTab won't replace Stripe for your SaaS billing page; it's the rail for the transactions Stripe can't price. Open source at <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a>.</p>
+
+<h2 class="plat"><span class="n">3.</span> Stripe Agentic Commerce</h2>
+<p class="meta"><b>Best for:</b> merchants who already run on Stripe · <b>Standard:</b> proprietary (Agent SDK + Delegated Payments) · <b>Pricing:</b> standard Stripe rates (~2.9% + 30¢)</p>
+<p>Stripe's entry is the 800-pound gorilla: delegated payment credentials that let an agent check out on a customer's behalf, plus an "Agentic Commerce Suite" for merchants. If you already process cards through Stripe, this is the lowest-friction way to let agents buy from you. The catch is structural — 30¢ fixed fees make true micropayments uneconomical, and everything stays inside Stripe's custodial world. Great for $20 agent checkouts; useless for 5¢ API calls.</p>
+
+<h2 class="plat"><span class="n">4.</span> Skyfire</h2>
+<p class="meta"><b>Best for:</b> enterprises needing KYC'd agent payments · <b>Standard:</b> proprietary (KYA identity layer) · <b>Pricing:</b> custom/enterprise</p>
+<p>Skyfire raised serious VC money to build "Visa for AI agents," and their differentiator is identity: Know-Your-Agent verification, spending policies, and compliance tooling that procurement departments actually accept. If you're a bank or telco deploying agents that spend real budgets, Skyfire speaks your language. For indie developers, it's heavier than needed — enterprise sales cycles included.</p>
+
+<h2 class="plat"><span class="n">5.</span> Coinbase x402</h2>
+<p class="meta"><b>Best for:</b> developers who want the open standard itself · <b>Chain:</b> Base (multi-chain expanding) · <b>Standard:</b> x402 (they co-created it) · <b>Pricing:</b> protocol is free; facilitators charge</p>
+<p>x402 is the HTTP-native payment protocol — <code>402 Payment Required</code>, machine-readable prices, wallet-signed settlement — and Coinbase maintains its reference implementation. Important distinction: x402 is a <i>protocol</i>, not a product. You still need a facilitator (verification, settlement, paymaster) and a wallet stack around it. NanoTab, among others, is built on x402; Coinbase gives you the spec and a facilitator, we give you the one-prompt onboarding. Start here to understand the standard; pick a product to ship on it.</p>
+
+<h2 class="plat"><span class="n">6.</span> PayPal Agent Toolkit</h2>
+<p class="meta"><b>Best for:</b> PayPal merchants adding agent checkout · <b>Standard:</b> proprietary (MCP-native) · <b>Pricing:</b> standard PayPal rates</p>
+<p>PayPal shipped MCP servers and an agent toolkit that let AI assistants check out through PayPal's rails — buyer protection and 400M+ funded accounts included. For consumer-facing agent shopping ("buy these shoes for me"), that trust layer matters. Like Stripe, it's card-rail economics: fine for commerce, wrong tool for micropayments.</p>
+
+<h2 class="plat"><span class="n">7.</span> Visa Intelligent Commerce</h2>
+<p class="meta"><b>Best for:</b> issuers and large merchants · <b>Standard:</b> card rails + tokenized agent credentials · <b>Pricing:</b> interchange applies</p>
+<p>Visa's play is tokenized payment credentials delegated to agents, wrapped in the fraud and chargeback infrastructure merchants trust. When your agent buys a flight, Visa wants that to clear like any card transaction — with spending controls attached. It's the safe choice for high-value agent purchases, and irrelevant below a dollar.</p>
+
+<h2 class="plat"><span class="n">8.</span> Mastercard Agent Pay</h2>
+<p class="meta"><b>Best for:</b> banks and card programs · <b>Standard:</b> card rails (Agent Pay framework) · <b>Pricing:</b> interchange applies</p>
+<p>Mastercard mirrors Visa's approach: agent-ready payment credentials, merchant onboarding through existing acquirers, and policy controls for delegated spend. Choose between the networks on your existing banking relationships, not on agent-specific features — both solve the $50 checkout, neither solves the 5¢ API call.</p>
+
+<h2 class="plat"><span class="n">9.</span> Payman</h2>
+<p class="meta"><b>Best for:</b> developers wanting "Stripe for AI agents" · <b>Standard:</b> proprietary API + stablecoins · <b>Pricing:</b> usage-based</p>
+<p>Payman pitches itself as the developer-friendly agent payments API: wallets for agents, payees, and humans, with stablecoin settlement under the hood. Their docs-first approach and YC backing make them a solid pick for hackathons and MVPs where you want one API for "agent sends money." Less opinionated about the x402 standard; more of a full-stack wallet product.</p>
+
+<h2 class="plat"><span class="n">10.</span> Prava</h2>
+<p class="meta"><b>Best for:</b> cross-chain agent payments · <b>Standard:</b> proprietary orchestration · <b>Pricing:</b> custom</p>
+<p>Prava focuses on the plumbing problem everyone ignores: agents operating across chains need routing, bridging, and settlement orchestration. If your agents hold assets on Solana, pay on Base, and settle on Ethereum, Prava's orchestration layer handles the hops. Niche, but the niche is real and growing.</p>
+
+<h2 class="plat"><span class="n">11.</span> Nekuda <span class="badge gold">ACQUIRED BY PAYPAL</span></h2>
+<p class="meta"><b>Best for:</b> PayPal ecosystem builders · <b>Standard:</b> now part of PayPal Agent Toolkit · <b>Pricing:</b> see PayPal</p>
+<p>Nekuda built agent payment infrastructure with enough promise that PayPal acquired them in 2025. Their tech now lives inside PayPal's agent toolkit (see #6). Listed separately because their pre-acquisition architecture influenced how the whole space thinks about agent authorization — and as a reminder that in this market, building well gets you bought.</p>
+
+<h2 style="font-size:22px;margin:44px 0 10px;color:var(--acc)">Quick comparison</h2>
+<table>
+<tr><th>Platform</th><th>Micropayments (&lt;$1)</th><th>Standard</th><th>Fee signal</th></tr>
+<tr><td>Nevermined</td><td>✅ per-call metering</td><td>Proprietary + x402</td><td>Custom</td></tr>
+<tr><td><b>NanoTab</b></td><td>✅ $0.05 live on mainnet</td><td>x402</td><td>0.1% / 2%</td></tr>
+<tr><td>Stripe</td><td>❌ 30¢ fixed fee</td><td>Proprietary</td><td>~2.9% + 30¢</td></tr>
+<tr><td>Skyfire</td><td>⚠️ enterprise focus</td><td>Proprietary</td><td>Custom</td></tr>
+<tr><td>Coinbase x402</td><td>✅ protocol supports it</td><td>x402 (reference)</td><td>Free protocol</td></tr>
+<tr><td>PayPal</td><td>❌ card rails</td><td>Proprietary</td><td>Standard PP rates</td></tr>
+<tr><td>Visa</td><td>❌ interchange</td><td>Card rails</td><td>Interchange</td></tr>
+<tr><td>Mastercard</td><td>❌ interchange</td><td>Card rails</td><td>Interchange</td></tr>
+<tr><td>Payman</td><td>⚠️ stablecoin, varies</td><td>Proprietary</td><td>Usage-based</td></tr>
+<tr><td>Prava</td><td>⚠️ routing focus</td><td>Proprietary</td><td>Custom</td></tr>
+<tr><td>Nekuda</td><td>→ PayPal</td><td>PayPal stack</td><td>—</td></tr>
+</table>
+
+<h2 style="font-size:22px;margin:44px 0 10px;color:var(--acc)">The protocol-first future</h2>
+<p>The pattern is clear: card networks are bolting agent credentials onto 1970s rails, while the crypto-native side is converging on <b>x402 as the shared standard</b> — Coinbase maintains it, facilitators compete on it, wallets speak it. Open protocols beat walled gardens every time the internet has run this experiment. The winners won't be the platforms with the most press releases; they'll be the ones where a developer goes from "I have an API" to "my API charges per call" in one afternoon. That's the bar we built NanoTab against — and the one we'd encourage you to hold every vendor on this list to.</p>
+
+<p class="more"><a href="agents.html">Agents integration guide</a> · <a href="micropayments.html">Micropayments overview</a> · <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+<script>
+document.querySelectorAll('.copy').forEach(function(b){b.onclick=function(){var t=b.getAttribute('data-copy');function done(){b.textContent='Copied ✓';setTimeout(function(){b.textContent='Copy'},1500)}if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done)}else{var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(ta);done()}}});
+</script>
+</body>
+</html>
