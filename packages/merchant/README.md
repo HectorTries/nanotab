@@ -20,6 +20,6 @@ app.get('/keyword/:term', nanotabCharge({ price: 0.02, wallet: '0xMERCHANT' }), 
 
 Structural: well-formed header, `to` == merchant (case-insensitive), `amount` ≥ price (BigInt compare), asset == USDC-on-Base, network == `base` when present. Full EIP-191 signature recovery is enforced at the gateway (`workers/gateway`); use this middleware behind the gateway or add an async sig check in your own stack.
 
-Settlement accounting (0.1% fee split) is logged per call; on-chain merchant transfer happens at the gateway when `SETTLER_KEY` is configured.
+Settlement accounting (0.1% self-host fee split) is logged per call; on-chain merchant transfer happens at the gateway when `SETTLER_KEY` is configured.
 
-> 0.1% protocol fee to NanoTab on every paid call, non-optional.
+> 0.1% self-host protocol fee to NanoTab on every paid call, non-optional (2% via the managed gateway).

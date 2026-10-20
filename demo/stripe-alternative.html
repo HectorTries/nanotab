@@ -40,7 +40,7 @@ footer a{color:var(--mut)}
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Why can't Stripe do micropayments?","acceptedAnswer":{"@type":"Answer","text":"Stripe charges 2.9% plus a fixed 30¢ per transaction. On a 5¢ payment the fixed fee alone is 6× the price, so micropayments under ~$1 are economically impossible on Stripe."}},
 {"@type":"Question","name":"What is cheaper than Stripe for micropayments?","acceptedAnswer":{"@type":"Answer","text":"NanoTab self-host charges a flat 0.1% with no fixed fee and a 1¢ minimum — a 5¢ payment costs $0.00005 in fees and settles instantly in USDC on Base."}},
-{"@type":"Question","name":"What is the Stripe minimum payment workaround?","acceptedAnswer":{"@type":"Answer","text":"Common workarounds are bundling micro-charges into a monthly invoice or requiring wallet top-ups. NanoTab removes the need: true per-call billing works natively via HTTP 402 at 0.1%."}}]}
+{"@type":"Question","name":"What is the Stripe minimum payment workaround?","acceptedAnswer":{"@type":"Answer","text":"Common workarounds are bundling micro-charges into a monthly invoice or requiring wallet top-ups. NanoTab removes the need: true per-call billing works natively via HTTP 402 at 0.1% self-host (2% managed gateway)."}}]}
 </script>
 </head>
 <body>

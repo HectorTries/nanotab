@@ -1,7 +1,7 @@
 {
   "name": "@nanotab/merchant",
   "version": "0.1.0",
-  "description": "NanoTab merchant middleware — x402-style 402 charges with 0.1% fee (mocked settlement)",
+  "description": "NanoTab merchant middleware — x402-style 402 charges with 0.1% self-host fee (mocked settlement)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
