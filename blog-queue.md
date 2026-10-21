@@ -4,7 +4,7 @@ Drip schedule: Mon / Wed / Fri 09:00 Europe/London via cron `nanotab-comparison-
 Template: direct-answer structure (question answered in first 2 sentences → comparison table → verdict → CTA), 800-1200 words, honest about NanoTab's early stage.
 
 - [x] nanotab-vs-skyfire (published 2026-10-20)
-- [ ] nanotab-vs-coinbase-x402
+- [x] nanotab-vs-coinbase-x402 (published 2026-10-21)
 - [ ] nanotab-vs-stripe-agent-toolkit
 - [ ] nanotab-vs-nevermined
 - [ ] nanotab-vs-circle-wallets
