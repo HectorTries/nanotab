@@ -208,6 +208,15 @@ console.log(res.status); // 200 ✅
 console.log(await res.json()); // your data</code></pre></div>
 <div class="howstep"><span class="num">4 · Deploy</span><h3>Same two options</h3><p><b>Cloudflare token</b> (one command, zero servers) or <b>your own VPS</b> with public HTTPS. Verify from another machine: unpaid curl → 402, paid fetch → 200. Done — you’re collecting.</p><pre><code>CLOUDFLARE_API_TOKEN=xxxx npx nanotab deploy --price 0.05 --wallet 0xYOUR_ADDRESS ./server.js</code></pre></div>
 </div>
+<div class="eyebrow" style="margin-top:64px">Got WordPress? Skip all of this.</div>
+<h2 style="font-size:clamp(24px,3.5vw,34px)">On WordPress? Install the plugin.<br>Charge for posts in 5 minutes.</h2>
+<p class="secsub">The <b style="color:var(--fg)">NanoTab Paywall plugin (v0.1.1)</b> puts any post, download, or page behind a USDC paywall &mdash; no code, no server, no Stripe account. Readers pay a few cents, you keep 99.9%.</p>
+<div class="howto">
+<div class="howstep"><span class="num">1 &middot; Install</span><h3>Upload the zip</h3><p><a href="nanotab-paywall.zip" style="color:var(--acc);font-weight:700">Download nanotab-paywall.zip (v0.1.1) &#11015;</a>, then <code>Plugins &rarr; Add New &rarr; Upload</code>. Or <a href="https://github.com/HectorTries/nanotab/tree/main/wordpress-nanotab" style="color:var(--acc)">browse the source on GitHub &#8599;</a>.</p></div>
+<div class="howstep"><span class="num">2 &middot; Set your wallet</span><h3>Where should the money go?</h3><p>Go to <code>Settings &rarr; NanoTab</code> and paste your USDC receiving address (Base network). That&rsquo;s the whole setup.</p></div>
+<div class="howstep"><span class="num">3 &middot; Paywall a post</span><h3>Wrap it in a shortcode</h3><p>Put premium content between <code>[nanotab price=0.05]</code> and <code>[/nanotab]</code>. Visitors see the price and pay in USDC &mdash; humans and AI agents alike.</p></div>
+<div class="howstep"><span class="num">Learn more</span><h3>Full walkthrough</h3><p>Fees, the 402 flow in plain words, and FAQ: <a href="wordpress.html" style="color:var(--acc);font-weight:700">the WordPress paywall guide &rarr;</a></p></div>
+</div>
 </section>
 <section id="buy" class="reveal">
 <div class="eyebrow">For buyers · fund your agent</div>
