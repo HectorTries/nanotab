@@ -2,9 +2,11 @@
 Contributors: nanotab
 Tags: paywall, micropayments, usdc, base, x402
 Requires at least: 6.0
+Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: MIT
+License URI: https://opensource.org/licenses/MIT
 
 Paywall posts and API with USDC micropayments on Base. No Node, no API keys — pure PHP + public Base RPC.
 
@@ -20,7 +22,7 @@ NanoTab Paywall locks full post content and a REST endpoint behind a USDC paymen
 
 == Installation ==
 
-1. Zip the `wordpress-nanotab` folder (or upload via FTP to `/wp-content/plugins/`).
+1. Upload the plugin folder to `/wp-content/plugins/` and activate, or install the zip via Plugins → Add New → Upload Plugin.
 2. In WP Admin go to Plugins → Activate "NanoTab Paywall".
 3. Go to Settings → NanoTab, enter your Base wallet address + price in USDC, Save.
 4. Done — all single posts are now paywalled.
@@ -33,7 +35,15 @@ No. Install + wallet address only. Payment is a plain USDC transfer on Base.
 = How do agents pay? =
 GET the REST route, read the 402 JSON payment spec, send USDC, retry with `X-Payment` header.
 
+== Screenshots ==
+
+1. Settings screen under Settings → NanoTab (wallet, price, RPC endpoint, enabled toggle).
+2. Paywalled post view showing 40-word excerpt + payment instructions.
+
 == Changelog ==
+
+= 0.1.1 =
+Hardened release: 23 Plugin Check fixes (prefixed symbols, escaping+i18n, sanitize+validate, nonce+capability hardening, REST args).
 
 = 0.1.0 =
 Initial release. Content filter + REST route + admin settings + on-chain USDC verification.
