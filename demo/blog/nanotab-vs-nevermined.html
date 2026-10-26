@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs Nevermined: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs Nevermined compared for 2026: fees (0.1% self-host / 2% gateway vs protocol fees), architecture, data-marketplace roots vs x402 paywall, and who each is for.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs Nevermined: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">26 October 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or Nevermined for AI agent payments?</strong> If you want to put a paywall on any HTTP endpoint in minutes with near-zero fees, use NanoTab. If you're building a data or AI-service marketplace where access rights, plans, and usage credits need on-chain enforcement, use Nevermined.</p>
+
+<p>Both are decentralised, crypto-native, and aimed at machine-to-machine payments — but they solve different slices of the problem. Nevermined (founded 2022, with roots in the Ocean Protocol data-marketplace lineage) is a full payments-and-access protocol for AI: asset registration, subscription plans, credit systems, and agent-to-agent transactions with smart-contract enforcement. NanoTab (open-source, 2026) is deliberately narrower: wrap any HTTP endpoint so agents pay USDC per call on Base via the x402 protocol, keep 99.9%, done. Here's the honest breakdown.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>Nevermined</th></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>Protocol-level fees on payments (plan-dependent)</td></tr>
+<tr><td><strong>Model</strong></td><td>Open-source paywall middleware (MIT)</td><td>Open protocol + smart contracts for payments &amp; access control</td></tr>
+<tr><td><strong>Settlement</strong></td><td>USDC on Base (x402 protocol)</td><td>Multi-chain crypto payments (incl. Base, Polygon, others)</td></tr>
+<tr><td><strong>KYC / identity</strong></td><td>None — wallet-to-wallet</td><td>None required — wallet-based, with on-chain access rights</td></tr>
+<tr><td><strong>Setup time</strong></td><td>Minutes (one prompt / one config)</td><td>Hours (register assets, configure plans, integrate SDK)</td></tr>
+<tr><td><strong>MCP-native?</strong></td><td>Yes — MCP server included</td><td>SDK/API-first — agent payments via integration</td></tr>
+<tr><td><strong>Best for</strong></td><td>Indie devs monetising any API per-call</td><td>Teams building AI/data marketplaces with plans &amp; credits</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early (live on Base mainnet, 2026)</td><td>Grown (live since ~2023, active ecosystem)</td></tr>
+</table>
+
+<h2>Scope: paywall vs payments protocol</h2>
+<p>This is the fundamental difference. NanoTab does one thing: it turns an HTTP endpoint into a paid endpoint. Point it at your API, it generates x402 middleware, agents pay per call, you get USDC. There is no concept of subscriptions, tiers, or access rights — every call is an independent micropayment.</p>
+<p>Nevermined is a protocol for structuring commercial relationships between agents and services. You register AI assets or data products on-chain, define pricing plans (one-time, subscription, credit-based), and the smart contracts enforce who has access to what. An agent can buy a plan, spend credits across calls, and transfer or delegate access rights. That's a richer commercial primitive — and correspondingly more to learn and integrate.</p>
+
+<h2>Fees: both cheap, different structures</h2>
+<p>NanoTab self-hosted takes 0.1% — on a $0.05 API call that's effectively nothing. The managed gateway is 2% for zero infrastructure. Nevermined's protocol fees apply at the payment layer and vary by network and plan configuration; as a decentralised protocol rather than a SaaS, there's no platform subscription. Both are dramatically cheaper than card rails or enterprise agent platforms — fee is not the deciding factor here.</p>
+
+<h2>Setup complexity: minutes vs hours</h2>
+<p>NanoTab's pitch is one prompt: wrap the endpoint, get paid. No asset registration, no plan modelling, no SDK integration beyond the generated middleware. If your pricing is "pay per call," there is nothing else to decide.</p>
+<p>Nevermined requires you to think like a marketplace operator: register your service as an on-chain asset, define access conditions and pricing plans, integrate the SDK so your backend checks entitlements. That's the right shape when you're selling dataset access, metered inference with tiers, or multi-call credit bundles — but it's overkill for "charge $0.02 every time someone hits this endpoint."</p>
+
+<h2>Access control and credits: Nevermined wins clearly</h2>
+<p>Here's where honesty demands credit to Nevermined. If you need subscriptions ("$10/month for 1,000 calls"), credit balances, delegated access, or resale of access rights, NanoTab can't do that — every call is pay-as-you-go, full stop. Nevermined's smart-contract layer handles all of it natively: plans, entitlements, usage accounting, on-chain.</p>
+<p>NanoTab has an opt-in risk gate (SafeSpend, powered by Jev) that scores transactions, but it's advisory, not access control. Different job entirely.</p>
+
+<h2>Chains and payment rails</h2>
+<p>NanoTab is USDC-on-Base only, built on the x402 HTTP-402 protocol. One chain, one asset, zero gas for the seller, sub-second settlement. Deliberate constraint: if your buyers hold USDC on Base (increasingly the default for agent wallets), it's frictionless.</p>
+<p>Nevermined is multi-chain, with deployments across several EVM networks. That matters if your buyers or your existing contracts live somewhere other than Base, or if you want payments and access rights on the same chain as your other on-chain activity.</p>
+
+<h2>MCP and agent-framework fit</h2>
+<p>NanoTab ships an MCP server out of the box — any MCP-compatible agent can discover and pay for your endpoint through the standard tool-call flow. Nevermined integrates at the SDK/API level; agent frameworks can build on it, and the team has invested in agent-to-agent payment flows, but MCP isn't the native idiom.</p>
+
+<h2>Verdict: it depends on what you're selling</h2>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> you want per-call USDC payments on any API live today; your pricing is simple pay-per-use; you value minimal integration and sub-1% fees; you're an indie dev or small team.</p>
+<p><strong>Use Nevermined if:</strong> you're building a data or AI-service marketplace; you need subscriptions, credits, or transferable access rights enforced on-chain; you want multi-chain payments; you think in plans, not calls.</p>
+<p><strong>Use both if:</strong> you run a marketplace on Nevermined for plans and entitlements but want NanoTab-style per-call metering on individual endpoints. The models compose — protocol for relationships, paywall for calls.</p>
+</div>
+
+<p>The agentic-payments space is early enough that "which platform" matters less than "are you charging agents at all." Pick the one that matches your pricing model, ship it, iterate. (As of October 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>
