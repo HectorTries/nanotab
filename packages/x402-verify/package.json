@@ -1,0 +1,16 @@
+{
+  "name": "@nanotab/x402-verify",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared NanoTab x402 payment verification — structural proof checks, atomic fee-split enforcement, on-chain buyer-tx confirmation (USDC on Base). Imported by workers/gateway and workers/publish.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "viem": "^2.57.7"
+  }
+}

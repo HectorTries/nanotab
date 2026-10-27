@@ -1,0 +1,28 @@
+name = "nanotab-publish"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+
+# --- NanoTab publish worker (MVP step 2: hosted one-click paywalls) ---
+# Auth is a shared-secret stub: set it via secret, NEVER commit it:
+#   wrangler secret put PUBLISH_KEY
+# Local dev: wrangler dev --var PUBLISH_KEY:dev-secret
+# Real magic-link auth replaces the stub in step 4.
+# Create for real (NOT done yet — local dev emulates both):
+#   wrangler kv namespace create NANOTAB_LISTINGS
+#   wrangler r2 bucket create nanotab-content
+[vars]
+NANOTAB_FEE_BPS = "200"
+MAX_PRICE_CENTS = "10000"
+NETWORK = "base"
+ASSET = "0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5"
+
+[[kv_namespaces]]
+binding = "NANOTAB_LISTINGS"
+id = "local-dev-placeholder"
+
+[[r2_buckets]]
+binding = "NANOTAB_CONTENT"
+bucket_name = "nanotab-content"
+
+[dev]
+port = 8788

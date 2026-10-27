@@ -37,6 +37,20 @@ import {
 } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import {
+  NANOTAB_NETWORK_CAIP2,
+  PROTOCOL_FEE_BPS,
+  USDC_BASE_MAINNET,
+  centsToUnits,
+  feeRecipientFor,
+  paymentMessage,
+  splitFee,
+  splitPaymentMessage,
+  verifyBuyerTx as verifyBuyerTxShared,
+  verifyFeeSplit as verifyFeeSplitShared,
+  verifyPayment,
+  type PaymentProof,
+} from '../../../packages/x402-verify/src/index.ts';
 
 // Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
 // wrangler/workerd provide the real globals at runtime).
@@ -67,52 +81,27 @@ interface Env {
   TYPESAFE_API_KEY?: string; // TypeSafe API key (wrangler secret ONLY) — Jev risk gate
 }
 
-// Managed-gateway NanoTab fee (2% of every paid call) goes here;
-// hardcoded so self-hosted clones pay Hector. NOT overridable to zero —
-// env.FEE_WALLET may point fees elsewhere (e.g. a dedicated wallet Hector
-// controls) but NEVER falls through to MERCHANT_WALLET.
-const NANOTAB_PROTOCOL_WALLET = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
-const PROTOCOL_FEE_BPS = 200; // 2% managed-gateway fee, non-optional (self-host middleware: 10 = 0.1%)
-
-const USDC_BASE_MAINNET = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
-const NANOTAB_NETWORK = 'base';
-const USDC_DECIMALS = 6;
-
-interface PaymentProof {
-  amount: string; // USD cents, e.g. "2"
-  to: string;
-  asset: string;
-  network?: string;
-  signature: string;
-  from?: string;
-  txHash?: string; // optional: payer's on-chain transfer hash for confirmation
-  // Atomic fee-split legs (REQUIRED on every paid call — protocol fee is non-optional).
-  // Amounts in USDC base units. feeTo must equal FEE_WALLET, feeAmount +
-  // merchantAmount must equal gross, feeAmount must equal feeBps math.
-  split?: { feeTo: string; feeAmount: string; merchantAmount: string };
-}
-
-function paymentMessage(p: { to: string; amount: string; asset: string }): string {
-  return `nanotab-x402|network=base|to=${p.to}|amountCents=${p.amount}|asset=${p.asset}`;
-}
-
-/**
- * Extended canonical message committing to the atomic fee split.
- * Signed by the buyer UserOp owner; gateway rejects if the signed split
- * does not match — the fee leg cannot be stripped without invalidating
- * the payer signature.
- */
-function splitPaymentMessage(p: { to: string; amount: string; asset: string; feeTo: string; feeAmount: string; merchantAmount: string }): string {
-  return `${paymentMessage(p)}|feeTo=${p.feeTo}|fee=${p.feeAmount}|net=${p.merchantAmount}`;
-}
-
-/** Fee recipient: explicit FEE_WALLET, else the hardcoded protocol wallet.
- *  NEVER falls through to MERCHANT_WALLET — the protocol fee is mandatory. */
+// Verify logic (proof checks, fee math, constants) lives in the shared
+// @nanotab/x402-verify module, imported above. These thin adapters keep the
+// gateway's original Env-based call shapes (no behavior change).
 function feeRecipient(env: Env): string {
-  return env.FEE_WALLET || NANOTAB_PROTOCOL_WALLET;
+  return feeRecipientFor(env.FEE_WALLET);
 }
 
-const NANOTAB_NETWORK_CAIP2 = 'eip155:8453'; // Base mainnet (x402 v2 CAIP-2)
+function verifyFeeSplit(proof: PaymentProof, amountCents: string, env: Env): { feeUnits: bigint; netUnits: bigint; feeTo: string } {
+  return verifyFeeSplitShared(proof, amountCents, Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS)), env.FEE_WALLET);
+}
+
+function verifyBuyerTx(env: Env, txHash: string, amountCents: string): Promise<{ payer: string }> {
+  return verifyBuyerTxShared({
+    rpcUrl: env.BASE_RPC_URL,
+    merchantWallet: env.MERCHANT_WALLET,
+    feeTo: feeRecipient(env),
+    feeBps: Number(env.NANOTAB_FEE_BPS ?? '200'),
+    txHash,
+    amountCents,
+  });
+}
 
 function paymentRequiredBody(req: Request, env: Env) {
   const priceUnits = centsToUnits(env.PRICE_USD_CENTS).toString();
@@ -236,61 +225,8 @@ function serveOpenApi(req: Request, env: Env): Response {
   );
 }
 
-function assetOk(asset: string): boolean {
-  return asset.toLowerCase() === USDC_BASE_MAINNET.toLowerCase() || asset === 'USDC';
-}
-
-/** Structural verify: well-formed, right merchant, sufficient amount, USDC-on-Base. */
-function verifyPayment(header: string, to: string, amountCents: string): PaymentProof {
-  let proof: PaymentProof;
-  try {
-    proof = JSON.parse(atob(header));
-  } catch {
-    throw new Error('malformed X-Payment header');
-  }
-  if (!proof.amount || !proof.to || !proof.asset || !proof.signature) {
-    throw new Error('malformed X-Payment proof (need amount, to, asset, signature)');
-  }
-  if (proof.to.toLowerCase() !== to.toLowerCase()) throw new Error('payment to wrong merchant');
-  if (BigInt(proof.amount) < BigInt(amountCents)) throw new Error('payment amount too low');
-  if (!assetOk(proof.asset)) throw new Error('unsupported asset (need USDC on Base)');
-  if (proof.network && proof.network !== 'base') throw new Error('wrong network (need base)');
-  return proof;
-}
-
-/**
- * Atomic fee-split enforcement (NanoTab 200bps managed-gateway default; self-host 10bps).
- * Fee recipient = FEE_WALLET override, else NANOTAB_PROTOCOL_WALLET.
- * The X-Payment proof MUST carry `split` with:
- *   - split.feeTo == fee recipient (exact)
- *   - split.feeAmount == floor(gross * feeBps / 10_000) in USDC base units
- *   - split.merchantAmount == gross − fee
- * Missing/wrong split → 402. No exceptions, no single-transfer bypass.
- */
-function verifyFeeSplit(proof: PaymentProof, amountCents: string, env: Env): { feeUnits: bigint; netUnits: bigint; feeTo: string } {
-  const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
-  const gross = centsToUnits(amountCents);
-  const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
-  const netUnits = gross - feeUnits;
-  // Protocol fee is NON-OPTIONAL: every paid call carries the split.
-  // No back-compat single-transfer bypass.
-  const feeTo = feeRecipient(env);
-  const s = proof.split;
-  if (!s?.feeTo || !s?.feeAmount || !s?.merchantAmount) {
-    throw new Error(`fee split missing: UserOp must batch [transfer(merchant, ${netUnits}), transfer(${feeTo}, ${feeUnits})]`);
-  }
-  if (s.feeTo.toLowerCase() !== feeTo.toLowerCase()) {
-    throw new Error(`fee to wrong wallet (need ${feeTo})`);
-  }
-  if (BigInt(s.feeAmount) !== feeUnits) {
-    throw new Error(`fee amount wrong (need ${feeUnits} units @${feeBps}bps, got ${s.feeAmount})`);
-  }
-  if (BigInt(s.merchantAmount) !== netUnits) {
-    throw new Error(`merchant net wrong (need ${netUnits} units, got ${s.merchantAmount})`);
-  }
-  return { feeUnits, netUnits, feeTo };
-}
-
+// verifyPayment / assetOk: imported from @nanotab/x402-verify
+// (verifyFeeSplit via the thin adapter above).
 /** Recover signer of the EIP-191 authorization; must equal `from` when provided. */
 async function verifySignature(proof: PaymentProof): Promise<Address> {
   const recovered = await verifyMessage({
@@ -303,77 +239,8 @@ async function verifySignature(proof: PaymentProof): Promise<Address> {
   return proof.from as Address;
 }
 
-function centsToUnits(cents: string): bigint {
-  return BigInt(cents) * 10n ** BigInt(USDC_DECIMALS - 2);
-}
-
-function split(amountCents: string, feeBps: number): { feeUnits: bigint; netUnits: bigint } {
-  const gross = centsToUnits(amountCents);
-  const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
-  return { feeUnits, netUnits: gross - feeUnits };
-}
-
-const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-
-function topicToAddress(topic: Hex): string {
-  return '0x' + topic.slice(-40);
-}
-
-/**
- * Buyer-UserOp confirmation: fetch the tx receipt and verify it holds EXACTLY
- * the atomic fee-split legs from the USDC contract —
- *   transfer(payer → MERCHANT_WALLET, netUnits)
- *   transfer(payer → FEE_WALLET, feeUnits)
- * with status=success. Extra USDC transfers in the same tx → reject (keeps
- * the "exact legs" invariant tight). Returns the payer address.
- */
-async function verifyBuyerTx(
-  env: Env, txHash: string, amountCents: string,
-): Promise<{ payer: string }> {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error('invalid txHash format');
-  const feeTo = feeRecipient(env);
-  const feeBps = Number(env.NANOTAB_FEE_BPS ?? '200');
-  const gross = centsToUnits(amountCents);
-  const feeUnits = (gross * BigInt(feeBps)) / 10_000n;
-  const netUnits = gross - feeUnits;
-  const rpc = env.BASE_RPC_URL ?? 'https://mainnet.base.org';
-  const client = createPublicClient({ chain: base, transport: http(rpc) });
-  const receipt = await client.getTransactionReceipt({ hash: txHash as Hex }).catch(() => null);
-  if (!receipt) throw new Error('tx not found or not yet mined (retry after confirmation)');
-  if (receipt.status !== 'success') throw new Error('tx failed on-chain');
-  const legs = receipt.logs.filter(
-    (l) =>
-      l.address.toLowerCase() === USDC_BASE_MAINNET.toLowerCase() &&
-      l.topics[0]?.toLowerCase() === ERC20_TRANSFER_TOPIC,
-  );
-  const merchantLc = env.MERCHANT_WALLET.toLowerCase();
-  const feeLc = feeTo.toLowerCase();
-  // Mandatory split: EXACTLY 2 legs [merchant-net, fee→protocol wallet].
-  // No single-transfer bypass.
-  if (legs.length !== 2) {
-    throw new Error(`tx must contain exactly 2 USDC transfers (got ${legs.length})`);
-  }
-  const seen = new Map<string, bigint>();
-  let payer: string | null = null;
-  for (const l of legs) {
-    const from = topicToAddress(l.topics[1] as Hex).toLowerCase();
-    const to = topicToAddress(l.topics[2] as Hex).toLowerCase();
-    const value = BigInt(l.data as Hex);
-    if (payer === null) payer = from;
-    else if (payer !== from) throw new Error('transfer legs have different senders');
-    seen.set(to, (seen.get(to) ?? 0n) + value);
-  }
-  const gotNet = seen.get(merchantLc);
-  const gotFee = seen.get(feeLc);
-  if (gotNet !== netUnits) {
-    throw new Error(`merchant leg wrong (need ${netUnits} units to ${env.MERCHANT_WALLET}, got ${gotNet ?? 'missing'})`);
-  }
-  if (gotFee !== feeUnits) {
-    throw new Error(`fee leg wrong (need ${feeUnits} units to ${feeTo}, got ${gotFee ?? 'missing'})`);
-  }
-  return { payer: payer as string };
-}
-
+// centsToUnits / splitFee / verifyBuyerTx / ERC20_TRANSFER_TOPIC / topicToAddress:
+// imported from @nanotab/x402-verify (see thin adapters above).
 /**
  * On-chain settlement (legacy SETTLER_KEY path): settler sends TWO USDC
  * transfers on Base — net → MERCHANT_WALLET, fee → protocol wallet.
@@ -394,7 +261,7 @@ const ERC20_ABI_SETTLE = [
 ] as const;
 async function settleOnChain(env: Env, amountCents: string): Promise<{ txHash: string; feeTxHash: string | null; net: string; fee: string; feeTo: string }> {
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? '200');
-  const { feeUnits, netUnits } = split(amountCents, feeBps);
+  const { feeUnits, netUnits } = splitFee(amountCents, feeBps);
   const feeTo = feeRecipient(env);
   const account = privateKeyToAccount(env.SETTLER_KEY as `0x${string}`);
   const rpc = env.BASE_RPC_URL ?? 'https://mainnet.base.org';
