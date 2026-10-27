@@ -2,7 +2,7 @@
 /**
  * nanotab MCP server — hosted Streamable HTTP transport.
  *
- * Exposes the same tools as the stdio server (nanotab_pay, nanotab_price)
+ * Exposes the same tools as the stdio server (nanotab_pay, nanotab_price, nanotab_search)
  * over MCP Streamable HTTP at POST /mcp (stateless: one transport per request).
  *
  * Wallet key resolution per request (first match wins):
@@ -66,6 +66,28 @@ function buildServer(): McpServer {
     }
   );
 
+  server.tool(
+    'nanotab_search',
+    'Search NanoTab hosted paywalled listings (title scan over marketplace.json). Returns matching listings with URL, price, mime.',
+    { query: z.string().min(1) },
+    async ({ query }) => {
+      try {
+        const mp = process.env.NANOTAB_MARKETPLACE_URL ?? 'https://nanotab-publish.growingmoneytrees.workers.dev/v1/marketplace.json';
+        const res = await fetch(mp);
+        if (!res.ok) throw new Error(`marketplace HTTP ${res.status}`);
+        const items = (await res.json()) as Array<{ url: string; title: string; price_usd: string; mime: string }>;
+        const q = query.toLowerCase();
+        const hits = items.filter((i) => i.title?.toLowerCase().includes(q)).slice(0, 20);
+        const text = hits.length
+          ? hits.map((h) => `${h.title} — $${h.price_usd} — ${h.url} (${h.mime})`).join('\n')
+          : `no listings match "${query}" (${items.length} total)`;
+        return { content: [{ type: 'text' as const, text }] };
+      } catch (err: any) {
+        return { content: [{ type: 'text' as const, text: `nanotab_search error: ${err?.message ?? err}` }], isError: true };
+      }
+    }
+  );
+
   return server;
 }
 
@@ -99,7 +121,7 @@ app.get('/.well-known/mcp/server-card.json', (_req, res) => {
     description: 'NanoTab MCP server — pay-per-fetch web content via USDC on Base (x402)',
     transport: 'streamable-http',
     endpoint: 'https://mcp.nanotab.dev/mcp',
-    tools: ['nanotab_pay', 'nanotab_price'],
+    tools: ['nanotab_pay', 'nanotab_price', 'nanotab_search'],
     auth: 'per-request wallet key via Authorization: Bearer <key> (optional; server default applies otherwise)',
     homepage: 'https://nanotab.dev',
     repository: 'https://github.com/HectorTries/nanotab',

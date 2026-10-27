@@ -6,6 +6,30 @@ import { nanotabFetch } from '@nanotab/agent-sdk';
 
 const server = new McpServer({ name: 'nanotab', version: '0.1.0' });
 
+const MARKETPLACE_URL =
+  process.env.NANOTAB_MARKETPLACE_URL ?? 'https://nanotab-publish.growingmoneytrees.workers.dev/v1/marketplace.json';
+
+server.tool(
+  'nanotab_search',
+  'Search NanoTab hosted paywalled listings (title scan over marketplace.json). Returns matching listings with URL, price, mime.',
+  { query: z.string().min(1).describe('Keyword to match against listing titles') },
+  async ({ query }) => {
+    try {
+      const res = await fetch(MARKETPLACE_URL);
+      if (!res.ok) throw new Error(`marketplace HTTP ${res.status}`);
+      const items = (await res.json()) as Array<{ url: string; title: string; price_usd: string; mime: string; merchant: string }>;
+      const q = query.toLowerCase();
+      const hits = items.filter((i) => i.title?.toLowerCase().includes(q)).slice(0, 20);
+      const text = hits.length
+        ? hits.map((h) => `${h.title} — $${h.price_usd} — ${h.url} (${h.mime})`).join('\n')
+        : `no listings match "${query}" (${items.length} total)`;
+      return { content: [{ type: 'text' as const, text }] };
+    } catch (err: any) {
+      return { content: [{ type: 'text' as const, text: `nanotab_search error: ${err?.message ?? err}` }], isError: true };
+    }
+  }
+);
+
 server.tool(
   'nanotab_pay',
   'Fetch a URL, paying any HTTP 402 price (USDC on Base) up to maxAmount USD. Returns the paid content.',

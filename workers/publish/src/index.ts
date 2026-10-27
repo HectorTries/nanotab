@@ -34,7 +34,8 @@ declare global {
   interface KVNamespace {
     get(key: string): Promise<string | null>;
     get(key: string, type: 'json'): Promise<any>;
-    put(key: string, value: string): Promise<void>;
+    put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
+    delete(key: string): Promise<void>;
     list(opts?: { prefix?: string }): Promise<{ keys: { name: string }[] }>;
   }
   interface R2Object {
@@ -44,6 +45,7 @@ declare global {
   interface R2Bucket {
     get(key: string): Promise<R2Object | null>;
     put(key: string, value: ArrayBuffer | Uint8Array): Promise<unknown>;
+    delete(key: string): Promise<void>;
   }
   interface ExecutionContext {
     waitUntil(promise: Promise<unknown>): void;
@@ -52,7 +54,9 @@ declare global {
 export {};
 
 interface Env {
-  PUBLISH_KEY?: string; // shared-secret stub (wrangler secret ONLY) — real magic-link later
+  PUBLISH_KEY?: string; // legacy shared-secret stub (wrangler secret ONLY) — magic-link preferred
+  RESEND_API_KEY?: string; // Resend key for magic-link emails (wrangler secret ONLY); unset → /v1/auth/request returns the link (dev mode)
+  AUTH_FROM?: string; // sender, e.g. "NanoTab <hello@nanotab.dev>" (default)
   NANOTAB_FEE_BPS?: string; // e.g. "200" = 2% (default 200)
   MAX_PRICE_CENTS?: string; // publish price cap (default "10000" = $100)
   BASE_RPC_URL?: string; // optional custom Base RPC
@@ -72,6 +76,7 @@ interface Listing {
   created_at: string;
   paid_calls: number;
   source: 'paste';
+  owner?: string; // sha256hex(owner email); absent = legacy key-published
 }
 
 const MIME_ALLOWLIST = [
@@ -97,12 +102,12 @@ class HttpErr extends Error {
   }
 }
 
-// --- storage helpers (real bindings only; missing → 500, no fallback) ---
-function needStores(env: Env): { kv: KVNamespace; r2: R2Bucket } {
-  if (!env.NANOTAB_LISTINGS || !env.NANOTAB_CONTENT) {
-    throw new HttpErr(500, 'publish misconfigured: missing NANOTAB_LISTINGS KV or nanotab-content R2 binding');
+// --- storage helpers (KV required; R2 optional — KV `rb:<slug>` backs bytes until R2 is enabled) ---
+function needStores(env: Env): { kv: KVNamespace; r2: R2Bucket | null } {
+  if (!env.NANOTAB_LISTINGS) {
+    throw new HttpErr(500, 'publish misconfigured: missing NANOTAB_LISTINGS KV binding');
   }
-  return { kv: env.NANOTAB_LISTINGS, r2: env.NANOTAB_CONTENT };
+  return { kv: env.NANOTAB_LISTINGS, r2: env.NANOTAB_CONTENT ?? null };
 }
 
 function needKv(env: Env): KVNamespace {
@@ -120,12 +125,23 @@ async function putListing(kv: KVNamespace, listing: Listing): Promise<void> {
   await kv.put(`r:${listing.slug}`, JSON.stringify(listing));
 }
 
-async function getBytes(r2: R2Bucket, key: string): Promise<R2Object | null> {
-  return r2.get(key).catch(() => null);
+async function getBytes(kv: KVNamespace, r2: R2Bucket | null, listing: Listing): Promise<{ body: ReadableStream } | null> {
+  if (r2) {
+    const obj = await r2.get(listing.r2_key).catch(() => null);
+    if (obj) return obj;
+  }
+  const b64 = await kv.get(`rb:${listing.slug}`).catch(() => null);
+  if (!b64) return null;
+  const bytes = b64ToBytes(b64 as string);
+  return { body: new Blob([bytes as unknown as BlobPart], { type: listing.mime }).stream() };
 }
 
-async function putBytes(r2: R2Bucket, key: string, bytes: Uint8Array): Promise<void> {
-  await r2.put(key, bytes);
+async function putBytes(kv: KVNamespace, r2: R2Bucket | null, listing: Listing, bytes: Uint8Array, b64: string): Promise<void> {
+  if (r2) {
+    try { await r2.put(listing.r2_key, bytes); return; }
+    catch { /* R2 write failed → KV fallback */ }
+  }
+  await kv.put(`rb:${listing.slug}`, b64);
 }
 
 async function kvIncr(kv: KVNamespace, key: string, by: number): Promise<void> {
@@ -194,14 +210,94 @@ function listing402Body(reqUrl: string, l: Listing, feeBps: number, feeTo: strin
   };
 }
 
+// --- auth: magic-link (POST /v1/auth/request {email} → link; GET /v1/auth/verify?token= → session) ---
+// Session: KV `sess:<token>` = {email, exp}; cookie `nt_sess` httpOnly.
+// Owner id stored on listings = sha256hex(lower(email)). Publish accepts session OR legacy X-Nanotab-Key.
+// Email send via Resend (RESEND_API_KEY secret); if unset, /v1/auth/request returns {link} directly (dev mode).
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,253}\.[^\s@]{2,}$/;
+const AUTH_TOKEN_TTL = 15 * 60; // 15 min
+const SESS_TTL = 30 * 24 * 3600; // 30 days
+
+function randToken(n = 32): string {
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return [...b].map((x) => x.toString(16).padStart(2, '0')).join('').slice(0, n * 2);
+}
+
+async function ownerOf(email: string): Promise<string> {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.trim().toLowerCase()));
+  return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function sessionEmail(req: Request, env: Env): Promise<string | null> {
+  const kv = needKv(env);
+  const m = req.headers.get('cookie')?.match(/(?:^|;\s*)nt_sess=([0-9a-f]{64})/);
+  const hdr = req.headers.get('authorization');
+  const bearer = hdr?.toLowerCase().startsWith('bearer ') ? hdr.slice(7).trim() : '';
+  const tok = m?.[1] || (/^[0-9a-f]{64}$/.test(bearer) ? bearer : '');
+  if (!tok) return null;
+  const s = (await kv.get(`sess:${tok}`, 'json').catch(() => null)) as { email: string; exp: number } | null;
+  if (!s?.email || Date.now() > (s.exp ?? 0)) return null;
+  return s.email;
+}
+
+async function sendMagicLink(env: Env, email: string, link: string): Promise<{ emailed: boolean }> {
+  if (!env.RESEND_API_KEY) return { emailed: false };
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      from: env.AUTH_FROM ?? 'NanoTab <hello@nanotab.dev>',
+      to: [email],
+      subject: 'Sign in to NanoTab',
+      text: `Sign in to NanoTab publish:\n\n${link}\n\nExpires in 15 minutes.`,
+    }),
+  });
+  if (!r.ok) throw new HttpErr(502, `email send failed (${r.status})`);
+  return { emailed: true };
+}
+
+async function handleAuthRequest(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  let body: any;
+  try { body = await req.json(); } catch { throw new HttpErr(400, 'invalid JSON body'); }
+  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
+  if (!EMAIL_RE.test(email)) throw new HttpErr(400, 'invalid email');
+  const token = randToken(32);
+  await kv.put(`auth:${token}`, JSON.stringify({ email, exp: Date.now() + AUTH_TOKEN_TTL * 1000 }), { expirationTtl: AUTH_TOKEN_TTL });
+  const origin = new URL(req.url).origin;
+  const link = `${origin}/v1/auth/verify?token=${token}`;
+  const { emailed } = await sendMagicLink(env, email, link);
+  console.log(`[nanotab-publish] magic-link requested for ${email} (emailed=${emailed})`);
+  return Response.json(emailed ? { ok: true, emailed: true } : { ok: true, emailed: false, link });
+}
+
+async function handleAuthVerify(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  const token = new URL(req.url).searchParams.get('token') ?? '';
+  if (!/^[0-9a-f]{64}$/.test(token)) throw new HttpErr(400, 'invalid token');
+  const a = (await kv.get(`auth:${token}`, 'json').catch(() => null)) as { email: string; exp: number } | null;
+  if (!a?.email || Date.now() > (a.exp ?? 0)) throw new HttpErr(401, 'expired or invalid token');
+  await kv.delete(`auth:${token}`).catch(() => {});
+  const sess = randToken(32);
+  await kv.put(`sess:${sess}`, JSON.stringify({ email: a.email, exp: Date.now() + SESS_TTL * 1000 }), { expirationTtl: SESS_TTL });
+  const res = Response.json({ ok: true, email: a.email });
+  res.headers.set('set-cookie', `nt_sess=${sess}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESS_TTL}`);
+  return res;
+}
+
 // --- POST /v1/publish ---
 async function handlePublish(req: Request, env: Env): Promise<Response> {
   const { kv, r2 } = needStores(env);
-  if (!env.PUBLISH_KEY) {
-    throw new HttpErr(500, 'publish misconfigured: PUBLISH_KEY not set');
-  }
-  if (req.headers.get('X-Nanotab-Key') !== env.PUBLISH_KEY) {
-    throw new HttpErr(401, 'unauthorized (bad X-Nanotab-Key)');
+  // Auth: magic-link session (preferred) OR legacy X-Nanotab-Key stub.
+  let owner: string | undefined;
+  const sessEmail = await sessionEmail(req, env).catch(() => null);
+  if (sessEmail) {
+    owner = await ownerOf(sessEmail);
+  } else if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) {
+    owner = undefined; // legacy key publish (no owner)
+  } else {
+    throw new HttpErr(401, 'unauthorized (sign in via POST /v1/auth/request, or bad X-Nanotab-Key)');
   }
   let body: any;
   try {
@@ -255,8 +351,9 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     created_at: new Date().toISOString(),
     paid_calls: 0,
     source: 'paste',
+    ...(owner ? { owner } : {}),
   };
-  await putBytes(r2, listing.r2_key, bytes);
+  await putBytes(kv, r2, listing, bytes, body.body_b64);
   await putListing(kv, listing);
 
   const origin = new URL(req.url).origin;
@@ -345,7 +442,7 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
     );
   }
 
-  const obj = await getBytes(r2, listing.r2_key);
+  const obj = await getBytes(kv, r2, listing);
   if (!obj) throw new HttpErr(500, 'listing bytes missing (inconsistent state)');
 
   // Paid-call accounting: per-listing paid_calls + listing:<slug> counter.
@@ -382,8 +479,7 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
 async function handleMarketplace(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
   const origin = new URL(req.url).origin;
-  const listed = await kv.list({ prefix: 'r:' }).catch(() => null);
-  const keys = (listed?.keys ?? []).map((k) => k.name);
+  const keys = await listRKeys(kv);
   const items = (
     await Promise.all(
       keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null)
@@ -421,6 +517,64 @@ async function handleStats(req: Request, env: Env): Promise<Response> {
     },
     { headers: { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=60' } }
   );
+}
+
+async function listRKeys(kv: KVNamespace): Promise<string[]> {
+  try {
+    const listed: any = await kv.list({ prefix: 'r:' });
+    const keys = (listed?.keys ?? []).map((k: any) => k.name);
+    if (keys.length || listed?.list_complete !== false) return keys;
+  } catch { /* fall through to paginated retry */ }
+  const out: string[] = [];
+  let cursor: string | undefined;
+  for (let i = 0; i < 5; i++) {
+    const page: any = await (kv as any).list({ prefix: 'r:', ...(cursor ? { cursor } : {}) }).catch(() => null);
+    if (!page?.keys?.length) break;
+    out.push(...page.keys.map((k: any) => k.name));
+    if (page.list_complete || !page.cursor) break;
+    cursor = page.cursor;
+  }
+  return [...new Set(out)];
+}
+async function handleOwnerListings(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  const email = await sessionEmail(req, env);
+  if (!email) throw new HttpErr(401, 'unauthorized (sign in first)');
+  const me = await ownerOf(email);
+  const origin = new URL(req.url).origin;
+  const keys = await listRKeys(kv);
+  const items = (
+    await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
+  )
+    .filter((l): l is Listing => !!l?.slug && l.owner === me)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+    .map((l) => ({
+      url: `${origin}/r/${l.slug}`,
+      slug: l.slug,
+      title: l.title,
+      price_usd: (Number(l.price_cents) / 100).toFixed(2),
+      mime: l.mime,
+      merchant: l.merchant_wallet,
+      paid_calls: l.paid_calls ?? 0,
+      created_at: l.created_at,
+    }));
+  return Response.json(items);
+}
+
+async function handleOwnerDelete(req: Request, env: Env, slug: string): Promise<Response> {
+  const { kv, r2 } = needStores(env);
+  const email = await sessionEmail(req, env);
+  if (!email) throw new HttpErr(401, 'unauthorized (sign in first)');
+  const me = await ownerOf(email);
+  const l = await getListing(kv, slug);
+  if (!l) throw new HttpErr(404, 'listing not found');
+  if (l.owner !== me) throw new HttpErr(403, 'forbidden (not your listing)');
+  if (r2) await r2.delete(l.r2_key).catch(() => {});
+  await kv.delete(`rb:${slug}`).catch(() => {});
+  await kv.delete(`r:${slug}`).catch(() => {});
+  await kv.delete(`listing:${slug}`).catch(() => {});
+  console.log(`[nanotab-publish] deleted ${slug} by ${email}`);
+  return Response.json({ ok: true, slug });
 }
 
 // --- GET /publish (static paste form; posts to /v1/publish, shows permalink + test-402 curl) ---
@@ -526,6 +680,22 @@ export default {
       }
       if (req.method === 'POST' && pathname === '/v1/publish') {
         return await handlePublish(req, env);
+      }
+      if (req.method === 'POST' && pathname === '/v1/auth/request') {
+        return await handleAuthRequest(req, env);
+      }
+      if (req.method === 'GET' && pathname === '/v1/auth/verify') {
+        return await handleAuthVerify(req, env);
+      }
+      if (req.method === 'GET' && pathname === '/v1/listings') {
+        return await handleOwnerListings(req, env);
+      }
+      if (req.method === 'DELETE' && pathname.startsWith('/v1/listings/')) {
+        const slug = pathname.slice('/v1/listings/'.length);
+        if (!/^[A-Za-z0-9]{10}$/.test(slug)) {
+          return Response.json({ error: 'listing not found' }, { status: 404 });
+        }
+        return await handleOwnerDelete(req, env, slug);
       }
       if (req.method === 'GET' && pathname.startsWith('/r/')) {
         const slug = pathname.slice('/r/'.length);
