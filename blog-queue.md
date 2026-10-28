@@ -7,7 +7,7 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-coinbase-x402 (published 2026-10-21)
 - [x] nanotab-vs-stripe-agent-toolkit (published 2026-10-23)
 - [x] nanotab-vs-nevermined (published 2026-10-26)
-- [ ] nanotab-vs-circle-wallets
+- [x] nanotab-vs-circle-wallets (published 2026-10-28)
 - [ ] nanotab-vs-payman
 - [ ] nanotab-vs-request-network
 - [ ] nanotab-vs-biconomy

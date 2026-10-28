@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs Circle Wallets: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs Circle Wallets compared for 2026: wallet infrastructure vs payment layer, per-call paywalls, fees, setup complexity, and who each is for. Direct answer for agent developers.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs Circle Wallets: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">28 October 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or Circle Wallets for AI agent payments?</strong> If you want agents to pay for your API per call with zero wallet plumbing, use NanoTab. If you're building an app where users (human or agent) need embedded wallets with MPC security and gas abstraction, use Circle Wallets — and you can still put NanoTab in front of your API for the payment layer.</p>
+
+<p>This comparison is slightly different from the others in this series, because NanoTab and Circle Wallets solve different halves of the same problem. Circle (the issuer of USDC) provides wallet infrastructure: APIs and SDKs to create programmable wallets inside your app, with multi-party computation (MPC) security, social login, gas abstraction via Gas Station, and compliance controls. NanoTab is a payment layer: wrap any HTTP endpoint so agents pay USDC per call on Base via the x402 protocol. They overlap at the edges but are genuinely complementary. Here's the honest breakdown.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>Circle Wallets</th></tr>
+<tr><td><strong>What it is</strong></td><td>Per-call payment layer (x402 paywall)</td><td>Wallet infrastructure (wallets-as-a-service)</td></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>API usage pricing (free tier + usage-based); no per-payment cut</td></tr>
+<tr><td><strong>Model</strong></td><td>Open-source, self-hostable (MIT)</td><td>Proprietary SaaS APIs + SDKs</td></tr>
+<tr><td><strong>Settlement</strong></td><td>USDC on Base</td><td>Multi-chain: USDC across supported networks</td></tr>
+<tr><td><strong>KYC / identity</strong></td><td>None — wallet-to-wallet</td><td>Configurable compliance engine + screening</td></tr>
+<tr><td><strong>Setup time</strong></td><td>Minutes (one prompt / one config)</td><td>Hours (console signup, API keys, SDK integration)</td></tr>
+<tr><td><strong>MCP-native?</strong></td><td>Yes — MCP server included</td><td>No — REST APIs + mobile/web SDKs</td></tr>
+<tr><td><strong>Best for</strong></td><td>Charging agents per API call</td><td>Embedding wallets in your app</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early (live on Base mainnet, 2026)</td><td>Grown (live since 2023, backed by USDC issuer)</td></tr>
+</table>
+
+<h2>Different layers: wallets vs paywalls</h2>
+<p>The cleanest way to think about it: Circle Wallets answers "how do my users hold and move crypto without managing seed phrases?" NanoTab answers "how do I charge an agent $0.05 every time it calls my endpoint?" A complete agentic commerce product often needs both — wallets for the buyer's funds, a paywall for the seller's pricing.</p>
+<p>Circle gives you programmable wallets with MPC key management (keys split so no single party holds the full secret), familiar login methods instead of seed phrases, and Gas Station to sponsor transaction fees so users don't need native tokens. That's infrastructure you build on. NanoTab gives you the x402 HTTP-402 flow: the agent hits your endpoint, gets a payment challenge, pays USDC on Base, retries with proof, gets the response. That's monetisation you switch on.</p>
+
+<h2>Fees: different things being priced</h2>
+<p>NanoTab takes a cut of each payment: 0.1% self-hosted, 2% through the managed gateway. On a $0.05 API call, self-hosted costs you a fraction of a cent. Circle Wallets charges for API usage (with a free tier, then usage-based pricing) — it doesn't take a percentage of the money moving through the wallets. If you're moving large volumes through embedded wallets, Circle's model is attractive. If you're selling cheap API calls, NanoTab's 0.1% is near-invisible.</p>
+<p>Neither is expensive for what it does. The real cost comparison is build time: wiring Circle's wallet APIs plus your own metering, billing, and paywall logic is days of engineering. NanoTab's paywall is one config. If you need wallets anyway, that engineering is justified. If you only need to charge per call, it's not.</p>
+
+<h2>Setup complexity: one config vs an integration</h2>
+<p>NanoTab's pitch remains the fastest in this series: point it at your HTTP endpoint and you're charging agents this afternoon. No signup, no API keys, no console. Circle requires a console account, API key management, SDK integration into your app (web, iOS, Android), and decisions about wallet sets, entity configuration, and compliance rules. That's hours of focused work for an experienced developer — reasonable for wallet infrastructure, overkill if all you want is a paywall.</p>
+
+<h2>Chains and stablecoin reach</h2>
+<p>Circle's strength is breadth: programmable wallets across multiple chains, all denominated in the USDC that Circle itself issues. If your users are on Ethereum, Solana, Avalanche, or Base, Circle meets them there. Multichain support plus Gas Station (sponsored gas) makes for genuinely smooth UX.</p>
+<p>NanoTab is deliberately narrow: USDC on Base only, via x402. One chain, one asset, sub-second settlement, zero gas for the seller. If your agent buyers hold USDC on Base (the default for most agent wallets in 2026), it's frictionless. If they're elsewhere, Circle's breadth wins.</p>
+
+<h2>Compliance and trust: Circle wins clearly</h2>
+<p>Circle is a regulated US money transmitter and the USDC issuer — its Wallets product ships with a compliance engine (transaction screening, travel-rule support, configurable policies) that enterprises and fintechs require. If your legal team asks about sanctions screening on wallet flows, Circle has an answer. NanoTab is wallet-to-wallet with an opt-in advisory risk score — fine for indie APIs, insufficient for regulated money movement.</p>
+
+<h2>MCP and agent-framework fit</h2>
+<p>NanoTab ships an MCP server: any MCP-compatible agent can discover and pay for your endpoint through standard tool calls. Circle Wallets is REST APIs and SDKs — your backend calls Circle to create wallets and move funds, but there's no agent-native discovery layer. If the buyer is an autonomous agent finding services on its own, NanoTab's MCP surface is the difference between "works automatically" and "needs custom integration per service."</p>
+
+<h2>Verdict: different jobs, natural stack</h2>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> you want to charge AI agents per API call; you want it live today with near-zero fees; your buyers hold USDC on Base; you value open-source and self-hosting.</p>
+<p><strong>Use Circle Wallets if:</strong> you're building an app that needs embedded wallets; you want MPC security, social login, and gas abstraction; you need multi-chain USDC; compliance tooling matters to you.</p>
+<p><strong>Use both if:</strong> you're building an agent-facing product — Circle Wallets to give your users (or sub-agents) managed wallets, NanoTab to meter and monetise your API per call. Wallet infra plus payment layer is the full stack.</p>
+</div>
+
+<p>The agentic-payments space is early enough that "which platform" matters less than "are you charging agents at all." Pick the layer you need, ship it, iterate. (As of October 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>
