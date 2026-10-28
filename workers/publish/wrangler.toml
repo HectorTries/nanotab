@@ -16,14 +16,11 @@ MAX_PRICE_CENTS = "10000"
 NETWORK = "base"
 ASSET = "0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5"
 
-# R2 bucket nanotab-content: NOT YET — account needs R2 enabled via dashboard
-# (code 10042). Bytes live in KV `rb:<slug>` until then; R2 binding is
-# optional and auto-used when enabled. To finish R2: enable R2 in the
-# Cloudflare dashboard, then `wrangler r2 bucket create nanotab-content`
-# and uncomment below.
-# [[r2_buckets]]
-# binding = "NANOTAB_CONTENT"
-# bucket_name = "nanotab-content"
+# R2 bucket nanotab-content: bytes live here (key `r/<slug>`); KV `rb:<slug>`
+# is the automatic fallback when the binding is absent or a write fails.
+[[r2_buckets]]
+binding = "NANOTAB_CONTENT"
+bucket_name = "nanotab-content"
 
 [[kv_namespaces]]
 binding = "NANOTAB_LISTINGS"
