@@ -22,12 +22,13 @@ export interface VerifyBuyerTxOpts {
 }
 
 /**
- * Buyer-UserOp confirmation: fetch the tx receipt and verify it holds EXACTLY
+ * Buyer-UserOp confirmation: fetch the tx receipt and verify it CONTAINS
  * the atomic fee-split legs from the USDC contract —
  *   transfer(payer → merchantWallet, netUnits)
  *   transfer(payer → feeTo, feeUnits)
- * with status=success. Extra USDC transfers in the same tx → reject (keeps
- * the "exact legs" invariant tight). Returns the payer address.
+ * with status=success. Extra USDC legs (e.g. Circle-paymaster gas
+ * pull/refund: 4-leg receipts) are IGNORED — contains-check, not
+ * exact-count. Returns the payer address.
  */
 export async function verifyBuyerTx(opts: VerifyBuyerTxOpts): Promise<{ payer: string }> {
   const {
@@ -53,28 +54,48 @@ export async function verifyBuyerTx(opts: VerifyBuyerTxOpts): Promise<{ payer: s
   );
   const merchantLc = merchantWallet.toLowerCase();
   const feeLc = feeTo.toLowerCase();
-  // Mandatory split: EXACTLY 2 legs [merchant-net, fee→protocol wallet].
-  // No single-transfer bypass.
-  if (legs.length !== 2) {
-    throw new Error(`tx must contain exactly 2 USDC transfers (got ${legs.length})`);
+  // Mandatory split: legs must CONTAIN [merchant-net, fee→protocol wallet]
+  // from the same payer. Extra USDC legs (paymaster gas pull/refund etc.)
+  // are ignored. No single-transfer bypass.
+  if (legs.length < 2) {
+    throw new Error(`tx must contain at least 2 USDC transfers (got ${legs.length})`);
   }
-  const seen = new Map<string, bigint>();
-  let payer: string | null = null;
+  const seen = new Map<string, Map<string, bigint>>(); // to -> (from -> total)
   for (const l of legs) {
     const from = topicToAddress(l.topics[1] as Hex).toLowerCase();
     const to = topicToAddress(l.topics[2] as Hex).toLowerCase();
     const value = BigInt(l.data as Hex);
-    if (payer === null) payer = from;
-    else if (payer !== from) throw new Error('transfer legs have different senders');
-    seen.set(to, (seen.get(to) ?? 0n) + value);
+    let m = seen.get(to);
+    if (!m) { m = new Map(); seen.set(to, m); }
+    m.set(from, (m.get(from) ?? 0n) + value);
   }
-  const gotNet = seen.get(merchantLc);
-  const gotFee = seen.get(feeLc);
-  if (gotNet !== netUnits) {
-    throw new Error(`merchant leg wrong (need ${netUnits} units to ${merchantWallet}, got ${gotNet ?? 'missing'})`);
+  // Find a single payer whose legs contain BOTH merchant-net and fee.
+  // Edge case: merchantWallet == feeTo (same recipient) → require the
+  // payer's combined total to that address to equal gross (net+fee).
+  const feeMap = seen.get(feeLc);
+  const netMap = seen.get(merchantLc);
+  let payer: string | null = null;
+  if (merchantLc === feeLc) {
+    const m = netMap;
+    if (m) {
+      for (const [from, total] of m) {
+        if (total === netUnits + feeUnits) { payer = from; break; }
+      }
+    }
+  } else if (feeMap && netMap) {
+    for (const [from, feeAmt] of feeMap) {
+      if (feeAmt === feeUnits && (netMap.get(from) ?? 0n) === netUnits) {
+        payer = from;
+        break;
+      }
+    }
   }
-  if (gotFee !== feeUnits) {
-    throw new Error(`fee leg wrong (need ${feeUnits} units to ${feeTo}, got ${gotFee ?? 'missing'})`);
+  if (!payer) {
+    const gotNet = netMap ? [...netMap.entries()].map(([f, v]) => `${f}:${v}`).join(',') : 'missing';
+    const gotFee = feeMap ? [...feeMap.entries()].map(([f, v]) => `${f}:${v}`).join(',') : 'missing';
+    throw new Error(
+      `fee-split legs not found from one payer (need ${netUnits} to ${merchantWallet} + ${feeUnits} to ${feeTo}; got net[${gotNet}] fee[${gotFee}])`,
+    );
   }
-  return { payer: payer as string };
+  return { payer };
 }

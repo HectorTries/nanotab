@@ -49,6 +49,6 @@ Caps total spend and per-call spend for the agent.
 ## Reference
 
 - Gateway: `https://gateway.nanotab.dev`
-- Chain: Base mainnet (8453) · USDC `0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5`
+- Chain: Base mainnet (8453) · USDC `0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913`
 - Fee: 0.1% self-host (10 bps) · 2% managed gateway (200 bps), atomic · Minimum: 1¢ · No ETH required
 - Integration guide: https://nanotab.dev/agents.html

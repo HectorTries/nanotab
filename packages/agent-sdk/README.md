@@ -1,6 +1,6 @@
 # @nanotab/agent-sdk
 
-Agent-side client for x402-style 402 payments. **Real signing: viem EIP-191 on Base mainnet, USDC `0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5`.**
+Agent-side client for x402-style 402 payments. **Real signing: viem EIP-191 on Base mainnet, USDC `0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913`.**
 
 ## Quickstart
 

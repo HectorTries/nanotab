@@ -5,7 +5,7 @@ const PUB = process.env.PUBLISH_URL || 'http://localhost:8788';
 const KEY = process.env.PUBLISH_KEY;
 const MERCHANT = '0x2222222222222222222222222222222222222222';
 const PROTOCOL = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
-const USDC = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
+const USDC = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
 
 if (!KEY) {
   console.log('FAIL need PUBLISH_KEY env (the --var value passed to wrangler dev)');

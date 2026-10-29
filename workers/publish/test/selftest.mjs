@@ -4,7 +4,7 @@ import worker from '../src/index.ts';
 import { splitPaymentMessage } from '../../../packages/x402-verify/src/index.ts';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
-const USDC = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
+const USDC = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
 const WALLET = '0xb157000000000000000000000000000000000001';
 const SECRET = 'test-secret-123';
 

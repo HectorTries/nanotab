@@ -3,7 +3,7 @@
 Agent-side wallet + merchant middleware + Cloudflare gateway for x402-style HTTP 402 payments in **real USDC on Base mainnet**. Our fee: **0.1% self-host** (10 bps, merchant middleware) · **2% managed gateway** (200 bps).
 
 - Chain: Base mainnet (chain id 8453)
-- Asset: USDC `0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5`
+- Asset: USDC `0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913`
 - Signing: viem EIP-191 (`nanotab-x402|network=base|to=…|amountCents=…|asset=…`), verifiable for EOAs and (via EIP-1271) Coinbase Smart Wallet owner keys
 - Verify: gateway checks amount ≥ price, `to` == `MERCHANT_WALLET`, USDC-on-Base asset, and recovers the signature to `from`; underpays/wrong-asset/bad-sig → 402
 

@@ -12,7 +12,7 @@
 export const NANOTAB_PROTOCOL_WALLET = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
 export const PROTOCOL_FEE_BPS = 200; // 2% managed-gateway fee, non-optional (self-host middleware: 10 = 0.1%)
 
-export const USDC_BASE_MAINNET = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
+export const USDC_BASE_MAINNET = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
 export const NANOTAB_NETWORK = 'base';
 export const USDC_DECIMALS = 6;
 export const NANOTAB_NETWORK_CAIP2 = 'eip155:8453'; // Base mainnet (x402 v2 CAIP-2)

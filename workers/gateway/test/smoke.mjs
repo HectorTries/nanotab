@@ -26,7 +26,7 @@ import {
 
 const GW = process.env.GW_URL || 'http://localhost:8787';
 const WALLET = process.env.MERCHANT_WALLET || '0xMERCHANT00000000000000000000000000000001';
-const USDC = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
+const USDC = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
 
 const j = async (r) => ({ status: r.status, body: await r.text() });
 let fail = 0;

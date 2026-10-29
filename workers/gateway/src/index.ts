@@ -1,7 +1,7 @@
 // NanoTab gateway worker — paywalls ANY origin API with x402-style 402s.
 // Zero code changes on merchant side: proxy + 402 challenge + REAL verify.
 //
-// Mainnet flow (Base, USDC 0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5):
+// Mainnet flow (Base, USDC 0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913):
 //  1. No X-Payment → 402 challenge (network=base, payTo=MERCHANT_WALLET).
 //  2. With X-Payment carrying txHash → gateway fetches the tx receipt via a
 //     Base public client and verifies it contains EXACTLY the atomic legs

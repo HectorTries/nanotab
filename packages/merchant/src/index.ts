@@ -4,7 +4,7 @@ export const NANOTAB_FEE_BPS = 10; // 0.1% self-host tier, non-optional
 /** Hardcoded NanoTab protocol fee recipient — self-hosted clones pay Hector. */
 export const NANOTAB_PROTOCOL_WALLET = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
 export const PROTOCOL_FEE_BPS = 10; // 0.1% self-host tier, non-optional
-export const USDC_BASE = '0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5';
+export const USDC_BASE = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
 export const NETWORK = 'base';
 /** USDC base units (6 decimals) of the protocol fee on a gross-in-cents amount. */
 export function protocolFeeUnits(amountCents: string): bigint {
