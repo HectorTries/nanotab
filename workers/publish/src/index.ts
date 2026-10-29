@@ -27,6 +27,7 @@ import {
   verifyPayment,
   type PaymentProof,
 } from '../../../packages/x402-verify/src/index.ts';
+import { landingHtml } from './landing.ts';
 
 // Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
 // wrangler/workerd provide the real globals at runtime).
@@ -666,6 +667,15 @@ export default {
     try {
       const pathname = new URL(req.url).pathname;
 
+      if (req.method === 'GET' && (pathname === '/' || pathname === '/app')) {
+        return new Response(landingHtml(), {
+          headers: {
+            'content-type': 'text/html; charset=utf-8',
+            'x-content-type-options': 'nosniff',
+            'cache-control': 'public, max-age=300',
+          },
+        });
+      }
       if (req.method === 'GET' && pathname === '/.well-known/x402') {
         return handleWellKnown(req, env);
       }
