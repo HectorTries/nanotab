@@ -114,15 +114,18 @@ restoreDraft();
 function unlockForm(){$('pub-fields').classList.remove('locked');$('pub-lock').classList.add('hidden')}
 function lockForm(){$('pub-fields').classList.add('locked');$('pub-lock').classList.remove('hidden')}
 async function requestLink(){
- var email=$('email').value.trim();if(!email)return;
+ try{
+ var em=$('email');var email=(em&&em.value||'').trim();var box=$('login-msg');if(box)box.classList.remove('hidden');
+ if(!email){if(box)box.textContent='enter your email above first.';return;}
  saveDraft();
- $('btn-login').disabled=true;$('login-msg').classList.remove('hidden');
- $('login-msg').textContent='sending...';
+ $('btn-login').disabled=true;
+ if(box)box.textContent='sending...';
  var r=await api('/v1/auth/request',{method:'POST',body:JSON.stringify({email:email})});
  $('btn-login').disabled=false;
  if(!r.ok){$('login-msg').textContent='error: '+((r.j&&r.j.error)||r.st);return}
  if(r.j.emailed){$('login-msg').textContent='\u2709\uFE0F check your inbox \u2014 link expires in 15 min. Your draft is saved and will be here after you sign in.'}
  else{$('login-msg').innerHTML='<b>\u26a0\uFE0F dev mode: email not configured \u2014 click to sign in:</b><br><a href="'+r.j.link+'">'+r.j.link+'</a><br><span style="color:var(--mut)">Your draft is saved and will be restored after login.</span>'}
+ }catch(e){try{$('btn-login').disabled=false;var b2=$('login-msg');if(b2){b2.classList.remove('hidden');b2.textContent='error: '+(e&&e.message||e)}}catch(_){}}
 }
 async function checkSession(){
  var r=await api('/v1/listings');
