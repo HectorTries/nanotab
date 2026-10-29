@@ -282,7 +282,7 @@ async function handleAuthVerify(req: Request, env: Env): Promise<Response> {
   await kv.delete(`auth:${token}`).catch(() => {});
   const sess = randToken(32);
   await kv.put(`sess:${sess}`, JSON.stringify({ email: a.email, exp: Date.now() + SESS_TTL * 1000 }), { expirationTtl: SESS_TTL });
-  const res = Response.json({ ok: true, email: a.email });
+  const res = Response.redirect(new URL('/', req.url).toString(), 302);
   res.headers.set('set-cookie', `nt_sess=${sess}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESS_TTL}`);
   return res;
 }
