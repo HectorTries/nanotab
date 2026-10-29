@@ -15,6 +15,7 @@ NANOTAB_FEE_BPS = "200"
 MAX_PRICE_CENTS = "10000"
 NETWORK = "base"
 ASSET = "0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5"
+AUTH_FROM = "NanoTab Pay <login@mail.nanotab.dev>"
 
 # R2 bucket nanotab-content: bytes live here (key `r/<slug>`); KV `rb:<slug>`
 # is the automatic fallback when the binding is absent or a write fails.
