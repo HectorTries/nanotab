@@ -129,13 +129,13 @@ async function requestLink(){
 }
 async function checkSession(){
  var r=await api('/v1/listings');
- if(r.ok){unlockForm();$('auth-out').classList.add('hidden');$('auth-in').classList.remove('hidden');$('dash-card').classList.remove('hidden');restoreDraft();renderDash(r.j)}
+ if(r.ok){unlockForm();$('auth-out').classList.add('hidden');$('auth-in').classList.remove('hidden');$('dash-card').classList.remove('hidden');restoreDraft();renderDash(r.j);try{var m=await api('/v1/me');if(m.ok&&m.j&&m.j.email){$('who').textContent=m.j.email}}catch(e){}}
  else{lockForm()}
 }
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function renderDash(items){
  if(!items.length){$('dash-list').innerHTML='<i>No links yet \u2014 publish your first above.</i>';return}
- $('dash-list').innerHTML=items.map(function(l){return '<div class="item"><div class="t">'+esc(l.title)+' \u2014 $'+l.price_usd+'</div><div class="m"><a href="'+l.url+'">'+l.url+'</a> \u00b7 '+l.paid_calls+' paid calls \u00b7 '+l.created_at.slice(0,10)+'</div><button class="ghost" onclick="copyL(\''+l.url+'\')">copy link</button><button class="ghost" onclick="delL(\''+l.slug+'\')">delete</button></div>'}).join('');
+ $('dash-list').innerHTML=items.map(function(l){return '<div class="item"><div class="t">'+esc(l.title)+' \u2014 $'+l.price_usd+'</div><div class="m"><a href="'+l.url+'">'+l.url+'</a> \u00b7 '+l.paid_calls+' paid calls \u00b7 '+l.created_at.slice(0,10)+'</div><button class="ghost" data-u="'+l.url+'" onclick="copyL(this.dataset.u)">copy link</button><button class="ghost" data-s="'+l.slug+'" onclick="delL(this.dataset.s)">delete</button></div>'}).join('');
 }
 async function refreshDash(){var r=await api('/v1/listings');if(r.ok)renderDash(r.j)}
 async function copyL(u){try{await navigator.clipboard.writeText(u);alert('copied')}catch(e){prompt('copy:',u)}}
@@ -150,7 +150,7 @@ async function publish(){
  $('btn-pub').disabled=false;
  if(!r.ok){if(r.st===401){lockForm();$('pub-out').innerHTML='<div class="out">session expired \u2014 sign in above first (your draft is saved).</div>';saveDraft()}else{$('pub-out').innerHTML='<div class="out">error '+((r.j&&r.j.error)||r.st)+'</div>'}return}
  clearDraft();
- $('pub-out').innerHTML='<div class="out">\u2705 live: <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" onclick="copyL(\''+r.j.url+'\')">copy link</button> <span style="color:var(--mut)">unpaid visits get 402 + x402 terms</span></div>';
+ $('pub-out').innerHTML='<div class="out">\u2705 live: <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">copy link</button> <span style="color:var(--mut)">unpaid visits get 402 + x402 terms</span></div>';
  refreshDash();
 }
 checkSession();

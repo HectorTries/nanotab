@@ -697,6 +697,11 @@ export default {
       if (req.method === 'GET' && pathname === '/v1/auth/verify') {
         return await handleAuthVerify(req, env);
       }
+      if (req.method === 'GET' && pathname === '/v1/me') {
+        const email = await sessionEmail(req, env);
+        if (!email) throw new HttpErr(401, 'unauthorized (sign in first)');
+        return Response.json({ email });
+      }
       if (req.method === 'GET' && pathname === '/v1/listings') {
         return await handleOwnerListings(req, env);
       }
