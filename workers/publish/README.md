@@ -12,12 +12,41 @@ the only semantic delta is per-listing merchant wallet + price from KV.
 
 ## Routes
 
-- `POST /v1/publish` — auth: `X-Nanotab-Key` must equal the `PUBLISH_KEY`
-  secret (**shared-secret stub**; real magic-link auth lands in step 4).
-  Body `{title, mime, price_cents (int 1–10000), merchant_wallet (0x…),
-  body_b64 (≤1MB decoded)}`. Mime allowlist: `text/plain`,
+Pages (Paywall Any Link is the leading product):
+
+- `GET /` — hero “Paywall Any Link in seconds” + step-flow: paste the
+  link → paste/upload the content → set the price → **Next** routes to
+  `/login`; after sign-in the saved draft publishes in one click.
+  Human links are live instantly.
+- `GET /login` — clean single-purpose magic-link sign-in (account
+  required to publish/collect earnings). `?next=` is a validated
+  same-site redirect carried through the email link.
+- `GET /developers` — demoted developer path (self-host, SDKs,
+  gateway, machine discovery, agentic submissions).
+- `GET /agent-auth` — daily authorization queue: the account owner
+  approves/rejects agent-submitted links (see below).
+- `GET /marketplace`, `GET /publish` (legacy API-key form).
+
+APIs:
+
+- `POST /v1/publish` — auth: magic-link session (primary) OR
+  `X-Nanotab-Key` = `PUBLISH_KEY` secret. Body `{title, mime,
+  price_cents (int 1–10000), merchant_wallet (0x…), body_b64 (≤1MB
+  decoded), source_url?}`. Mime allowlist: `text/plain`,
   `text/markdown`, `text/html`, `application/json`, `application/pdf`,
   `image/png`, `image/jpeg`. → `201 {url, slug, x402: {accepts}}`.
+- `POST /v1/agent/submit` — agent submissions, auth `X-Agent-Key` =
+  `AGENT_KEY` secret (unset = disabled, fail closed). Same body plus
+  `agent_name?`. Stores the listing as `status: "pending"` →
+  `202 {url, slug, status}`. Nothing publishes yet.
+- `GET /v1/agent/pending` / `POST /v1/agent/review {slug, action}` —
+  the review queue, owner-gated (session; `OWNER_EMAILS` comma
+  allowlist when set; publish key accepted for automation). Approve →
+  live with `created_by_agent` badge (“Created by agent” on the
+  paywall page + marketplace); reject → stays unpublished.
+  Pending links return `403` from `GET /r/:slug` (never 402 terms or
+  content, even with an `X-Payment` header); rejected read as `404`.
+  Marketplace + stats only count live listings.
 - `GET /r/:slug` — no `X-Payment` → 402 (same body shape as the gateway,
   per-listing `payTo`/`amount`); valid payment → R2 bytes with
   `content-type` + `nosniff` + `x-nanotab:*` headers. Buyer-tx verify
@@ -43,10 +72,12 @@ npx -y wrangler@3 dev --var PUBLISH_KEY:dev-secret   # :8788
 PUBLISH_URL=http://localhost:8788 PUBLISH_KEY=dev-secret npm test
 ```
 
-Real bindings (later, not now):
+Secrets (Cloudflare, never in repo):
 
 ```sh
-wrangler kv namespace create NANOTAB_LISTINGS
-wrangler r2 bucket create nanotab-content
-wrangler secret put PUBLISH_KEY
+wrangler secret put PUBLISH_KEY    # legacy publish/review automation
+wrangler secret put AGENT_KEY      # enables POST /v1/agent/submit
+wrangler secret put RESEND_API_KEY # magic-link email (unset = dev-mode link)
+# optional reviewer allowlist (wrangler.toml [vars] or secret):
+#   OWNER_EMAILS=hector@example.com (unset = any signed-in user may review)
 ```
