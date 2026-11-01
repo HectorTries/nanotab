@@ -4,12 +4,27 @@
 // discarded immediately after successful extraction — never persisted to KV or
 // R2, never served at a public URL. (Stated in /privacy.)
 //
-// Accepted inputs: PDF (text layer extracted via unpdf/pdfjs), .md/.markdown/
-// .txt (sanitised + normalised), pasted text (treated as markdown downstream).
+// Accepted inputs: PDF (text layer extracted via pdfjs-dist legacy build,
+// main-thread), .md/.markdown/.txt (sanitised + normalised), pasted text
+// (treated as markdown downstream).
 // DOCX is deliberately NOT accepted: zip-container parsing adds attack surface
 // for marginal gain — the caller is told to export to PDF or paste the text.
 
-import { extractText } from 'unpdf';
+// pdfjs-dist legacy build, main-thread only (Workers have no file-backed
+// workerSrc and no nested Worker): importing WorkerMessageHandler and
+// exposing it as globalThis.pdfjsWorker makes getDocument use the
+// main-thread message handler instead of spawning a worker.
+// Pinned to 4.0.379: newer pdfjs uses static class blocks that wrangler's
+// esbuild miscompiles (`this` → undefined class var at module eval).
+// (unpdf was tried first and fails the same way.)
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { WorkerMessageHandler } from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
+
+{
+  const g = globalThis as Record<string, { WorkerMessageHandler?: unknown } | undefined>;
+  g.pdfjsWorker ||= {};
+  (g.pdfjsWorker as { WorkerMessageHandler?: unknown }).WorkerMessageHandler ||= WorkerMessageHandler;
+}
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB per file
 export const MAX_EXTRACTED_CHARS = 200_000; // extracted-text ceiling (typical docs: 5-20 KB)
@@ -140,15 +155,36 @@ function hasBinaryBytes(bytes: Uint8Array): boolean {
 export interface PdfExtract { text: string; pages: number }
 
 export async function extractPdfText(pdfBytes: Uint8Array): Promise<PdfExtract> {
-  let res: { totalPages?: number; text?: unknown };
+  let doc: { numPages: number; getPage(n: number): Promise<{ getTextContent(): Promise<{ items: unknown[] }> }>; destroy(): Promise<void> };
   try {
-    res = await extractText(pdfBytes);
-  } catch {
+    const task = (pdfjs as any).getDocument({
+      data: new Uint8Array(pdfBytes),
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
+    });
+    doc = await task.promise;
+  } catch (e) {
+    // Log the cause server-side (sizes only, never content) for ops visibility.
+    console.log(`[nanotab-publish] pdf extract failed (${pdfBytes.length}B): ${(e as Error)?.message ?? e}`);
     throw new IngestError(400, 'Could not read that PDF — paste the text instead.');
   }
-  const pages = Array.isArray(res.text) ? res.text : typeof res.text === 'string' ? [res.text] : [];
-  const text = pages.map((p) => String(p ?? '').trim()).filter(Boolean).join('\n\n');
-  return { text, pages: typeof res.totalPages === 'number' ? res.totalPages : pages.length };
+  try {
+    const out: string[] = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      let s = '';
+      for (const it of tc.items as Array<{ str?: unknown; hasEOL?: boolean }>) {
+        if (typeof it?.str !== 'string') continue;
+        s += it.hasEOL ? `${it.str}\n` : it.str;
+      }
+      if (s.trim()) out.push(s.trim());
+    }
+    return { text: out.join('\n\n'), pages: doc.numPages };
+  } finally {
+    await doc.destroy().catch(() => {});
+  }
 }
 
 // Best-effort /Title from the PDF Info dict (literal or hex string, no deps).

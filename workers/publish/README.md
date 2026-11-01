@@ -61,7 +61,8 @@ APIs:
 
 - `POST /v1/ingest` — multipart `file` (PDF, .md/.markdown/.txt,
   ≤10MB). Extracts canonical markdown server-side (PDF text layer via
-  unpdf/pdfjs, `.md`/`.txt` sanitised + normalised) and returns
+  pdfjs-dist legacy build on the main thread, `.md`/`.txt` sanitised +
+  normalised) and returns
   `{markdown, title, chars, words, filename, pages?}`. NOTHING is
   persisted — the original bytes are discarded in-memory. Refuses
   politely: >200,000 extracted chars, executables/archives (magic-byte

@@ -13,7 +13,7 @@
     "wrangler": "^3.114.0"
   },
   "dependencies": {
-    "unpdf": "^2.1.0",
+    "pdfjs-dist": "4.0.379",
     "viem": "^2.57.7"
   }
 }
