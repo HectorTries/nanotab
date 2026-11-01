@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "node cli/test-protect.js"
+    "test": "node cli/test-protect.js",
+    "test:units": "node test/x402-amount.test.mjs"
   },
   "license": "MIT",
   "devDependencies": {

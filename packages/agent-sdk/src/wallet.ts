@@ -87,7 +87,7 @@ export interface SmartWallet {
   mockSign(msg: string): Promise<Hex>;
   getAddress(): Address;
   /** Build the X-Payment header value for a 402 retry. */
-  paymentHeader(args: { to: string; amountCents: string; asset?: string }): Promise<string>;
+  paymentHeader(args: { to: string; amountCents: string; asset?: string; feeBps?: number; feeTo?: Address }): Promise<string>;
   /** USDC balance of this wallet on Base mainnet (base units). */
   getUsdcBalance(): Promise<bigint>;
 }
@@ -104,12 +104,12 @@ export function createSmartWallet(privateKey: `0x${string}`): SmartWallet {
     account.signMessage({ message: paymentMessage(args) });
   const signSplitPayment = async (args: { to: string; amountCents: string; asset: string; feeTo: string; feeAmount: string; merchantAmount: string }): Promise<Hex> =>
     account.signMessage({ message: splitPaymentMessage(args) });
-  const paymentHeader = async (args: { to: string; amountCents: string; asset?: string }): Promise<string> => {
+  const paymentHeader = async (args: { to: string; amountCents: string; asset?: string; feeBps?: number; feeTo?: Address }): Promise<string> => {
     const asset = args.asset ?? USDC_BASE;
     // Protocol-fee split committed into the signature (non-optional).
     const gross = centsToUsdcUnits(args.amountCents);
-    const { feeUnits, netUnits } = splitFeeUnits(gross, NANOTAB_FEE_BPS_DEFAULT);
-    const feeTo = resolveFeeWallet();
+    const { feeUnits, netUnits } = splitFeeUnits(gross, args.feeBps ?? NANOTAB_FEE_BPS_DEFAULT);
+    const feeTo = args.feeTo ?? resolveFeeWallet();
     const signature = await signSplitPayment({
       to: args.to, amountCents: args.amountCents, asset,
       feeTo, feeAmount: feeUnits.toString(), merchantAmount: netUnits.toString(),
