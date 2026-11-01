@@ -39,6 +39,15 @@ Pages (Paywall Any Link is the leading product):
 - `GET /demo` + `GET /r/DemoSample` — live demo paywall: a short sample
   behind a real $0.05 USDC-on-Base listing (built-in listing, merchant =
   fee wallet; unpaid → 402, paid → sample text). Hero links to it.
+- `GET /p/:slug` — human/crawler post page (canonical): HTTP 200 with the
+  free abstract (first 2–4 sentences, “Free preview”), Article JSON-LD
+  (`isAccessibleForFree:false`, `hasPart` → `.paywall`), unique
+  title/meta/canonical/Open Graph. Same intent routing as `/r/` below.
+- `GET /robots.txt`, `GET /sitemap.xml`, `GET /llms.txt` — discovery:
+  robots explicitly allows Googlebot/Bingbot/OAI-SearchBot/GPTBot/
+  PerplexityBot/ClaudeBot/Google-Extended; the sitemap lists `/p/` pages
+  only (no agent/API endpoints); llms.txt maps the free abstracts and the
+  402 → USDC-on-Base payment flow.
 
 APIs:
 
@@ -71,14 +80,21 @@ APIs:
   Pending links return `403` from `GET /r/:slug` (never 402 terms or
   content, even with an `X-Payment` header); rejected read as `404`.
   Marketplace + stats only count live listings.
-- `GET /r/:slug` — no `X-Payment` → 402 (same body shape as the gateway,
-  per-listing `payTo`/`amount`); valid payment → R2 bytes with
-  `content-type` + `nosniff` + `x-nanotab:*` headers. Buyer-tx verify
-  only — **no settler** on publish; without `txHash` the
-  authorized-logged fallback applies (same as gateway). `text/html`
-  serves as `attachment` with sandboxed CSP (stored-XSS guard).
+- `GET /r/:slug` — routed by intent (same on `/p/:slug`): valid
+  `X-Payment` → R2 bytes with `content-type` + `nosniff` + `x-nanotab:*`
+  headers; unpaid + `Accept: application/json` or an agent-style
+  User-Agent → 402 (same body shape as the gateway, per-listing
+  `payTo`/`amount`); unpaid browser or discovery crawler (Googlebot,
+  Bingbot, OAI-SearchBot, GPTBot, PerplexityBot, ClaudeBot) → 200 teaser
+  with the free abstract (never 402, never the paid body). Buyer-tx
+  verify only — **no settler** on publish; without `txHash` the
+  authorized-logged fallback applies (same as gateway). Paid `text/html`
+  serves as `attachment` with sandboxed CSP (stored-XSS guard). Every
+  listing stores a free `abstract` (derived at publish; legacy records
+  backfill on first public read).
 - `GET /v1/marketplace.json` — public flat file
-  `[{url, title, price_usd, mime}]`, cached 60s (day-one discovery).
+  `[{url, page_url, title, abstract?, price_usd, mime}]`, cached 60s
+  (day-one discovery).
 - `GET /stats`, `GET /.well-known/x402` — free, gateway parity.
 
 Storage: KV `NANOTAB_LISTINGS` (`r:<slug>` metadata, `listing:<slug>`
