@@ -48,16 +48,47 @@ const good = () => ({
   merchant_wallet: WALLET, body_b64: Buffer.from('# hello\npaid content').toString('base64'),
 });
 
-// --- POST /v1/publish: auth ---
+// --- POST /v1/publish: accountless (no login gate) ---
 {
+  const cleanup = (slug) => {
+    try { kv.store.delete(`r:${slug}`); } catch {}
+    try { r2.store.delete(`r/${slug}`); } catch {}
+    try { kv.store.delete(`rb:${slug}`); } catch {}
+  };
   let r = await worker.fetch(post(good(), null), env, {});
-  check('publish: missing auth → 401', r.status === 401);
+  let j = await r.json().catch(() => ({}));
+  check('publish: missing auth → 201 anonymous (no login gate)', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || '') && j.url === `https://pay.nanotab.dev/r/${j.slug}`, `status=${r.status}`);
+  let rec = j.slug ? JSON.parse(await kv.get(`r:${j.slug}`)) : null;
+  check('publish: anonymous record live, no owner', !!rec && rec.owner === undefined && rec.status === 'live' && rec.source === 'paste');
+  if (j.slug) {
+    const g = await worker.fetch(req(`/r/${j.slug}`), env, {});
+    check('publish: anonymous link live instantly → 402 (not 401/403)', g.status === 402);
+    cleanup(j.slug);
+  }
   r = await worker.fetch(post(good(), 'wrong'), env, {});
-  check('publish: wrong secret → 401', r.status === 401);
-  // Magic-link session is the primary auth; with no session and no key it
-  // still fails closed with 401 (PUBLISH_KEY unset is not a misconfig).
+  j = await r.json().catch(() => ({}));
+  check('publish: wrong legacy key still publishes anonymously → 201', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
+  rec = j.slug ? JSON.parse(await kv.get(`r:${j.slug}`)) : null;
+  check('publish: wrong-key record has no owner', !!rec && rec.owner === undefined);
+  if (j.slug) cleanup(j.slug);
   r = await worker.fetch(post(good()), { ...env, PUBLISH_KEY: undefined }, {});
-  check('publish: no key + no session → 401 (fail closed)', r.status === 401);
+  j = await r.json().catch(() => ({}));
+  check('publish: no key configured + no session → 201 anonymous', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
+  if (j.slug) cleanup(j.slug);
+  // A session, when present, associates the listing with the account.
+  const tok = 'a'.repeat(64);
+  await kv.put(`sess:${tok}`, JSON.stringify({ email: 'owner@example.com', exp: Date.now() + 3600_000 }));
+  r = await worker.fetch(req('/v1/publish', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', cookie: `nt_sess=${tok}` },
+    body: JSON.stringify(good()),
+  }), env, {});
+  j = await r.json().catch(() => ({}));
+  check('publish: session publish → 201', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
+  rec = j.slug ? JSON.parse(await kv.get(`r:${j.slug}`)) : null;
+  check('publish: session record carries owner hash', !!rec && typeof rec.owner === 'string' && /^[0-9a-f]{64}$/.test(rec.owner) && rec.status === 'live');
+  if (j.slug) cleanup(j.slug);
+  await kv.delete(`sess:${tok}`).catch(() => {});
 }
 
 // --- POST /v1/publish: validation → 400 ---
@@ -183,16 +214,31 @@ let slug, url;
   const home = await worker.fetch(req('/'), env, {});
   const homeHtml = await home.text();
   check('page: / → 200 landing with paywall headline', home.status === 200 && homeHtml.includes('Paywall Any Link in seconds'));
-  check('page: / step-flow (link → content/upload → price → Next → /login)',
+  check('page: / step-flow (link → content/upload → price → wallet → Publish, no login gate)',
     homeHtml.includes('id="p-link"') && homeHtml.includes('id="p-body"') && homeHtml.includes('id="p-file"') &&
-    homeHtml.includes('id="p-price"') && homeHtml.includes('Next') && homeHtml.includes('/login?next='));
+    homeHtml.includes('id="p-price"') && homeHtml.includes('id="p-payto"') && homeHtml.includes('Publish link') &&
+    !homeHtml.includes('/login?next=') && !homeHtml.includes('sign in at the end'));
+  check('page: / instant wallet (generate button, one-time key panel, honest copy)',
+    homeHtml.includes('Generate instant wallet') && homeHtml.includes('id="btn-generate-wallet"') &&
+    homeHtml.includes('id="wallet-panel"') && homeHtml.includes('This key controls your payouts') &&
+    homeHtml.includes('Anyone who has it can take the money') && homeHtml.includes('Store it in a password manager') &&
+    homeHtml.includes('We cannot recover it') && homeHtml.includes('Save on this device') &&
+    homeHtml.includes("Don't save on this device") && homeHtml.includes('No account needed') &&
+    homeHtml.includes('USDC on the Base network') && homeHtml.includes('funds at that address are lost'));
+  check('page: / private-key guards (masked field, no autocomplete, publish JS never sends the key)',
+    homeHtml.includes('id="p-pk" type="password"') && homeHtml.includes('autocomplete="off"') &&
+    homeHtml.includes('togglePkVisibility') && homeHtml.includes('saveWalletOnDevice') &&
+    !homeHtml.includes("location.href='/login?next="));
+  check('page: / publish success surfaces 402 agent link + copyable curl',
+    homeHtml.includes('Agent paywall link (HTTP 402)') && homeHtml.includes('Copy paywall link') &&
+    homeHtml.includes('curl -i'));
   check('page: / demotes developers to labelled secondary path',
     homeHtml.includes('For developers') && homeHtml.includes('href="/developers"'));
   const login = await worker.fetch(req('/login'), env, {});
   const loginHtml = await login.text();
-  check('page: /login → 200 single-purpose sign-in',
-    login.status === 200 && loginHtml.includes('Sign in to publish') && loginHtml.includes('/v1/auth/request') &&
-    !loginHtml.includes('id="p-body"'));
+  check('page: /login → 200 optional sign-in for managing links (not a publish gate)',
+    login.status === 200 && loginHtml.includes('Sign in to manage links') && loginHtml.includes('Publishing needs no account') &&
+    loginHtml.includes('/v1/auth/request') && !loginHtml.includes('id="p-body"'));
   const devs = await worker.fetch(req('/developers'), env, {});
   const devsHtml = await devs.text();
   check('page: /developers → 200 developer path',

@@ -73,13 +73,29 @@ r = await fetch(`${PUB}/v1/publish`, {
 });
 check('bad-wallet → 400', r.status === 400, (await r.text()).slice(0, 80));
 
-// 5. wrong key → 401
+// 5. accountless: no key at all → 201 (publishing needs no account/login)
+r = await fetch(`${PUB}/v1/publish`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ ...pubBody, title: 'smoke anonymous pack' }),
+});
+{
+  const t2 = await r.text();
+  let anonSlug = '';
+  try { anonSlug = JSON.parse(t2).slug || ''; } catch {}
+  check('no-auth publish → 201 anonymous', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(anonSlug), t2.slice(0, 80));
+  if (anonSlug) {
+    const rr = await fetch(`${PUB}/r/${anonSlug}`);
+    check('anonymous link → 402 unpaid', rr.status === 402, `status=${rr.status}`);
+  }
+}
+// 5b. wrong legacy key still publishes anonymously → 201 (key is optional now)
 r = await fetch(`${PUB}/v1/publish`, {
   method: 'POST',
   headers: { 'content-type': 'application/json', 'X-Nanotab-Key': 'wrong' },
   body: JSON.stringify(pubBody),
 });
-check('wrong-key → 401', r.status === 401, (await r.text()).slice(0, 80));
+check('wrong-key → 201 anonymous (key optional)', r.status === 201, (await r.text()).slice(0, 80));
 
 // extras: free routes + 404
 r = await fetch(`${PUB}/stats`);

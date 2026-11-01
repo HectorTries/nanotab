@@ -15,12 +15,18 @@ the only semantic delta is per-listing merchant wallet + price from KV.
 Pages (Paywall Any Link is the leading product):
 
 - `GET /` — hero “Paywall Any Link in seconds” + step-flow: paste the
-  link → paste/upload the content → set the price → **Next** routes to
-  `/login`; after sign-in the saved draft publishes in one click.
-  Human links are live instantly.
-- `GET /login` — clean single-purpose magic-link sign-in (account
-  required to publish/collect earnings). `?next=` is a validated
-  same-site redirect carried through the email link.
+  link → paste/upload the content → set the price → payout wallet →
+  **Publish link**. No account, email or sign-in is required: step 4
+  takes a USDC-on-Base payout address or generates one in one click
+  (**Generate instant wallet**: standard EVM keypair created in the
+  browser, address auto-filled, private key shown once with save /
+  don't-save choices; the key never leaves the browser). Human links
+  are live instantly; publish success surfaces the `/r/<slug>` HTTP 402
+  agent paywall link plus a copyable `curl -i` test request. Signing in
+  first optionally ties links to the account (My links).
+- `GET /login` — optional magic-link sign-in to manage links and
+  review agent submissions (not a publish gate). `?next=` is a
+  validated same-site redirect carried through the email link.
 - `GET /developers` — demoted developer path (self-host, SDKs,
   gateway, machine discovery, agentic submissions).
 - `GET /agent-auth` — daily authorization queue: the account owner
@@ -36,8 +42,9 @@ Pages (Paywall Any Link is the leading product):
 
 APIs:
 
-- `POST /v1/publish` — auth: magic-link session (primary) OR
-  `X-Nanotab-Key` = `PUBLISH_KEY` secret. Body `{title, mime,
+- `POST /v1/publish` — accountless: no auth required. A magic-link
+  session, when present, sets the listing owner; `X-Nanotab-Key` =
+  `PUBLISH_KEY` is still accepted for automation. Body `{title, mime,
   price_cents (int 1–10000), merchant_wallet (0x…), body_b64 (≤1MB
   decoded), source_url?}`. Mime allowlist: `text/plain`,
   `text/markdown`, `text/html`, `application/json`, `application/pdf`,
