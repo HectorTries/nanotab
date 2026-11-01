@@ -30,7 +30,7 @@ import {
   verifyPayment,
   type PaymentProof,
 } from '../../../packages/x402-verify/src/index.ts';
-import { landingHtml, loginHtml, developersHtml, agentAuthHtml } from './landing.ts';
+import { landingHtml, loginHtml, developersHtml, agentAuthHtml, termsHtml, privacyHtml, refundsHtml, contactHtml, aboutHtml, walletGuideHtml, demoHtml } from './landing.ts';
 import { isBlockedDomain } from './blocklist.ts';
 
 // Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
@@ -696,10 +696,29 @@ async function handleAgentReview(req: Request, env: Env): Promise<Response> {
   return Response.json({ ok: true, slug, status: updated.status });
 }
 
+const DEMO_SLUG = 'DemoSample';
+const DEMO_BODY = `How to keep tomatoes happy in a small garden
+
+Preview: Tomatoes want sun, steady water, and more room than you think. The five rules that actually matter:
+
+1. Sun first. Six to eight hours of direct sun beats any feed. In a small garden, grow up a cane or string so leaves stay in the light and air.
+2. Water the soil, not the leaves. Deep watering twice a week grows deeper roots than a daily sprinkle, and dry leaves resist blight.
+3. Feed little and often. A weak tomato feed at every other watering from first flowers is steadier than one big dose.
+4. Pinch the side shoots. The small shoots between leaf and stem steal energy; removing them weekly keeps fruit coming.
+5. Mulch after planting. Straw or compost around the base keeps moisture even and soil splash off the leaves.
+
+That is the whole guide. Everything else is refinement.
+`;
+function demoListing(env: Env): Listing {
+  const bytes = new TextEncoder().encode(DEMO_BODY);
+  return { slug: DEMO_SLUG, title: 'Sample: How to keep tomatoes happy in a small garden', mime: 'text/plain', bytes: bytes.length, r2_key: `r/${DEMO_SLUG}`, price_cents: '5', merchant_wallet: feeRecipientFor(env.FEE_WALLET), created_at: '2026-11-01T00:00:00.000Z', paid_calls: 0, source: 'paste', status: 'live' };
+}
+
 // --- GET /r/:slug ---
 async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefined, slug: string): Promise<Response> {
   const { kv, r2 } = needStores(env);
-  const listing = await getListing(kv, slug);
+  const isDemo = slug === DEMO_SLUG;
+  const listing = isDemo ? demoListing(env) : await getListing(kv, slug);
   if (!listing) throw new HttpErr(404, 'listing not found');
   // Spam guardrail: agent links are not published until the owner approves.
   // Pending returns 403 (never 402 terms, never content, even with payment);
@@ -800,7 +819,7 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
     );
   }
 
-  const obj = await getBytes(kv, r2, listing);
+  const obj = isDemo ? { body: new Blob([DEMO_BODY], { type: listing.mime }).stream() } : await getBytes(kv, r2, listing);
   if (!obj) throw new HttpErr(500, 'listing bytes missing (inconsistent state)');
 
   // Paid-call accounting: per-listing paid_calls + listing:<slug> counter.
@@ -850,6 +869,7 @@ function pendingHtml(l: Listing): string {
 <h1>${escHtml(l.title)}</h1>
 <p class="mut">This link was created by an agent (${escHtml(l.agent_name ?? 'agent')}) and is waiting in the account owner's daily review queue. It is not published yet — no price terms are served and no payment can unlock it until the owner approves it.</p>
 <p class="mut">Are you the owner? <a href="/agent-auth">Review the queue</a> · <a href="/marketplace">Browse published links</a></p>
+<p class="mut" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p>
 </div></div></body></html>`;
 }
 
@@ -880,13 +900,13 @@ pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;
 <h1>${escHtml(l.title)}</h1>${l.created_by_agent ? '<p class="mut"><span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600">Created by agent</span> <span style="font-size:13px">· approved by the account owner</span></p>' : ''}
 <div class="price">$${priceUsd} USDC</div>
 <p class="mut">per view · on Base · merchant <code>${shortWallet}</code> · seller receives $${netUsd} after ${feeBps / 100}% fee</p>
-<p>This link is sold to <b>AI agents</b>, not opened directly in a browser. An agent reads the price, pays USDC on Base, and receives the content — automatically, in one flow.</p>
+<p>This link is sold to <b>AI agents</b> — and humans can pay too. An agent reads the price, pays USDC on Base, and receives the content automatically, in one flow. A person pays the same way with a USDC wallet on Base; there is no NanoTab account and no card checkout.</p>
 <p class="mut" style="margin-bottom:6px">How an agent pays:</p>
 <pre>GET ${escHtml(reqUrl)}  →  402 + price in JSON
 Agent pays $${priceUsd} USDC → ${escHtml(l.merchant_wallet)}
 GET same URL + X-Payment proof  →  200 content</pre>
 <p><a href="/marketplace">Browse marketplace</a> · <a href="/">Create your own link</a> · <a href="${escHtml(reqUrl)}" id="j">View machine terms (JSON)</a></p>
-</div><p class="foot">HTTP 402 · ${escHtml(l.mime)} · ${l.bytes} bytes · USDC on Base via x402</p></div>
+</div><p class="foot">HTTP 402 · ${escHtml(l.mime)} · ${l.bytes} bytes · USDC on Base via x402 · NanoTab keeps ${feeBps / 100}% of each payment<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
 <script>document.getElementById('j').onclick=function(e){e.preventDefault();fetch(location.href,{headers:{accept:'application/json'}}).then(function(r){return r.text()}).then(function(t){document.body.innerHTML='<pre style="max-width:860px;margin:24px auto;padding:16px;white-space:pre-wrap;word-break:break-all">'+t.replace(/</g,'&lt;').slice(0,4000)+'</pre>'})};</script>
 </body></html>`;
 }
@@ -915,7 +935,7 @@ async function handleMarketplacePage(req: Request, env: Env): Promise<Response> 
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:760px;margin:0 auto;padding:0 20px 56px}a{color:#3ecf8e}.topbar{border-bottom:1px solid #232b36}.topbar-in{max-width:760px;margin:0 auto;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}nav{font-size:14px}nav a{margin-left:18px;color:#9fb0c0;text-decoration:none}nav a:hover{color:#f2f5f7}h1{font-size:32px;letter-spacing:-.02em;margin:36px 0 8px}.sub{color:#9fb0c0;margin:0 0 24px}.card{background:#12161c;border:1px solid #232b36;border-radius:12px;padding:18px;margin:12px 0}.t{font-weight:600;font-size:16px}.price{color:#3ecf8e}.m{color:#9fb0c0;font-size:14px;margin-top:3px;word-break:break-all}code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:12.5px;font-family:"IBM Plex Mono",monospace}.cta{background:#12161c;border:1px solid #232b36;border-radius:12px;padding:20px;text-align:center;margin-top:24px}</style></head><body>
 <div class="topbar"><div class="topbar-in"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><nav><a href="/">Create</a><a href="/marketplace">Marketplace</a><a href="/stats">Stats</a></nav></div></div>
-<div class="wrap"><h1>Marketplace (${items.length})</h1><p class="sub">Every link is pay-per-view in USDC on Base (x402). Open one in a browser for human terms, or fetch with <code>Accept: application/json</code> for the machine 402 your agent pays. <a href="/v1/marketplace.json">JSON for machines</a></p>${cards}<div class="cta"><b>Selling something agents need?</b><br><span style="color:#9fb0c0">Paste it, price it, share the link.</span><br><a href="/" style="display:inline-block;margin-top:10px;background:#3ecf8e;color:#06281a;font-weight:600;padding:10px 20px;border-radius:10px;text-decoration:none">Create a paywall link</a></div></div></body></html>`;
+<div class="wrap"><h1>Marketplace (${items.length})</h1><p class="sub">Every link is pay-per-view in USDC on Base (x402). Open one in a browser for human terms, or fetch with <code>Accept: application/json</code> for the machine 402 your agent pays. <a href="/v1/marketplace.json">JSON for machines</a></p>${cards}<div class="cta"><b>Selling something agents need?</b><br><span style="color:#9fb0c0">Paste it, price it, share the link.</span><br><a href="/" style="display:inline-block;margin-top:10px;background:#3ecf8e;color:#06281a;font-weight:600;padding:10px 20px;border-radius:10px;text-decoration:none">Create a paywall link</a></div><p style="text-align:center;color:#7f8fa3;font-size:13px;margin-top:20px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div></body></html>`;
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60' } });
 }
 async function handleMarketplace(req: Request, env: Env): Promise<Response> {
@@ -1047,7 +1067,7 @@ function handlePublishPage(): Response {
 <label>secret <input name="secret" type="password" required></label>
 <button>publish</button></form>
 <pre id="out">Your paywall link and test commands appear here. Unpaid: curl the link for a 402. Paid: retry with an X-Payment proof for 200.</pre></div>
-<p class="sub">New here? <a href="/">Create a link with email instead</a> — you keep 98% hosted, agents pay in USDC on Base.</p></div>
+<p class="sub">New here? <a href="/">Create a link with email instead</a> — you keep 98% hosted (NanoTab keeps 2%), agents pay in USDC on Base. No wallet yet? <a href="/wallet-guide">Plain-English wallet guide</a>.</p><p class="sub" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
 <script>
 const f=document.getElementById('f'),out=document.getElementById('out');
 f.onsubmit=async(e)=>{e.preventDefault();const d=new FormData(f);
@@ -1145,6 +1165,10 @@ export default {
         return new Response(agentAuthHtml(), {
           headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' },
         });
+      }
+      if (req.method === 'GET' && ['/terms', '/privacy', '/refunds', '/refund-policy', '/contact', '/about', '/wallet-guide', '/demo'].includes(pathname)) {
+        const page = pathname === '/terms' ? termsHtml() : pathname === '/privacy' ? privacyHtml() : pathname === '/contact' ? contactHtml() : pathname === '/about' ? aboutHtml() : pathname === '/wallet-guide' ? walletGuideHtml() : pathname === '/demo' ? demoHtml() : refundsHtml();
+        return new Response(page, { headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' } });
       }
       if (req.method === 'GET' && pathname === '/.well-known/x402') {
         return handleWellKnown(req, env);

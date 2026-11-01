@@ -26,6 +26,13 @@ Pages (Paywall Any Link is the leading product):
 - `GET /agent-auth` — daily authorization queue: the account owner
   approves/rejects agent-submitted links (see below).
 - `GET /marketplace`, `GET /publish` (legacy API-key form).
+- `GET /terms`, `/privacy`, `/refunds` (+ `/refund-policy` alias),
+  `/contact`, `/about` — plain-English trust pages, linked in every
+  footer. Contact: support@nanotab.dev.
+- `GET /wallet-guide` — plain-English USDC-on-Base wallet guide.
+- `GET /demo` + `GET /r/DemoSample` — live demo paywall: a short sample
+  behind a real $0.05 USDC-on-Base listing (built-in listing, merchant =
+  fee wallet; unpaid → 402, paid → sample text). Hero links to it.
 
 APIs:
 
