@@ -7,10 +7,14 @@
 //   live instantly. Agent links differ: POST /v1/agent/submit (X-Agent-Key)
 //   queues status 'pending' → GET /r/:slug 403 until the owner approves via
 //   GET /v1/agent/pending + POST /v1/agent/review (see /agent-auth page).
-// GET /r/:slug  behaves exactly like the gateway: no X-Payment → 402 (same
-//   body shape, per-listing payTo/amount); valid payment → R2 bytes with
-//   x-nanotab:* headers. Buyer-tx verify only — NO settler on publish.
+// GET /r/:slug + GET /p/:slug  one listing, routed by intent: a valid
+//   X-Payment → R2 bytes with x-nanotab:* headers (buyer-tx verify only —
+//   NO settler on publish); unpaid + Accept: application/json or an
+//   agent-style User-Agent → 402 (same body shape as the gateway,
+//   per-listing payTo/amount); unpaid browser/discovery-crawler → 200
+//   teaser with the free abstract (never 402, never the paid body).
 // GET /v1/marketplace.json  public flat listing file (day-one discovery).
+// GET /robots.txt, /llms.txt, /sitemap.xml  crawler/AI discovery.
 // GET /stats  +  GET /.well-known/x402  free, for gateway parity.
 //
 // Storage: KV NANOTAB_LISTINGS (key `r:<slug>` metadata, `listing:<slug>`
@@ -95,6 +99,11 @@ interface Listing {
   source_url?: string; // original link the content was paywalled from (provenance)
   reviewed_at?: string;
   reviewed_by?: string;
+  // Free 2-4 sentence abstract (first sentences of the content, plain text,
+  // ~200-400 chars). Shown unpaid on /p/<slug> for search/AI discovery;
+  // the full paid body is never part of it. Absent on legacy records and
+  // derived lazily from the stored bytes on first public-page read.
+  abstract?: string;
   owner?: string; // sha256hex(owner email); absent = legacy key-published
   agent_verified?: boolean; // true when the submitting agent may auto-publish (see isVerifiedAgent)
   jev?: JevVerdict; // TypeSafe Jev auto-review verdict; absent = Jev unavailable at submission (fail-open)
@@ -205,6 +214,115 @@ function b64ToBytes(s: string): Uint8Array {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+// --- Free abstract (discovery teaser) ---
+// The first 2-4 sentences of the content as plain text, ~200-400 chars.
+// This is the ONLY part of a paid body ever served unpaid: it is rendered
+// server-side on /p/<slug> so crawlers/AI answer engines can quote it,
+// while every later paragraph stays behind the 402. Derived at publish
+// time and stored on the listing; legacy records backfill lazily on read.
+const ABSTRACT_MIN = 200;
+const ABSTRACT_MAX = 400;
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_m, n) => { try { return String.fromCodePoint(Number(n)); } catch { return ' '; } });
+}
+
+function toPlainText(raw: string, mime: string): string {
+  let t = raw;
+  if (mime === 'text/html') {
+    t = t
+      .replace(/<(script|style|noscript)[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ');
+    t = decodeEntities(t);
+  } else if (mime === 'text/markdown' || mime === 'text/plain') {
+    t = t
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+      .replace(/(\*\*|__)(.*?)\1/g, '$2')
+      .replace(/(\*|_)(.*?)\1/g, '$2')
+      .replace(/^\s*>\s?/gm, '')
+      .replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm, '')
+      .replace(/^\s*(-{3,}|_{3,}|\*{3,})\s*$/gm, ' ')
+      .replace(/<[^>]+>/g, ' ');
+    t = decodeEntities(t);
+  }
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+function fallbackAbstract(title: string): string {
+  return `${title} is paywalled content on NanoTab Pay. The title and price are public, and the full content unlocks instantly after payment. Pay in USDC on Base to read it in full.`;
+}
+
+export function deriveAbstract(bytes: Uint8Array, mime: string, title: string): string {
+  if (mime === 'application/pdf' || mime === 'image/png' || mime === 'image/jpeg') {
+    return fallbackAbstract(title);
+  }
+  let raw = '';
+  try { raw = new TextDecoder('utf-8', { fatal: false }).decode(bytes); } catch { raw = ''; }
+  let plain = toPlainText(raw, mime);
+  if (!plain) return fallbackAbstract(title);
+  // Drop a leading repetition of the title (many pastes start with it).
+  if (title && plain.toLowerCase().startsWith(title.toLowerCase())) {
+    const rest = plain.slice(title.length).replace(/^[\s:.\-—|]+/, '').trim();
+    if (rest.length >= 40) plain = rest;
+  }
+  const sentences = plain.match(/[^.!?]+[.!?]+/g) ?? [];
+  let out = '';
+  for (const s of sentences) {
+    const sent = s.trim();
+    if (!sent) continue;
+    if (out && out.length >= ABSTRACT_MIN) break;
+    if (out.split(/(?<=[.!?])\s+/).filter(Boolean).length >= 4) break;
+    out = out ? `${out} ${sent}` : sent;
+    if (out.length >= ABSTRACT_MAX) break;
+  }
+  if (!out) out = plain;
+  if (out.length > ABSTRACT_MAX) {
+    const cut = out.slice(0, ABSTRACT_MAX - 3);
+    const atSpace = cut.lastIndexOf(' ');
+    out = `${(atSpace > 120 ? cut.slice(0, atSpace) : cut).trim()}...`;
+  }
+  return out;
+}
+
+async function readAllBytes(kv: KVNamespace, r2: R2Bucket | null, listing: Listing): Promise<Uint8Array | null> {
+  if (r2) {
+    const obj: any = await r2.get(listing.r2_key).catch(() => null);
+    if (obj) {
+      if (typeof obj.arrayBuffer === 'function') return new Uint8Array(await obj.arrayBuffer());
+      const b: any = obj.body;
+      if (b instanceof Uint8Array) return b;
+      if (b) return new Uint8Array(await new Response(b).arrayBuffer());
+    }
+  }
+  const b64 = await kv.get(`rb:${listing.slug}`).catch(() => null);
+  if (!b64) return null;
+  try { return b64ToBytes(b64 as string); } catch { return null; }
+}
+
+// Stored abstract if present; otherwise derive from the stored bytes once
+// and persist it back onto the listing (backfill for pre-abstract records).
+async function ensureAbstract(kv: KVNamespace, r2: R2Bucket | null, listing: Listing): Promise<string> {
+  const stored = (listing.abstract ?? '').trim();
+  if (stored) return stored.length > ABSTRACT_MAX ? `${stored.slice(0, ABSTRACT_MAX - 3).trim()}...` : stored;
+  const bytes = await readAllBytes(kv, r2, listing);
+  const derived = bytes ? deriveAbstract(bytes, listing.mime, listing.title) : fallbackAbstract(listing.title);
+  await putListing(kv, { ...listing, abstract: derived }).catch(() => {});
+  return derived;
 }
 
 // 402 body mirroring the gateway's paymentRequiredBody shape exactly
@@ -432,6 +550,7 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     paid_calls: 0,
     source: 'paste',
     status: 'live',
+    abstract: deriveAbstract(p.bytes, p.mime, p.title),
     ...(p.source_url ? { source_url: p.source_url } : {}),
     ...(owner ? { owner } : {}),
   };
@@ -440,11 +559,12 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
 
   const origin = new URL(req.url).origin;
   const url = `${origin}/r/${slug}`;
+  const page_url = `${origin}/p/${slug}`;
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
   const feeTo = feeRecipientFor(env.FEE_WALLET);
   console.log(`[nanotab-publish] published ${slug} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c → ${listing.merchant_wallet})`);
   return Response.json(
-    { url, slug, x402: { accepts: listing402Body(url, listing, feeBps, feeTo).accepts } },
+    { url, page_url, slug, abstract: listing.abstract, x402: { accepts: listing402Body(url, listing, feeBps, feeTo).accepts } },
     { status: 201 }
   );
 }
@@ -617,6 +737,7 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
     paid_calls: 0,
     source: 'agent',
     status: auto ? 'live' : 'pending',
+    abstract: deriveAbstract(p.bytes, p.mime, p.title),
     created_by_agent: true,
     agent_name: agentName,
     agent_verified: verified,
@@ -628,16 +749,17 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
   await putListing(kv, listing);
   const origin = new URL(req.url).origin;
   const url = `${origin}/r/${slug}`;
+  const page_url = `${origin}/p/${slug}`;
   if (auto) {
     console.log(`[nanotab-publish] jev auto-published ${slug} by ${agentName} (spam=${verdict!.spam}, legal=${verdict!.content_legal}, price=${verdict!.price_sane}, quality=${verdict!.quality})`);
     return Response.json(
-      { url, slug, status: 'live', jev: verdict, message: 'Auto-published by Jev review: verified agent, clean scores, quality at or above fine.' },
+      { url, page_url, slug, status: 'live', abstract: listing.abstract, jev: verdict, message: 'Auto-published by Jev review: verified agent, clean scores, quality at or above fine.' },
       { status: 201 }
     );
   }
   console.log(`[nanotab-publish] agent submission queued ${slug} by ${agentName} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c)${verdict ? ` jev: spam=${verdict.spam}, legal=${verdict.content_legal}, price=${verdict.price_sane}, quality=${verdict.quality}` : ' jev: unavailable, manual review'}`);
   return Response.json(
-    { url, slug, status: 'pending', ...(verdict ? { jev: verdict } : {}), message: 'Queued for daily owner review. The link returns 403 until approved; no approval means it never publishes.' },
+    { url, page_url, slug, status: 'pending', abstract: listing.abstract, ...(verdict ? { jev: verdict } : {}), message: 'Queued for daily owner review. The link returns 403 until approved; no approval means it never publishes.' },
     { status: 202 }
   );
 }
@@ -717,11 +839,38 @@ That is the whole guide. Everything else is refinement.
 `;
 function demoListing(env: Env): Listing {
   const bytes = new TextEncoder().encode(DEMO_BODY);
-  return { slug: DEMO_SLUG, title: 'Sample: How to keep tomatoes happy in a small garden', mime: 'text/plain', bytes: bytes.length, r2_key: `r/${DEMO_SLUG}`, price_cents: '5', merchant_wallet: feeRecipientFor(env.FEE_WALLET), created_at: '2026-11-01T00:00:00.000Z', paid_calls: 0, source: 'paste', status: 'live' };
+  const title = 'Sample: How to keep tomatoes happy in a small garden';
+  return { slug: DEMO_SLUG, title, mime: 'text/plain', bytes: bytes.length, r2_key: `r/${DEMO_SLUG}`, price_cents: '5', merchant_wallet: feeRecipientFor(env.FEE_WALLET), created_at: '2026-11-01T00:00:00.000Z', paid_calls: 0, source: 'paste', status: 'live', abstract: deriveAbstract(bytes, 'text/plain', title) };
 }
 
-// --- GET /r/:slug ---
-async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefined, slug: string): Promise<Response> {
+// --- Intent routing: one URL, three audiences ---
+// Discovery crawlers must NEVER see a 402 (they would index nothing) and
+// must NEVER see the paid body (that would be cloaking). Browsers get the
+// same 200 teaser crawlers get. Only transactional callers — an explicit
+// Accept: application/json or an agent-style HTTP-client User-Agent —
+// receive the 402 price quote. A valid X-Payment always wins and serves
+// the full content, on both /r/<slug> and /p/<slug>.
+const DISCOVERY_CRAWLER_RE = /(googlebot|bingbot|oai-searchbot|gptbot|perplexitybot|claudebot|google-extended)/i;
+const AGENT_UA_RE = /(curl|wget|libcurl|python-requests|python-httpx|httpx|aiohttp|httpie|go-http-client|node-fetch|undici|axios|okhttp|postmanruntime|insomnia|java\/|ruby|php)/i;
+
+function isDiscoveryCrawler(ua: string): boolean {
+  return DISCOVERY_CRAWLER_RE.test(ua);
+}
+
+// 'teaser' → 200 HTML with the free abstract; 'pay402' → 402 JSON quote.
+function classifyUnpaid(req: Request): 'teaser' | 'pay402' {
+  const ua = req.headers.get('user-agent') ?? '';
+  const accept = (req.headers.get('accept') ?? '').toLowerCase();
+  if (isDiscoveryCrawler(ua)) return 'teaser';
+  if (accept.includes('application/json')) return 'pay402';
+  if (accept.includes('text/html') || accept.includes('application/xhtml+xml')) return 'teaser';
+  if (AGENT_UA_RE.test(ua) || /\bnode\b/i.test(ua)) return 'pay402';
+  if (/mozilla/i.test(ua)) return 'teaser';
+  return 'pay402';
+}
+
+// --- GET /r/:slug (transactional) + GET /p/:slug (human/crawler page) ---
+async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefined, slug: string, surface: 'r' | 'p' = 'r'): Promise<Response> {
   const { kv, r2 } = needStores(env);
   const isDemo = slug === DEMO_SLUG;
   const listing = isDemo ? demoListing(env) : await getListing(kv, slug);
@@ -749,22 +898,28 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
   const feeTo = feeRecipientFor(env.FEE_WALLET);
   const header = req.headers.get('X-Payment');
   if (!header) {
-    const accept = req.headers.get('accept') ?? '';
-    const wantsHtml = accept.includes('text/html') && !accept.includes('application/json');
-    if (wantsHtml) {
-      return new Response(paywallHtml(req.url, listing, feeBps, feeTo), {
-        status: 402,
+    const origin = new URL(req.url).origin;
+    if (classifyUnpaid(req) === 'teaser') {
+      const abstract = await ensureAbstract(kv, r2, listing);
+      return new Response(publicListingHtml(origin, listing, abstract, feeBps, feeTo), {
+        status: 200,
         headers: {
           'content-type': 'text/html; charset=utf-8',
           'x-content-type-options': 'nosniff',
+          'cache-control': 'public, max-age=60',
+          'vary': 'Accept, User-Agent',
+          'access-control-allow-origin': '*',
         },
       });
     }
-    return Response.json(listing402Body(req.url, listing, feeBps, feeTo), {
+    const payUrl = surface === 'p' ? `${origin}/r/${slug}` : req.url;
+    return Response.json(listing402Body(payUrl, listing, feeBps, feeTo), {
       status: 402,
       headers: {
         'content-security-policy': 'sandbox',
         'x-content-type-options': 'nosniff',
+        'vary': 'Accept, User-Agent',
+        'access-control-allow-origin': '*',
       },
     });
   }
@@ -879,15 +1034,56 @@ function pendingHtml(l: Listing): string {
 </div></div></body></html>`;
 }
 
-// Human-readable 402 paywall page for browsers (content negotiation:
-// Accept: text/html → this; Accept: application/json / agents → raw JSON).
-function paywallHtml(reqUrl: string, l: Listing, feeBps: number, feeTo: string): string {
+// Public teaser page (HTTP 200) for browsers AND discovery crawlers.
+// Server-rendered free abstract only — the paid body is never in this
+// HTML, which is what keeps this from being cloaking: Googlebot and a
+// human see exactly the same unpaid page. The locked remainder is marked
+// with the single class selector in the JSON-LD hasPart (Google paywall
+// guidelines: isAccessibleForFree false, class selectors only, no nested
+// content sections).
+function jsonLdForListing(origin: string, l: Listing, abstract: string): string {
+  const canonical = `${origin}/p/${l.slug}`;
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: l.title,
+    description: abstract,
+    url: canonical,
+    mainEntityOfPage: canonical,
+    datePublished: l.created_at,
+    inLanguage: 'en',
+    isAccessibleForFree: false,
+    hasPart: {
+      '@type': 'WebPageElement',
+      isAccessibleForFree: false,
+      cssSelector: '.paywall',
+    },
+  };
+  return JSON.stringify(ld).replace(/</g, '\\u003c');
+}
+
+function publicListingHtml(origin: string, l: Listing, abstract: string, feeBps: number, feeTo: string): string {
   const priceUsd = (Number(l.price_cents) / 100).toFixed(2);
   const netUsd = ((Number(l.price_cents) * (10_000 - feeBps)) / 10_000 / 100).toFixed(2);
   const shortWallet = `${l.merchant_wallet.slice(0, 6)}…${l.merchant_wallet.slice(-4)}`;
+  const canonical = `${origin}/p/${l.slug}`;
+  const payUrl = `${origin}/r/${l.slug}`;
+  const pageTitle = `${l.title} — NanoTab Pay`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escHtml(l.title)} — $${priceUsd} USDC paywall · NanoTab Pay</title>
+<title>${escHtml(pageTitle)}</title>
+<meta name="description" content="${escHtml(abstract)}">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="${escHtml(canonical)}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="NanoTab Pay">
+<meta property="og:title" content="${escHtml(l.title)}">
+<meta property="og:description" content="${escHtml(abstract)}">
+<meta property="og:url" content="${escHtml(canonical)}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${escHtml(l.title)}">
+<meta name="twitter:description" content="${escHtml(abstract)}">
+<script type="application/ld+json">${jsonLdForListing(origin, l, abstract)}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -900,20 +1096,32 @@ h1{font-size:28px;letter-spacing:-.02em;line-height:1.2;margin:10px 0 8px}
 .price{font-size:44px;font-weight:700;letter-spacing:-.03em;line-height:1.1;color:#3ecf8e;margin:14px 0 4px}
 .mut{color:#9fb0c0;font-size:14px}a{color:#3ecf8e}code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:13px;font-family:"IBM Plex Mono",monospace}
 pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;text-align:left;font-size:12.5px;line-height:1.7;white-space:pre-wrap;word-break:break-all;font-family:"IBM Plex Mono",monospace;color:#b7c5d6}
+.btn{display:inline-block;background:#3ecf8e;color:#06281a;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none;margin:10px 0}
+.preview-label{display:inline-block;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#0b0d10;background:#3ecf8e;font-weight:700;border-radius:999px;padding:2px 12px;margin:18px 0 10px}
+.abstract{font-size:16.5px;line-height:1.7;color:#dbe6f0}
+.paywall{border-top:1px solid #232b36;margin-top:24px;padding-top:8px}
 .foot{color:#7f8fa3;font-size:13px;text-align:center;margin-top:18px}</style></head><body>
 <div class="wrap"><div class="top"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><a href="/marketplace">Marketplace</a></div><div class="card">
-<div class="kicker">Paywalled content · 402 Payment Required</div>
+<div class="kicker">Paywalled content</div>
 <h1>${escHtml(l.title)}</h1>${l.created_by_agent ? '<p class="mut"><span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600">Created by agent</span> <span style="font-size:13px">· approved by the account owner</span></p>' : ''}
+<span class="preview-label">Free preview</span>
+<section class="abstract" aria-label="Free preview"><p>${escHtml(abstract)}</p></section>
+<div class="paywall">
 <div class="price">$${priceUsd} USDC</div>
 <p class="mut">per view · on Base · merchant <code>${shortWallet}</code> · seller receives $${netUsd} after ${feeBps / 100}% fee</p>
-<p>This link is sold to <b>AI agents</b> — and humans can pay too. An agent reads the price, pays USDC on Base, and receives the content automatically, in one flow. A person pays the same way with a USDC wallet on Base; there is no NanoTab account and no card checkout.</p>
-<p class="mut" style="margin-bottom:6px">How an agent pays:</p>
-<pre>GET ${escHtml(reqUrl)}  →  402 + price in JSON
-Agent pays $${priceUsd} USDC → ${escHtml(l.merchant_wallet)}
-GET same URL + X-Payment proof  →  200 content</pre>
-<p><a href="/marketplace">Browse marketplace</a> · <a href="/">Create your own link</a> · <a href="${escHtml(reqUrl)}" id="j">View machine terms (JSON)</a></p>
-</div><p class="foot">HTTP 402 · ${escHtml(l.mime)} · ${l.bytes} bytes · USDC on Base via x402 · NanoTab keeps ${feeBps / 100}% of each payment<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
-<script>document.getElementById('j').onclick=function(e){e.preventDefault();fetch(location.href,{headers:{accept:'application/json'}}).then(function(r){return r.text()}).then(function(t){document.body.innerHTML='<pre style="max-width:860px;margin:24px auto;padding:16px;white-space:pre-wrap;word-break:break-all">'+t.replace(/</g,'&lt;').slice(0,4000)+'</pre>'})};</script>
+<p>The preview above is free. The full content unlocks after payment — an AI agent pays automatically, and a person can pay the same way with a USDC wallet on Base. There is no NanoTab account and no card checkout.</p>
+<p><a class="btn" href="#unlock">Unlock for $${priceUsd} — pay USDC on Base</a></p>
+<div id="unlock">
+<p class="mut" style="margin-bottom:6px">How payment works (x402):</p>
+<pre>GET ${escHtml(payUrl)}  →  402 + price in JSON
+Pay $${priceUsd} USDC on Base → ${escHtml(l.merchant_wallet)}
+GET same URL + X-Payment proof  →  200 full content</pre>
+<p class="mut">Agents: fetch <code>${escHtml(payUrl)}</code> with <code>Accept: application/json</code> for the machine-readable 402, pay, then retry with the <code>X-Payment</code> header. Humans: use any agent or wallet flow that speaks x402 on Base.</p>
+</div>
+<p><a href="/marketplace">Browse marketplace</a> · <a href="/">Create your own link</a> · <a href="${escHtml(payUrl)}" id="j">View machine terms (JSON)</a></p>
+</div>
+</div><p class="foot">${escHtml(l.mime)} · ${l.bytes} bytes · USDC on Base via x402 · NanoTab keeps ${feeBps / 100}% of each payment<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
+<script>document.getElementById('j').onclick=function(e){e.preventDefault();fetch(${JSON.stringify(payUrl)},{headers:{accept:'application/json'}}).then(function(r){return r.text()}).then(function(t){document.body.innerHTML='<pre style="max-width:860px;margin:24px auto;padding:16px;white-space:pre-wrap;word-break:break-all">'+t.replace(/</g,'&lt;').slice(0,4000)+'</pre>'})};</script>
 </body></html>`;
 }
 
@@ -931,7 +1139,9 @@ async function handleMarketplacePage(req: Request, env: Env): Promise<Response> 
     ? items.map((l) => {
         const price = (Number(l.price_cents) / 100).toFixed(2);
         const badge = l.created_by_agent ? ' <span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;vertical-align:2px">Created by agent</span>' : '';
-        return `<div class="card"><div class="t">${escHtml(l.title)}${badge} <span class="price">$${price}</span></div><div class="m">${l.paid_calls ?? 0} paid calls · ${escHtml(l.mime)} · seller <code>${escHtml(l.merchant_wallet.slice(0, 6))}…${escHtml(l.merchant_wallet.slice(-4))}</code></div><div class="m"><a href="${origin}/r/${l.slug}">${origin}/r/${l.slug}</a></div></div>`;
+        const abs = (l.abstract ?? '').trim();
+        const absHtml = abs ? `<div class="m">${escHtml(abs.length > 220 ? `${abs.slice(0, 220).trim()}…` : abs)}</div>` : '';
+        return `<div class="card"><div class="t"><a href="${origin}/p/${l.slug}" style="color:#f2f5f7">${escHtml(l.title)}</a>${badge} <span class="price">$${price}</span></div>${absHtml}<div class="m">${l.paid_calls ?? 0} paid calls · ${escHtml(l.mime)} · seller <code>${escHtml(l.merchant_wallet.slice(0, 6))}…${escHtml(l.merchant_wallet.slice(-4))}</code></div><div class="m"><a href="${origin}/p/${l.slug}">Read free preview</a> · <a href="${origin}/r/${l.slug}">Agent endpoint (402)</a></div></div>`;
       }).join('')
     : '<div class="card"><i>No public listings yet — <a href="/">publish the first one</a>.</i></div>';
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -957,7 +1167,9 @@ async function handleMarketplace(req: Request, env: Env): Promise<Response> {
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .map((l) => ({
       url: `${origin}/r/${l.slug}`,
+      page_url: `${origin}/p/${l.slug}`,
       title: l.title,
+      ...(l.abstract ? { abstract: l.abstract } : {}),
       price_usd: (Number(l.price_cents) / 100).toFixed(2),
       mime: l.mime,
       merchant: l.merchant_wallet,
@@ -1144,6 +1356,120 @@ function handleWellKnown(req: Request, env: Env): Response {
   );
 }
 
+// --- Discovery: robots.txt / llms.txt / sitemap.xml ---
+function handleRobots(req: Request): Response {
+  const origin = new URL(req.url).origin;
+  const body = `# NanoTab Pay — paywall any link; agents pay USDC on Base (x402).
+# Every post has a free abstract at /p/<slug> for discovery and citation.
+# The full paid body is only served after payment — it is never in the teaser.
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: *
+Allow: /
+
+Sitemap: ${origin}/sitemap.xml
+`;
+  return new Response(body, {
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' },
+  });
+}
+
+function handleLlms(req: Request): Response {
+  const origin = new URL(req.url).origin;
+  const body = `# NanoTab Pay
+
+> NanoTab Pay lets anyone paywall a link in seconds. Paste content, set a price, and share one link: AI agents pay automatically in USDC on Base (x402 / HTTP 402), and humans can pay the same way. No account is needed to publish or to pay. Sellers keep 98% of every payment; NanoTab keeps 2%.
+
+## What can be paywalled
+
+Articles, guides, reports, research, lists, datasets, and files (text, markdown, HTML, JSON, PDF, PNG, JPEG, up to 1 MB). If you wrote it or have permission to share it, you can charge per view.
+
+## Free abstract on every post
+
+Every paywalled post shows a few sentences free — a real abstract taken from the first sentences of the content (about 200-400 characters of plain text). It is rendered server-side on the post's human page so search engines and AI answer engines can find and quote it without paying. The abstract is labelled "Free preview". Everything past the abstract stays paid: the teaser page never contains the full paid body.
+
+## Where things live
+
+- Human post page (free abstract + unlock): ${origin}/p/<slug>
+- Agent payment endpoint (402 -> pay -> 200): ${origin}/r/<slug>
+- Create a paywall (no account): ${origin}/
+- Browse posts: ${origin}/marketplace
+- Machine listing index (JSON, includes each post's abstract and page_url): ${origin}/v1/marketplace.json
+- Sitemap (human pages only): ${origin}/sitemap.xml
+- Live stats: ${origin}/stats
+- x402 discovery: ${origin}/.well-known/x402
+- Main site: https://nanotab.dev
+
+## How agents pay (x402, USDC on Base)
+
+1. GET ${origin}/r/<slug> with Accept: application/json (or any agent HTTP client) and no payment: you get HTTP 402 with a JSON price quote (x402 v2: network eip155:8453, asset USDC 0x833589fCD6eDb6E08f4C7c32D4F71B54BdA4B4E5, per-listing amount and payTo wallet, 2% NanoTab fee split).
+2. Pay that amount in USDC on Base to the payTo wallet, following the 402 terms.
+3. Retry the same URL with an X-Payment proof header: you get HTTP 200 with the full content bytes.
+
+Browsers and discovery crawlers (Googlebot, Bingbot, OAI-SearchBot, GPTBot, PerplexityBot, ClaudeBot) always get HTTP 200 with the free abstract at both /p/<slug> and /r/<slug> — never a 402, and never the paid body. Only callers that ask for JSON or use an agent-style HTTP client get the 402 quote when unpaid.
+
+## Citing a post
+
+Quote the free abstract from ${origin}/p/<slug> and link that canonical page. To read past the preview, pay via the /r/<slug> flow above.
+`;
+  return new Response(body, {
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' },
+  });
+}
+
+async function handleSitemap(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  const origin = new URL(req.url).origin;
+  const keys = await listRKeys(kv);
+  const listings = (
+    await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
+  )
+    .filter((l): l is Listing => !!l?.slug && isLive(l))
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const escXml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const url = (loc: string, lastmod?: string) =>
+    `  <url><loc>${escXml(loc)}</loc>${lastmod ? `<lastmod>${escXml(lastmod.slice(0, 10))}</lastmod>` : ''}</url>`;
+  const demoDate = '2026-11-01';
+  const lines = [
+    url(`${origin}/`),
+    url(`${origin}/marketplace`),
+    url(`${origin}/p/${DEMO_SLUG}`, demoDate),
+    url(`${origin}/demo`),
+    url(`${origin}/developers`),
+    url(`${origin}/wallet-guide`),
+    url(`${origin}/about`),
+    url(`${origin}/contact`),
+    url(`${origin}/terms`),
+    url(`${origin}/privacy`),
+    url(`${origin}/refunds`),
+    ...listings.map((l) => url(`${origin}/p/${l.slug}`, l.created_at)),
+  ];
+  const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${lines.join('\n')}\n</urlset>\n`;
+  return new Response(body, {
+    headers: { 'content-type': 'application/xml; charset=utf-8', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' },
+  });
+}
+
 export default {
   async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     try {
@@ -1176,6 +1502,15 @@ export default {
       if (req.method === 'GET' && ['/terms', '/privacy', '/refunds', '/refund-policy', '/contact', '/about', '/wallet-guide', '/demo'].includes(pathname)) {
         const page = pathname === '/terms' ? termsHtml() : pathname === '/privacy' ? privacyHtml() : pathname === '/contact' ? contactHtml() : pathname === '/about' ? aboutHtml() : pathname === '/wallet-guide' ? walletGuideHtml() : pathname === '/demo' ? demoHtml() : refundsHtml();
         return new Response(page, { headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' } });
+      }
+      if (req.method === 'GET' && pathname === '/robots.txt') {
+        return handleRobots(req);
+      }
+      if (req.method === 'GET' && pathname === '/llms.txt') {
+        return handleLlms(req);
+      }
+      if (req.method === 'GET' && pathname === '/sitemap.xml') {
+        return await handleSitemap(req, env);
       }
       if (req.method === 'GET' && pathname === '/.well-known/x402') {
         return handleWellKnown(req, env);
@@ -1230,7 +1565,14 @@ export default {
         if (!/^[A-Za-z0-9]{10}$/.test(slug)) {
           return Response.json({ error: 'listing not found' }, { status: 404 });
         }
-        return await handleRead(req, env, ctx, slug);
+        return await handleRead(req, env, ctx, slug, 'r');
+      }
+      if (req.method === 'GET' && pathname.startsWith('/p/')) {
+        const slug = pathname.slice('/p/'.length);
+        if (!/^[A-Za-z0-9]{10}$/.test(slug)) {
+          return Response.json({ error: 'listing not found' }, { status: 404 });
+        }
+        return await handleRead(req, env, ctx, slug, 'p');
       }
 
       if (req.method === 'OPTIONS') {
