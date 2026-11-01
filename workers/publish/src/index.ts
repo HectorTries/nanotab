@@ -2,6 +2,8 @@
 // No accounts, no email, no sessions anywhere: publishing and paying are
 // accountless. Owner review is protected by ADMIN_KEY only.
 //
+// POST /v1/ingest  (multipart `file`: PDF/.md/.txt ≤10MB → server-side
+//   extraction to canonical markdown; nothing persisted, original discarded)
 // POST /v1/publish  (no credentials needed; publishing works with zero cookies)
 //   {title, mime, price_cents, merchant_wallet, body_b64, source_url?} →
 //   stores R2 bytes + KV metadata → 201 {url, slug, x402}. Human links are
@@ -38,6 +40,22 @@ import {
 } from '../../../packages/x402-verify/src/index.ts';
 import { landingHtml, developersHtml, agentAuthHtml, termsHtml, privacyHtml, refundsHtml, contactHtml, aboutHtml, walletGuideHtml, demoHtml } from './landing.ts';
 import { isBlockedDomain } from './blocklist.ts';
+import {
+  IngestError,
+  MAX_EXTRACTED_CHARS,
+  MAX_UPLOAD_BYTES,
+  NO_TEXT_MESSAGE,
+  checkUploadRateLimit,
+  countWords,
+  deriveTitle,
+  extractPdfInfoTitle,
+  extractPdfText,
+  normalizeMarkdown,
+  pdfTextToMarkdown,
+  rejectionMessage,
+  sanitizeMarkdown,
+  sniffKind,
+} from './ingest.ts';
 
 // Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
 // wrangler/workerd provide the real globals at runtime).
@@ -211,6 +229,13 @@ function b64ToBytes(s: string): Uint8Array {
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+
+function bytesToB64(bytes: Uint8Array): string {
+  let bin = '';
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode(...bytes.subarray(i, i + CH));
+  return btoa(bin);
 }
 
 // --- Free abstract (discovery teaser) ---
@@ -418,6 +443,23 @@ function parsePublishBody(body: any, maxPrice: number): {
   if (bytes.length < 1 || bytes.length > MAX_BODY_BYTES) {
     throw new HttpErr(400, 'invalid body_b64 (need 1 byte–1MB base64)');
   }
+  // Markdown-canonical storage: pasted/uploaded prose is capped at 200,000
+  // characters, and markdown has dangerous embedded HTML stripped before it
+  // is stored (a byte-identical no-op on benign markdown).
+  let b64 = body.body_b64;
+  if (body.mime === 'text/markdown' || body.mime === 'text/plain') {
+    const text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    if (text.length > MAX_EXTRACTED_CHARS) {
+      throw new HttpErr(400, 'That document is over 200,000 characters — publish a shorter piece instead.');
+    }
+    if (body.mime === 'text/markdown') {
+      const clean = sanitizeMarkdown(text);
+      if (clean !== text) {
+        bytes = new TextEncoder().encode(clean);
+        b64 = bytesToB64(bytes);
+      }
+    }
+  }
   let source_url: string | undefined;
   if (body?.source_url !== undefined && body?.source_url !== '') {
     if (typeof body.source_url !== 'string' || body.source_url.length > 2048) {
@@ -432,7 +474,7 @@ function parsePublishBody(body: any, maxPrice: number): {
   if (typeof body?.agent_name === 'string' && body.agent_name.trim()) {
     agent_name = body.agent_name.trim().slice(0, 80);
   }
-  return { title, mime: body.mime, price_cents: body.price_cents, merchant_wallet: body.merchant_wallet, bytes, b64: body.body_b64, source_url, agent_name };
+  return { title, mime: body.mime, price_cents: body.price_cents, merchant_wallet: body.merchant_wallet, bytes, b64, source_url, agent_name };
 }
 
 async function freshSlug(kv: KVNamespace): Promise<string> {
@@ -443,6 +485,78 @@ async function freshSlug(kv: KVNamespace): Promise<string> {
     return cand;
   }
   throw new HttpErr(500, 'slug collision, retry');
+}
+
+// --- POST /v1/ingest (content ingestion: file in, canonical markdown out) ---
+// Multipart form with a `file` field (PDF, .md/.markdown/.txt, ≤10 MB).
+// Extraction runs server-side in the Worker; NOTHING is persisted here — the
+// original bytes are converted in memory and discarded, and only the returned
+// markdown is later stored via /v1/publish. Rate limited per IP (3/min,
+// 10/hour). Publishing itself stays accountless and unlimited.
+async function handleIngest(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  const fwd = req.headers.get('x-forwarded-for')?.split(',')[0] ?? '';
+  const ip = (req.headers.get('cf-connecting-ip') ?? fwd).trim() || 'unknown';
+  try {
+    await checkUploadRateLimit(kv, ip);
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch {
+      throw new IngestError(400, 'Could not read that upload — try again.');
+    }
+    const file = form.get('file');
+    if (!file || typeof file === 'string') {
+      throw new IngestError(400, 'No file uploaded — choose a PDF, .md, or .txt file.');
+    }
+    const name = (file as unknown as { name?: string }).name || 'upload';
+    const buf = await (file as unknown as Blob).arrayBuffer().catch(() => null);
+    if (!buf || buf.byteLength < 1) {
+      throw new IngestError(400, 'That file is empty — choose a file with content.');
+    }
+    if (buf.byteLength > MAX_UPLOAD_BYTES) {
+      throw new IngestError(400, 'That file is over 10 MB — publish a smaller piece instead.');
+    }
+    const bytes = new Uint8Array(buf);
+    const sniff = sniffKind(bytes, name);
+    if (sniff.kind === 'rejected') {
+      throw new IngestError(400, rejectionMessage(sniff.reason));
+    }
+    let markdown = '';
+    let pages: number | undefined;
+    let pdfTitle: string | undefined;
+    if (sniff.kind === 'pdf') {
+      const ex = await extractPdfText(bytes);
+      if (!ex.text.trim()) throw new IngestError(400, NO_TEXT_MESSAGE);
+      pages = ex.pages;
+      pdfTitle = extractPdfInfoTitle(bytes);
+      markdown = pdfTextToMarkdown(ex.text, pdfTitle);
+    } else {
+      const raw = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      if (!raw.trim()) {
+        throw new IngestError(400, 'That file has no readable text — paste the content instead.');
+      }
+      markdown = sanitizeMarkdown(normalizeMarkdown(raw));
+    }
+    if (markdown.length > MAX_EXTRACTED_CHARS) {
+      throw new IngestError(400, 'That document extracts to more than 200,000 characters — publish a shorter piece instead.');
+    }
+    if (!markdown.trim()) throw new IngestError(400, 'That file has no readable text — paste the content instead.');
+    const title = deriveTitle(markdown, { filename: name, pdfTitle });
+    return Response.json(
+      {
+        markdown, title, filename: name,
+        chars: markdown.length, words: countWords(markdown),
+        ...(pages !== undefined ? { pages } : {}),
+      },
+      { headers: { 'access-control-allow-origin': '*' } }
+    );
+  } catch (e) {
+    if (e instanceof IngestError) {
+      return Response.json({ error: e.message }, { status: e.status, headers: { 'access-control-allow-origin': '*' } });
+    }
+    throw e;
+  }
 }
 
 // --- POST /v1/publish (human: publishes instantly, no review friction) ---
@@ -1291,7 +1405,7 @@ function handleLlms(req: Request): Response {
 
 ## What can be paywalled
 
-Articles, guides, reports, research, lists, datasets, and files (text, markdown, HTML, JSON, PDF, PNG, JPEG, up to 1 MB). If you wrote it or have permission to share it, you can charge per view.
+Upload your document (PDF, .md, or .txt, up to 10 MB) or paste your words: NanoTab converts it to markdown, and that markdown is the canonical paywalled record — the original file is discarded after extraction and never served. Articles, guides, reports, research, lists, and datasets all work. If you wrote it or have permission to share it, you can charge per view.
 
 ## Free abstract on every post
 
@@ -1420,6 +1534,9 @@ export default {
       }
       if (req.method === 'GET' && pathname === '/publish') {
         return handlePublishPage();
+      }
+      if (req.method === 'POST' && pathname === '/v1/ingest') {
+        return await handleIngest(req, env);
       }
       if (req.method === 'POST' && pathname === '/v1/publish') {
         return await handlePublish(req, env);

@@ -6,12 +6,14 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "node test/smoke-publish.mjs",
-    "test:jev": "node test/selftest-jev.mjs"
+    "test:jev": "node test/selftest-jev.mjs",
+    "test:ingest": "node test/ingest.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^3.114.0"
   },
   "dependencies": {
+    "unpdf": "^2.1.0",
     "viem": "^2.57.7"
   }
 }
