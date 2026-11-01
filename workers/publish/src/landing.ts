@@ -1,8 +1,8 @@
 // pay.nanotab.dev pages. Leading product: Paywall Any Link.
-//   /            hero + step-flow (paste link → content → price → wallet → Publish; no sign-in)
-//   /login       optional sign-in to manage links / review agent submissions
+// No accounts, no email, no sign-in anywhere.
+//   /            hero + step-flow (paste link → content → price → wallet → Publish)
 //   /developers  demoted developer path (SDK / self-host docs funnel)
-//   /agent-auth  daily authorization queue: owner approves agent links
+//   /agent-auth  daily authorization queue: owner approves agent links (ADMIN_KEY via ?key=)
 // Design system: premium fintech dark (shared with the 402 paywall page).
 
 const CSS = `
@@ -182,7 +182,7 @@ function head(title: string, desc: string): string {
 function topbar(ctaHref: string, ctaLabel: string): string {
   return `<header class="topbar"><div class="topbar-in">
 <a class="logo" href="/"><span class="logo-mark">N</span> NanoTab Pay</a>
-<nav class="nav" aria-label="Primary"><a href="/marketplace">Marketplace</a><a href="/agent-auth">Agent review</a><a href="/developers">For developers</a><a href="/login">Sign in</a><a class="nav-cta" href="${ctaHref}">${ctaLabel}</a></nav>
+<nav class="nav" aria-label="Primary"><a href="/marketplace">Marketplace</a><a href="/developers">For developers</a><a class="nav-cta" href="${ctaHref}">${ctaLabel}</a></nav>
 </div></header>`;
 }
 
@@ -190,12 +190,12 @@ export const CONTACT_EMAIL = 'support@nanotab.dev';
 
 export const TRUST_LINKS = `<a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds &amp; disputes</a> · <a href="/contact">Contact</a> · <a href="/about">About</a>`;
 
-const FOOTER = `<footer>NanoTab Pay · <a href="/developers">For developers</a> · <a href="/agent-auth">Agent review</a> · <a href="/marketplace">marketplace</a> (<a href="/v1/marketplace.json">json</a>) · <a href="/stats">stats</a> · <a href="https://nanotab.dev">nanotab.dev</a> · USDC on Base via x402 · Self-host fee 0.1% · Hosted fee 2%<br>${TRUST_LINKS}</footer>`;
+const FOOTER = `<footer>NanoTab Pay · <a href="/developers">For developers</a> · <a href="/marketplace">marketplace</a> (<a href="/v1/marketplace.json">json</a>) · <a href="/stats">stats</a> · <a href="https://nanotab.dev">nanotab.dev</a> · USDC on Base via x402 · Self-host fee 0.1% · Hosted fee 2%<br>${TRUST_LINKS}</footer>`;
 
 function topbarPlain(ctaHref: string, ctaLabel: string): string {
   return `<header class="topbar"><div class="topbar-in">
 <a class="logo" href="/"><span class="logo-mark">N</span> NanoTab Pay</a>
-<nav class="nav" aria-label="Primary"><a href="/marketplace">Browse links</a><a href="/#how">How it works</a><a href="/#faq">Questions</a><a href="/developers">For developers</a><a href="/login">Sign in</a><a class="nav-cta" href="${ctaHref}">${ctaLabel}</a></nav>
+<nav class="nav" aria-label="Primary"><a href="/marketplace">Browse links</a><a href="/#how">How it works</a><a href="/#faq">Questions</a><a href="/developers">For developers</a><a class="nav-cta" href="${ctaHref}">${ctaLabel}</a></nav>
 </div></header>`;
 }
 
@@ -236,7 +236,7 @@ export function landingHtml(): string {
 <div id="create" style="scroll-margin-top:80px">
 <div class="card">
 <h2>Paywall a link<span class="step-tag">Start here</span></h2>
-<p class="card-sub">Four short steps. <b style="color:var(--txt)">No account needed</b> — no email, no sign-in, no password. Paste your words, set a price, add a payout wallet (or generate one in one click below), and publish. Your link goes live straight away. Signing in is optional: sign in first only if you want your links listed under My links so you can manage them later.</p>
+<p class="card-sub">Four short steps. <b style="color:var(--txt)">No account needed</b> — no email, no sign-in, no password. Paste your words, set a price, add a payout wallet (or generate one in one click below), and publish. Your link goes live straight away. Keep your link — bookmark it after you publish. There are no accounts, so there is no dashboard to find it in later.</p>
 <div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="dot-1"></span><span class="wiz-dot" id="dot-2"></span><span class="wiz-dot" id="dot-3"></span><span class="wiz-dot" id="dot-4"></span></span><span id="wiz-label">Step 1 of 4 — Your link</span></div>
 <div class="wiz-panel" id="panel-1">
 <label for="p-link">1 · Link you want to charge for</label>
@@ -293,12 +293,11 @@ export function landingHtml(): string {
 <div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
 </div>
 <div id="pub-out"></div>
-<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and your paywall is live instantly. Signing in is optional: <a href="/login">sign in</a> first only if you want this link listed under My links so you can manage it later.</span></div>
+<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and your paywall is live instantly. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
 </div>
-<div class="card hidden" id="dash-card">
-<h2>My links <span style="color:var(--mut);font-size:13px;font-weight:400" id="dash-count"></span></h2>
-<p class="card-sub">Share a link anywhere your readers are. Every time someone pays to read, 98% lands in your wallet and the read is counted here. Links you publish while signed in appear here; links published without signing in are still live — keep their URLs from the publish confirmation.</p>
-<div id="dash-list"><i>No links yet — share your first above.</i></div>
+<div class="card">
+<h2>Keep your link — bookmark it</h2>
+<p class="card-sub">There are no accounts and no dashboard. When you publish, save the link from the confirmation and bookmark it — that URL is how you and your readers find the paywall again. Payments go straight to your wallet, so you do not need to come back here to get paid.</p>
 </div>
 </div>
 <div class="audience" aria-label="Who NanoTab Pay is for">
@@ -312,7 +311,7 @@ export function landingHtml(): string {
 <div class="steps">
 <div class="step"><span class="n">Step 1</span><h3>Add your link and words</h3><p>Paste the link, paste the words behind it, and give it a title. It takes about a minute.</p></div>
 <div class="step"><span class="n">Step 2</span><h3>Share your new link</h3><p>You get one short link to share anywhere — your site, your newsletter, your social posts.</p></div>
-<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. If you signed in first, watch every read add up in My links above.</p></div>
+<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. Keep your link — bookmark it, because there is no account dashboard to look it up in.</p></div>
 </div>
 </section>
 <section class="block" id="paywall-how" style="scroll-margin-top:80px" aria-label="How the paywall actually works">
@@ -330,7 +329,7 @@ export function landingHtml(): string {
 <div class="earn-grid">
 <div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Your share of every payment</div><div class="price-big">You keep 98¢ of every $1</div><p>That is 98% of every payment. NanoTab keeps 2% to run the service and look after your links. Amounts settle in USDC on Base, straight to your wallet. Readers always pay exactly the price you set.</p>
 <div class="earn-rows"><div class="earn-row"><span>You charge $0.05</span><b>You receive $0.049</b></div><div class="earn-row"><span>You charge $0.25</span><b>You receive $0.245</b></div><div class="earn-row"><span>You charge $1.00</span><b>You receive $0.98</b></div></div></div>
-<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Sign in first and every paid read is counted in My links, so you can see what is earning.</p>
+<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Every paid read is paid straight to your wallet — keep your links bookmarked, there is no account dashboard.</p>
 <div class="earn-rows"><div class="earn-row"><span>To start</span><b>$0</b></div><div class="earn-row"><span>Each month</span><b>$0</b></div><div class="earn-row"><span>NanoTab fee</span><b>2% of each payment</b></div></div></div>
 </div>
 </section>
@@ -338,7 +337,7 @@ export function landingHtml(): string {
 <h2>Common questions</h2>
 <p class="secsub">Short answers, in plain English.</p>
 <details class="faq-item"><summary>Do my readers need an account?</summary><p>No NanoTab account. AI agents pay automatically. A person paying needs a USDC wallet on Base — there is no card checkout. Either way, they pay and read straight away.</p></details>
-<details class="faq-item"><summary>Do I need an account to publish?</summary><p>No. Posting needs no account — no email, no sign-in. Paste your words, set a price, give a payout wallet address (or generate one in one click), and publish: the link is live straight away. Signing in is optional. If you <a href="/login">sign in</a> first with an email magic link (no password), your links are tied to your account and listed under My links so you can manage or remove them later, and you can review agent submissions. Publishing itself never waits for sign-in.</p></details>
+<details class="faq-item"><summary>Do I need an account to publish?</summary><p>No. There are no accounts at all — no email, no sign-in, no password. Paste your words, set a price, give a payout wallet address (or generate one in one click), and publish: the link is live straight away. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></details>
 <details class="faq-item"><summary>How do I get paid?</summary><p>Straight to your USDC wallet on Base — there is no NanoTab balance to withdraw from. Every payment is split on-chain: 98% to your wallet, 2% to NanoTab. Bring your own wallet address, or tap Generate instant wallet on the create page: it creates a wallet in your browser and the funds go to that address in USDC on Base. See our <a href="/wallet-guide">plain-English wallet guide</a>.</p></details>
 <details class="faq-item"><summary>What does NanoTab cost?</summary><p>2% of each payment on hosted links — you keep 98%. No monthly fee. The developer self-host path is 0.1%; see <a href="/developers">For developers</a>.</p></details>
 <details class="faq-item"><summary>What can I paywall?</summary><p>Almost any link that is yours to share: an article, guide, report, list, or file. If you wrote it, made it, or have permission to share it, you can charge for it.</p></details>
@@ -360,11 +359,10 @@ ${FOOTER_PLAIN}
 </div>
 <script>
 var $=function(id){return document.getElementById(id)};
-var signedIn=false;
 var stepNow=1;
 var LABELS={1:'Step 1 of 4 — Your link',2:'Step 2 of 4 — Your words',3:'Step 3 of 4 — Your price',4:'Step 4 of 4 — Your wallet'};
 var PRICES={short:'0.05',article:'0.25',report:'1.00',list:'0.25',other:'0.25'};
-async function req(p,o){o=o||{};o.credentials='include';if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
+async function req(p,o){o=o||{};if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
 var DKEY='nt_draft';
 function saveDraft(){try{localStorage.setItem(DKEY,JSON.stringify({l:$('p-link').value,t:$('p-title').value,k:$('p-kind').value,p:$('p-price').value,w:$('p-payto').value,b:$('p-body').value}))}catch(e){}}
 function restoreDraft(){try{var d=JSON.parse(localStorage.getItem(DKEY)||'null');if(!d)return;if(d.l)$('p-link').value=d.l;if(d.t)$('p-title').value=d.t;if(d.k)$('p-kind').value=d.k;if(d.p)$('p-price').value=d.p;if(d.w)$('p-payto').value=d.w;if(d.b)$('p-body').value=d.b;}catch(e){}}
@@ -578,32 +576,7 @@ function forgetSavedWallet(){
 document.addEventListener('visibilitychange',function(){
  if(document.hidden){var f=$('p-pk');if(f&&f.type==='text'){f.type='password';var b=$('btn-pk-toggle');if(b)b.textContent='Show'}}
 });
-function setSignedIn(email){
- signedIn=true;
- var l=$('pub-lock');if(l)l.classList.add('hidden');
- var out=$('pub-out');
- if(new URLSearchParams(location.search).get('welcome')==='1'&&out){
-   out.innerHTML='<div class="out">Signed in as <b>'+email+'</b> — links you publish now are listed under My links. Add your USDC wallet address on Base (or generate one), then tap <b>Publish link</b>.</div>';
-   showStep(4);
- }
-}
-async function checkSession(){
- try{var m=await req('/v1/me');if(m.ok&&m.j&&m.j.email){setSignedIn(m.j.email);$('dash-card').classList.remove('hidden');restoreDraft();markChips();updateEarn();refreshDash();return}}catch(e){}
- signedIn=false;
-}
-function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
-function renderDash(items){
- var c=$('dash-count');if(c)c.textContent=items.length?('('+items.length+')'):'';
- if(!items.length){$('dash-list').innerHTML='<i>No links yet — share your first above.</i>';return}
- $('dash-list').innerHTML=items.map(function(l){
-  var tags='';
-  if(l.created_by_agent)tags+='<span class="tag">Added automatically</span>';
-  if(l.status&&l.status!=='live')tags+='<span class="tag pending">Not live yet</span>';
-  return '<div class="item"><div class="t">'+esc(l.title)+' — $'+l.price_usd+tags+'</div><div class="m"><a href="'+l.url+'">'+l.url+'</a> · '+l.paid_calls+' paid reads · '+l.created_at.slice(0,10)+'</div><button class="ghost" data-u="'+l.url+'" onclick="copyL(this.dataset.u)">copy link</button><button class="ghost" data-s="'+l.slug+'" onclick="delL(this.dataset.s)">remove</button></div>'}).join('');
-}
-async function refreshDash(){var r=await req('/v1/listings');if(r.ok)renderDash(r.j)}
 async function copyL(u){try{await navigator.clipboard.writeText(u);alert('Copied — share it anywhere.')}catch(e){prompt('Copy this link:',u)}}
-async function delL(slug){if(!confirm('Remove this link? Readers will no longer be able to open it.'))return;var r=await fetch('/v1/listings/'+slug,{method:'DELETE',credentials:'include'});if(r.ok)refreshDash();else alert('Could not remove that link just now. Please try again.')}
 function onNext(){
  saveDraft();
  var err=checkWords();
@@ -627,63 +600,11 @@ async function publish(){
  if(!r.ok){$('pub-out').innerHTML='<div class="out">Something went wrong just now. Please try again in a moment.</div>';return}
  clearDraft();
  var curl='curl -i '+r.j.url;
- $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Agent paywall link (HTTP 402): <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">Copy paywall link</button> <button class="ghost" data-u="'+curl+'" onclick="copyL(this.dataset.u)">Copy test curl</button><div class="agent-curl">'+curl+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the link anywhere.</span></div>';
- if(signedIn)refreshDash();
-}
-(async function(){try{var r=await fetch('/stats');var j=await r.json();var el=$('hero-stats');if(el&&j&&Number(j.total_paid_calls)>0){el.innerHTML=Number(j.total_paid_calls)+' paid reads so far across hosted links — we are new, so early sellers stand out. <a href="/stats">See live stats</a>'}}catch(e){}})();
-refreshSavedWalletNote();
-checkSession();
-</script></body></html>`;
+ $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Agent paywall link (HTTP 402): <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">Copy paywall link</button> <button class="ghost" data-u="'+curl+'" onclick="copyL(this.dataset.u)">Copy test curl</button><div class="agent-curl">'+curl+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the link anywhere. Keep your link — bookmark it, there is no account to find it in later.</span></div>';
 }
 
-export function loginHtml(): string {
-  return head(
-    'Sign in — NanoTab Pay',
-    'Sign in to manage your links and review agent submissions. Publishing needs no account. We email you a sign-in link — no password to remember.'
-  ) + topbarPlain('/#create', 'Paywall a link') + `
-<div class="center-wrap">
-<a class="logo" href="/" style="justify-content:center"><span class="logo-mark">N</span> NanoTab Pay</a>
-<div class="card" style="margin-top:28px">
-<h2 style="font-size:24px">Sign in to manage links</h2>
-<p class="card-sub">Publishing needs no account — you can <a href="/#create">create a paywall without signing in</a> and get paid to your wallet. Sign in only to see My links, remove links, or review agent submissions. We email you a sign-in link — no password.</p>
-<div id="login-form">
-<label for="email">Email</label>
-<input id="email" type="email" placeholder="you@example.com" autocomplete="email">
-<button id="btn-login" onclick="requestLink()" style="width:100%">Email me a sign-in link</button>
-<div id="login-msg" class="out hidden"></div>
-</div>
-<div id="login-done" class="hidden">
-<div class="out" style="margin-top:0">Signed in as <b id="who">…</b></div>
-<button id="btn-continue" onclick="goNext()" style="width:100%">Continue →</button>
-</div>
-</div>
-<p class="hint" style="text-align:center">New here? The same link creates your account — but you do not need one to publish.<br>Everything you typed stays saved in this browser and comes back after sign-in.<br><a href="/">← Back to start</a> · <a href="/developers">For developers</a></p>
-</div>
-${FOOTER_PLAIN}
-<script>
-var $=function(id){return document.getElementById(id)};
-async function req(p,o){o=o||{};o.credentials='include';if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
-function nextTarget(){
- var n=new URLSearchParams(location.search).get('next')||'/';
- if(!/^\\/(?!\\/)/.test(n))return '/';
- return n;
-}
-function goNext(){location.href=nextTarget()}
-async function requestLink(){
- var email=($('email').value||'').trim();var box=$('login-msg');box.classList.remove('hidden');
- if(!email){box.textContent='Enter your email above first.';return}
- $('btn-login').disabled=true;box.textContent='Sending...';
- try{
-  var r=await req('/v1/auth/request',{method:'POST',body:JSON.stringify({email:email,next:nextTarget()})});
-  $('btn-login').disabled=false;
-  if(!r.ok){box.textContent='Something went wrong just now. Please try again in a moment.';return}
-  if(r.j.emailed){box.textContent='Check your inbox — your link works for 15 minutes. You will land back on your words after sign-in.'}
-  else{box.innerHTML='<b>Email is not set up here yet — tap to sign in:</b><br><a href="'+r.j.link+'">'+r.j.link+'</a>'}
- }catch(e){$('btn-login').disabled=false;box.textContent='Something went wrong just now. Please try again in a moment.'}
-}
-(async function(){
- try{var m=await req('/v1/me');if(m.ok&&m.j&&m.j.email){$('who').textContent=m.j.email;$('login-form').classList.add('hidden');$('login-done').classList.remove('hidden')}}catch(e){}
-})();
+(async function(){try{var r=await fetch('/stats');var j=await r.json();var el=$('hero-stats');if(el&&j&&Number(j.total_paid_calls)>0){el.innerHTML=Number(j.total_paid_calls)+' paid reads so far across hosted links — we are new, so early sellers stand out. <a href="/stats">See live stats</a>'}}catch(e){}})();
+refreshSavedWalletNote();
 </script></body></html>`;
 }
 
@@ -716,7 +637,7 @@ export function developersHtml(): string {
 </section>
 <section class="block" id="agents" aria-label="Agents creating paywalls">
 <h2>Agents creating paywalls</h2>
-<p class="secsub">Agents can submit links too. Every submission is auto-reviewed by TypeSafe Jev (spam, legality, price, quality): clean links from verified agents publish instantly, everything else waits in the account owner's <a href="/agent-auth">daily authorization queue</a> with its Jev scores shown. Unapproved links return <code>403</code> at fetch time (never 402 terms, never content), rejected links read as <code>404</code> and cannot be resubmitted, and published agent links carry a <b style="color:var(--txt)">Created by agent</b> badge. Human-created links still publish instantly.</p>
+<p class="secsub">Agents can submit links too. Every submission is auto-reviewed by TypeSafe Jev (spam, legality, price, quality): clean links from verified agents publish instantly, everything else waits in the owner's daily review queue (protected by the ADMIN_KEY secret) with its Jev scores shown. Unapproved links return <code>403</code> at fetch time (never 402 terms, never content), rejected links read as <code>404</code> and cannot be resubmitted, and published agent links carry a <b style="color:var(--txt)">Created by agent</b> badge. Human-created links still publish instantly.</p>
 <pre class="codeblock"><code># agent submits (queued as pending, returns 202)
 curl -X POST https://pay.nanotab.dev/v1/agent/submit \\
   -H "X-Agent-Key: $AGENT_KEY" -H "content-type: application/json" \\
@@ -724,11 +645,11 @@ curl -X POST https://pay.nanotab.dev/v1/agent/submit \\
        "merchant_wallet":"0x…","body_b64":"…","agent_name":"my-agent",
        "source_url":"https://example.com/source"}'
 
-# owner reviews the daily queue (browser, sign-in required)
-#   https://pay.nanotab.dev/agent-auth
-# owner automation (session cookie or publish key):
-#   GET  /v1/agent/pending
-#   POST /v1/agent/review  {"slug":"…","action":"approve"|"reject"}</code></pre>
+# owner reviews the daily queue (browser, admin key in URL)
+#   https://pay.nanotab.dev/agent-auth?key=$ADMIN_KEY
+# owner automation (admin key header):
+#   GET  /v1/agent/pending   -H "X-Admin-Key: $ADMIN_KEY"
+#   POST /v1/agent/review    -H "X-Admin-Key: $ADMIN_KEY" {"slug":"…","action":"approve"|"reject"}</code></pre>
 </section>
 <section class="block" aria-label="Discovery">
 <h2>Discovery for machines</h2>
@@ -736,7 +657,7 @@ curl -X POST https://pay.nanotab.dev/v1/agent/submit \\
 <pre class="codeblock"><code>GET https://pay.nanotab.dev/v1/marketplace.json   # flat listing file
 GET https://pay.nanotab.dev/.well-known/x402      # x402 capability doc
 GET https://pay.nanotab.dev/stats                 # totals + fee terms</code></pre>
-<p style="color:var(--mut);font-size:14.5px">Automation with the shared publish key still works at <a href="/publish">/publish</a>. Full docs and source: <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a>.</p>
+<p style="color:var(--mut);font-size:14.5px">The plain API form is at <a href="/publish">/publish</a> (no credentials needed). Full docs and source: <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a>.</p>
 </section>
 <div class="card" style="text-align:center">
 <h2>Not writing code today?</h2>
@@ -750,7 +671,7 @@ ${FOOTER}
 export function agentAuthHtml(): string {
   return head(
     'Agent review — daily authorization queue · NanoTab Pay',
-    'Daily authorization queue for NanoTab Pay: the account owner approves or rejects agent-submitted paywall links before they publish. Unapproved links return 403.'
+    'Daily authorization queue for NanoTab Pay: the owner approves or rejects agent-submitted paywall links before they publish. Protected by the ADMIN_KEY secret. Unapproved links return 403.'
   ) + topbar('/#create', 'Paywall a link') + `
 <div class="wrap" style="max-width:820px">
 <section class="block" style="padding-top:48px">
@@ -759,10 +680,10 @@ export function agentAuthHtml(): string {
 <p class="secsub">Agents can create paywall links. Clean submissions from verified agents auto-publish via TypeSafe Jev (spam, legality, price and quality checks); everything else waits here for your review with its Jev scores shown. Review today's submissions: <b style="color:var(--txt)">approve</b> to publish (the link gets a “Created by agent” badge), <b style="color:var(--txt)">reject</b> to drop it. Until you approve, the link returns <code>403</code> — no 402 terms, no content, no payments. Human-created links never wait here; they publish instantly.</p>
 <p class="secsub" id="queue-date" style="font-size:14.5px"></p>
 </section>
-<div id="queue-signin" class="card hidden">
-<h2>Sign in to review</h2>
-<p class="card-sub">The queue is restricted to the account owner. Sign in with the owner email to approve or reject agent submissions.</p>
-<a class="btn" href="/login?next=/agent-auth">Sign in →</a>
+<div id="owner-banner" style="background:rgba(62,207,142,.08);border:1px solid rgba(62,207,142,.4);border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14.5px"><b style="color:var(--txt)">You are viewing as owner.</b> <span style="color:var(--mut)">Admin key accepted from the URL — no account, no session cookie. Keep this URL private: anyone with the key can approve or reject submissions.</span></div>
+<div id="queue-locked" class="card hidden">
+<h2>Owner key required</h2>
+<p class="card-sub">This queue is protected by the ADMIN_KEY secret. Open this page as <code>/agent-auth?key=YOUR_ADMIN_KEY</code>, or call the API with an <code>X-Admin-Key</code> header. There are no accounts and no sign-in.</p>
 </div>
 <div id="queue-main" class="hidden">
 <div id="queue-list"><i>loading queue...</i></div>
@@ -775,7 +696,8 @@ ${FOOTER}
 </div>
 <script>
 var $=function(id){return document.getElementById(id)};
-async function api(p,o){o=o||{};o.credentials='include';if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
+var ADMIN_KEY=new URLSearchParams(location.search).get('key')||'';
+async function api(p,o){o=o||{};o.headers=Object.assign({},o.headers||{},{'X-Admin-Key':ADMIN_KEY});if(o.body&&!o.headers['content-type'])o.headers['content-type']='application/json';var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 $('queue-date').textContent='Queue for '+new Date().toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' · oldest first · approval publishes instantly';
 function renderQueue(items){
@@ -800,11 +722,11 @@ function renderQueue(items){
   +'<button onclick="review(\\''+l.slug+'\\',\\'approve\\')">Approve &amp; publish</button> <button class="danger" onclick="review(\\''+l.slug+'\\',\\'reject\\')">Reject</button></div>'}).join('');
 }
 async function loadQueue(){
+ if(!ADMIN_KEY){$('queue-locked').classList.remove('hidden');$('queue-main').classList.add('hidden');return}
  var r=await api('/v1/agent/pending');
- if(r.st===401){$('queue-signin').classList.remove('hidden');$('queue-main').classList.add('hidden');return}
- if(r.st===403){$('queue-list').innerHTML='<div class="out">Signed in, but agent review is restricted to the account owner.</div>';$('queue-main').classList.remove('hidden');return}
+ if(r.st===403){$('queue-locked').classList.remove('hidden');$('queue-main').classList.add('hidden');$('queue-list').innerHTML='';return}
  if(!r.ok){$('queue-list').textContent='Could not load the queue ('+r.st+').';$('queue-main').classList.remove('hidden');return}
- $('queue-signin').classList.add('hidden');$('queue-main').classList.remove('hidden');
+ $('queue-locked').classList.add('hidden');$('queue-main').classList.remove('hidden');
  renderQueue(r.j);
 }
 async function review(slug,action){
@@ -834,7 +756,7 @@ export function termsHtml(): string {
     `<p class="eyebrow">Plain English · NanoTab Pay</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">Terms of use</h2>
 <p class="secsub">Last updated: November 2026. Questions or disputes: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
-<div class="card"><h2 style="font-size:18px">What NanoTab Pay is</h2><p class="card-sub" style="margin-bottom:0">NanoTab Pay lets you put words, files and links behind a pay-per-read link. AI agents pay to read your link; humans can too — same link, same price. Payments are made in USDC on the Base network. We do not hold your money: each payment is split on-chain, 98% to the wallet address you give us and 2% to NanoTab.</p></div>
+<div class="card"><h2 style="font-size:18px">What NanoTab Pay is</h2><p class="card-sub" style="margin-bottom:0">NanoTab Pay lets you put words, files and links behind a pay-per-read link. AI agents pay to read your link; humans can too — same link, same price. Payments are made in USDC on the Base network. We do not hold your money: each payment is split on-chain, 98% to the wallet address you give us and 2% to NanoTab. There are no accounts: publishing and paying need no email, no sign-in and no password. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></div>
 <div class="card"><h2 style="font-size:18px">Fees and settlement</h2><p class="card-sub" style="margin-bottom:0">Hosted links: NanoTab keeps 2% of every payment; you keep 98%. There is no monthly fee. Prices are set by you in US dollars and paid in USDC. Settled payments go straight to your wallet — there is no NanoTab balance and nothing to withdraw. The developer self-host path carries a 0.1% fee instead; see <a href="/developers">For developers</a>.</p></div>
 <div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">Only publish content you wrote, made, or have permission to sell. You are responsible for it being lawful and as described. Agent-submitted links may be held for owner review before they go live. We may remove links that break the law or these terms.</p></div>
 <div class="card"><h2 style="font-size:18px">What paying buys</h2><p class="card-sub" style="margin-bottom:0">Paying unlocks a personal read of that link's content. It does not buy ownership, and it does not allow copying for resale, redistribution, or republication. Sellers: the paywall controls access to the copy NanoTab serves; it cannot stop someone re-typing what they have read, and we do not claim otherwise.</p></div>
@@ -846,14 +768,14 @@ export function termsHtml(): string {
 export function privacyHtml(): string {
   return infoPage(
     'Privacy — NanoTab Pay',
-    'What NanoTab Pay collects and why: email for magic-link sign-in, your listing content and wallet address, paid-read counts. No data selling.',
+    'What NanoTab Pay collects and why: there are no accounts and no email collected. We store your listing content, price and payout wallet address, plus payment metadata and paid-read counts. No data selling.',
     `<p class="eyebrow">Plain English · NanoTab Pay</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">Privacy, in short</h2>
 <p class="secsub">Last updated: November 2026. Data questions: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
-<div class="card"><h2 style="font-size:18px">What we collect, and why</h2><p class="card-sub" style="margin-bottom:0"><b style="color:var(--txt)">Publishing needs no email and no account.</b> <b style="color:var(--txt)">Email address</b> — only if you choose to sign in, to send your sign-in magic link and to know which links are yours; there is no password. <b style="color:var(--txt)">Listing content, title, price and wallet address</b> — so we can serve your paywall and send you 98% of each payment. The wallet address is public; a generated wallet&apos;s private key is created in your browser and never sent to us. <b style="color:var(--txt)">Paid-read counts</b> — so your dashboard and our public stats are honest. Readers do not need an account, and we do not ask readers for email.</p></div>
-<div class="card"><h2 style="font-size:18px">Cookies</h2><p class="card-sub" style="margin-bottom:0">One session cookie (<code>nt_sess</code>) keeps you signed in for 30 days, if you sign in. Your unpublished draft is stored in your own browser (local storage) until you share it. If you generate a wallet and tap Save on this device, its private key is stored only in your browser&apos;s local storage — never on our servers. We do not use advertising cookies.</p></div>
-<div class="card"><h2 style="font-size:18px">Who else is involved</h2><p class="card-sub" style="margin-bottom:0">Sign-in emails are sent via Resend from login@mail.nanotab.dev. The site runs on Cloudflare. Payments settle on the public Base blockchain — wallet addresses and amounts there are public by design. Agent submissions may be auto-reviewed by TypeSafe Jev (title and a short content excerpt). We never sell personal data.</p></div>
-<div class="card"><h2 style="font-size:18px">Your choices</h2><p class="card-sub" style="margin-bottom:0">Remove any of your links at any time from My links. To ask what we hold about your email, or to have it deleted, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>. If you are in the UK or EEA, you have rights to access, correct and erase your personal data; we will honour them.</p></div>
+<div class="card"><h2 style="font-size:18px">What we collect, and why</h2><p class="card-sub" style="margin-bottom:0"><b style="color:var(--txt)">There are no accounts, and we collect no email addresses.</b> Publishing and paying need no sign-in and no password. <b style="color:var(--txt)">Listing content, title, price and payout wallet address</b> — so we can serve your paywall and send you 98% of each payment. The wallet address is public; a generated wallet&apos;s private key is created in your browser and never sent to us. <b style="color:var(--txt)">Payment metadata and paid-read counts</b> — amounts, wallet addresses and transaction references needed to verify payment and keep our public stats honest. That is the extent of it: no personal data beyond payment metadata.</p></div>
+<div class="card"><h2 style="font-size:18px">Cookies and local storage</h2><p class="card-sub" style="margin-bottom:0">We set no account or session cookies — there is nothing to sign in to. Your unpublished draft is stored in your own browser (local storage) until you share it. If you generate a wallet and tap Save on this device, its private key is stored only in your browser&apos;s local storage — never on our servers. We do not use advertising or tracking cookies.</p></div>
+<div class="card"><h2 style="font-size:18px">Who else is involved</h2><p class="card-sub" style="margin-bottom:0">The site runs on Cloudflare. Payments settle on the public Base blockchain — wallet addresses and amounts there are public by design. Agent submissions may be auto-reviewed by TypeSafe Jev (title and a short content excerpt). We never sell data.</p></div>
+<div class="card"><h2 style="font-size:18px">Your choices</h2><p class="card-sub" style="margin-bottom:0">Keep your link — bookmark it after you publish. There is no account, so we cannot look up a lost link by email or sign-in. To ask what payment metadata we hold, or to request a listing be taken down, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> with the link. If you are in the UK or EEA, you have rights to access, correct and erase personal data; we will honour them.</p></div>
 <p style="color:var(--mut);font-size:14.5px">See also: <a href="/terms">Terms</a> · <a href="/contact">Contact</a></p>`
   );
 }
@@ -867,7 +789,7 @@ export function refundsHtml(): string {
 <p class="secsub">Last updated: November 2026. For any payment problem, email <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> first — we will always try to put it right.</p>
 <div class="card"><h2 style="font-size:18px">How payments settle (and what that means)</h2><p class="card-sub" style="margin-bottom:0">Payments are USDC transfers on the Base blockchain. Once confirmed on-chain they cannot be pulled back by NanoTab — no one can reverse them unilaterally, and we will not pretend otherwise. Our 2% fee is taken as part of that same transfer; you receive 98% directly in your wallet.</p></div>
 <div class="card"><h2 style="font-size:18px">When we will arrange a refund</h2><p class="card-sub" style="margin-bottom:0">If you paid and the content was not delivered, was not as described, or you were charged twice for the same read, email us with the link, the amount and (if you have it) the transaction hash. Where the payment reached the seller, we will contact the seller and arrange a return transfer; where NanoTab is at fault, we will cover it. Duplicate or clearly mistaken payments fall in the same route.</p></div>
-<div class="card"><h2 style="font-size:18px">Sellers</h2><p class="card-sub" style="margin-bottom:0">Describe your content honestly in its title. If a buyer disputes a read, we may ask you to refund or to fix the listing, and repeated misleading listings may be removed. You can remove your own links at any time from My links.</p></div>
+<div class="card"><h2 style="font-size:18px">Sellers</h2><p class="card-sub" style="margin-bottom:0">Describe your content honestly in its title. If a buyer disputes a read, we may ask you to refund or to fix the listing, and repeated misleading listings may be removed. Keep your link — bookmark it after you publish; there is no account dashboard. To request a takedown, email us with the link.</p></div>
 <div class="card"><h2 style="font-size:18px">Timescales</h2><p class="card-sub" style="margin-bottom:0">Email <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and we aim to reply within two working days. Refund transfers, once agreed, are sent on Base and are usually visible within minutes.</p></div>
 <p style="color:var(--mut);font-size:14.5px">See also: <a href="/terms">Terms</a> · <a href="/contact">Contact</a></p>`
   );
@@ -880,7 +802,7 @@ export function contactHtml(): string {
     `<p class="eyebrow">Plain English · NanoTab Pay</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">Contact us</h2>
 <p class="secsub">One inbox for everything — help, payment disputes, privacy requests.</p>
-<div class="card"><h2 style="font-size:18px">Email</h2><p class="card-sub" style="margin-bottom:0"><a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> — we aim to reply within two working days. Sign-in links come from a different address (login@mail.nanotab.dev); that mailbox sends sign-ins only, so please use ${CONTACT_EMAIL} for anything you need an answer to.</p></div>
+<div class="card"><h2 style="font-size:18px">Email</h2><p class="card-sub" style="margin-bottom:0"><a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> — we aim to reply within two working days. There are no accounts, so include your paywall link in your message; we cannot look anything up by sign-in.</p></div>
 <div class="card"><h2 style="font-size:18px">For a payment problem, include</h2><p class="card-sub" style="margin-bottom:0">The paywall link (pay.nanotab.dev/r/…), the amount, roughly when you paid, and the transaction hash if you have it. See <a href="/refunds">Refunds &amp; disputes</a> for how we handle it. Never send a private key or recovery phrase — we will never ask for one.</p></div>
 <div class="card"><h2 style="font-size:18px">Who we are</h2><p class="card-sub" style="margin-bottom:0">NanoTab is a small independent project. The code is open source: <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a>. More on <a href="/about">About NanoTab</a>.</p></div>`
   );
