@@ -17,8 +17,8 @@ import {
   NANOTAB_PROTOCOL_WALLET,
   USDC_BASE_MAINNET,
   centsToUnits,
-  feeRecipient,
-  split,
+  feeRecipientFor,
+  splitFee,
   verifyBuyerTx,
   verifyFeeSplit,
   verifyPayment,
@@ -40,7 +40,7 @@ const ENV_WALLET = '0xAAAA0000000000000000000000000000000000AA';
 const LISTING_PRICE = '7';
 const LISTING_WALLET = '0xb157000000000000000000000000000000000001';
 const FEE = process.env.FEE_WALLET || NANOTAB_PROTOCOL_WALLET;
-const feeEnv = { NANOTAB_FEE_BPS: '200', FEE_WALLET: FEE };
+const FEE_BPS = 200;
 
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64');
 const mkProof = (over = {}, splitOver) => ({
@@ -65,31 +65,31 @@ const threw = async (fn, re) => {
     check('override: listing price+wallet verify ok', proof.to === LISTING_WALLET && proof.amount === LISTING_PRICE);
   } catch (e) { check('override: listing price+wallet verify ok', false, e.message); }
   try {
-    const r = verifyFeeSplit(proof, LISTING_PRICE, feeEnv);
+    const r = verifyFeeSplit(proof, LISTING_PRICE, FEE_BPS, FEE);
     check('override: listing fee-split exact (fee 1400, net 68600)',
       r.feeUnits === 1400n && r.netUnits === 68600n && r.feeTo === FEE);
   } catch (e) { check('override: listing fee-split exact (fee 1400, net 68600)', false, e.message); }
   check('override: env-default wallet rejects listing proof',
     await threw(() => verifyPayment(header, ENV_WALLET, LISTING_PRICE), /wrong merchant/));
   check('override: env-default price rejects listing split',
-    await threw(() => verifyFeeSplit(proof, ENV_PRICE, feeEnv), /wrong/));
+    await threw(() => verifyFeeSplit(proof, ENV_PRICE, FEE_BPS, FEE), /wrong/));
 }
 
 // --- A2. Fee-split exactness ---
 {
   check('feemath: centsToUnits(5) = 50000', centsToUnits('5') === 50000n);
   check('feemath: centsToUnits(1) = 10000', centsToUnits('1') === 10000n);
-  const s5 = split('5', 200);
+  const s5 = splitFee('5', 200);
   check('feemath: 5c @200bps → fee 1000, net 49000', s5.feeUnits === 1000n && s5.netUnits === 49000n);
-  const s1 = split('1', 200);
+  const s1 = splitFee('1', 200);
   check('feemath: 1c @200bps → fee 200, net 9800', s1.feeUnits === 200n && s1.netUnits === 9800n);
-  check('feemath: feeRecipient default = protocol wallet', feeRecipient({}) === NANOTAB_PROTOCOL_WALLET);
-  check('feemath: feeRecipient honors FEE_WALLET', feeRecipient({ FEE_WALLET: FEE }) === FEE);
+  check('feemath: feeRecipient default = protocol wallet', feeRecipientFor() === NANOTAB_PROTOCOL_WALLET);
+  check('feemath: feeRecipient honors FEE_WALLET', feeRecipientFor(FEE) === FEE);
   check('consts: USDC + eip155:8453', USDC_BASE_MAINNET === USDC && NANOTAB_NETWORK_CAIP2 === 'eip155:8453');
   // Full split round-trip at env-default price (gateway path shape).
   const p = verifyPayment(b64(mkProof({ amount: ENV_PRICE, to: ENV_WALLET },
     { feeAmount: '400', merchantAmount: '19600' })), ENV_WALLET, ENV_PRICE);
-  const r = verifyFeeSplit(p, ENV_PRICE, feeEnv);
+  const r = verifyFeeSplit(p, ENV_PRICE, FEE_BPS, FEE);
   check('feemath: 2c split round-trip (fee 400, net 19600)', r.feeUnits === 400n && r.netUnits === 19600n);
 }
 
@@ -97,13 +97,13 @@ const threw = async (fn, re) => {
 {
   const good = mkProof();
   check('neg: fee off-by-one rejected',
-    await threw(() => verifyFeeSplit({ ...good, split: { ...good.split, feeAmount: '1401' } }, LISTING_PRICE, feeEnv), /fee amount wrong/));
+    await threw(() => verifyFeeSplit({ ...good, split: { ...good.split, feeAmount: '1401' } }, LISTING_PRICE, FEE_BPS, FEE), /fee amount wrong/));
   check('neg: net off-by-one rejected',
-    await threw(() => verifyFeeSplit({ ...good, split: { ...good.split, merchantAmount: '68601' } }, LISTING_PRICE, feeEnv), /merchant net wrong/));
+    await threw(() => verifyFeeSplit({ ...good, split: { ...good.split, merchantAmount: '68601' } }, LISTING_PRICE, FEE_BPS, FEE), /merchant net wrong/));
   check('neg: missing split rejected',
-    await threw(() => verifyFeeSplit({ ...good, split: undefined }, LISTING_PRICE, feeEnv), /fee split missing/));
+    await threw(() => verifyFeeSplit({ ...good, split: undefined }, LISTING_PRICE, FEE_BPS, FEE), /fee split missing/));
   check('neg: wrong feeTo rejected',
-    await threw(() => verifyFeeSplit({ ...good, split: { ...good.split, feeTo: LISTING_WALLET } }, LISTING_PRICE, feeEnv), /wrong wallet/));
+    await threw(() => verifyFeeSplit({ ...good, split: { ...good.split, feeTo: LISTING_WALLET } }, LISTING_PRICE, FEE_BPS, FEE), /wrong wallet/));
   check('neg: underpay rejected',
     await threw(() => verifyPayment(b64(mkProof({ amount: '1' })), LISTING_WALLET, LISTING_PRICE), /too low/));
   check('neg: wrong asset rejected',
@@ -113,7 +113,7 @@ const threw = async (fn, re) => {
   check('neg: malformed header rejected',
     await threw(() => verifyPayment('!!!notbase64', LISTING_WALLET, LISTING_PRICE), /malformed/));
   check('neg: buyer-tx bad hash format rejected (no RPC touched)',
-    await threw(() => verifyBuyerTx({ MERCHANT_WALLET: LISTING_WALLET }, '0x1234', LISTING_PRICE), /invalid txHash/));
+    await threw(() => verifyBuyerTx({ merchantWallet: LISTING_WALLET, feeTo: FEE, feeBps: FEE_BPS, txHash: '0x1234', amountCents: LISTING_PRICE }), /invalid txHash/));
 }
 
 // ================= B. LIVE gateway tests (only when GW_URL answers) =================
