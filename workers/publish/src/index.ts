@@ -1,6 +1,7 @@
 // NanoTab publish worker — hosted one-click agent paywalls (MVP step 2).
 //
-// POST /v1/publish  (auth: magic-link session OR X-Nanotab-Key stub)
+// POST /v1/publish  (accountless: no auth required; magic-link session OR
+//   X-Nanotab-Key stub optionally associate/automate the listing)
 //   {title, mime, price_cents, merchant_wallet, body_b64, source_url?} →
 //   stores R2 bytes + KV metadata → 201 {url, slug, x402}. Human links are
 //   live instantly. Agent links differ: POST /v1/agent/submit (X-Agent-Key)
@@ -254,7 +255,8 @@ function listing402Body(reqUrl: string, l: Listing, feeBps: number, feeTo: strin
 
 // --- auth: magic-link (POST /v1/auth/request {email} → link; GET /v1/auth/verify?token= → session) ---
 // Session: KV `sess:<token>` = {email, exp}; cookie `nt_sess` httpOnly.
-// Owner id stored on listings = sha256hex(lower(email)). Publish accepts session OR legacy X-Nanotab-Key.
+// Owner id stored on listings = sha256hex(lower(email)). Publish is accountless:
+// a session, when present, sets the owner; the legacy key is accepted too; neither is required.
 // Email send via Resend (RESEND_API_KEY secret); if unset, /v1/auth/request returns {link} directly (dev mode).
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,253}\.[^\s@]{2,}$/;
 const AUTH_TOKEN_TTL = 15 * 60; // 15 min
@@ -394,16 +396,20 @@ async function freshSlug(kv: KVNamespace): Promise<string> {
 // --- POST /v1/publish (human: publishes instantly, no review friction) ---
 async function handlePublish(req: Request, env: Env): Promise<Response> {
   const { kv, r2 } = needStores(env);
-  // Auth: magic-link session (preferred) OR legacy X-Nanotab-Key stub.
+  // Accountless publish: posting needs no account, email or sign-in. A
+  // magic-link session, when present, associates the listing with that
+  // account (owner) so it shows under My links; the legacy X-Nanotab-Key
+  // is still accepted for automation. With neither, the listing is created
+  // anonymously (no owner) and is live immediately. The payout address in
+  // the body is a public 0x address only — a private key is never sent here.
   let owner: string | undefined;
   const sessEmail = await sessionEmail(req, env).catch(() => null);
   if (sessEmail) {
     owner = await ownerOf(sessEmail);
   } else if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) {
     owner = undefined; // legacy key publish (no owner)
-  } else {
-    throw new HttpErr(401, 'unauthorized (sign in via POST /v1/auth/request, or bad X-Nanotab-Key)');
   }
+  // No else: absent session/key is not an error — accountless creation.
   let body: any;
   try {
     body = await req.json();
@@ -1047,7 +1053,7 @@ async function handleOwnerDelete(req: Request, env: Env, slug: string): Promise<
   return Response.json({ ok: true, slug });
 }
 
-// --- GET /publish (API-key paste form; the email flow on / is the primary path) ---
+// --- GET /publish (API paste form; the accountless flow on / is the primary path) ---
 function handlePublishPage(): Response {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -1056,29 +1062,30 @@ function handlePublishPage(): Response {
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif}.wrap{max-width:640px;margin:0 auto;padding:40px 20px 56px}a{color:#3ecf8e}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}h1{font-size:28px;letter-spacing:-.02em;margin:28px 0 8px}.sub{color:#9fb0c0}.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:24px;margin-top:20px}label{display:block;margin:14px 0 5px;color:#9fb0c0;font-size:14px;font-weight:500}input,textarea,select{width:100%;background:#0e1218;border:1px solid #232b36;border-radius:9px;color:#f2f5f7;padding:11px 13px;font-size:15px;font-family:inherit}textarea{font-family:"IBM Plex Mono",monospace;min-height:140px}button{background:#3ecf8e;border:1px solid #3ecf8e;border-radius:10px;color:#06281a;font-weight:600;font-size:15.5px;padding:11px 22px;cursor:pointer;margin-top:16px}pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;white-space:pre-wrap;word-break:break-all;font-size:13px;font-family:"IBM Plex Mono",monospace}</style></head><body>
 <div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a>
-<h1>Publish via API key</h1>
-<p class="sub">Most people should use the <a href="/">email sign-in flow</a> — no key to manage. This page is for automation with the shared <code>X-Nanotab-Key</code> secret. It posts to <code>/v1/publish</code> and shows the test curl commands.</p>
+<h1>Publish via API</h1>
+<p class="sub">Most people should use the <a href="/">accountless create flow</a> — no account, no email, no key. This page is for automation: it posts to <code>/v1/publish</code> (no auth required; the shared <code>X-Nanotab-Key</code> secret is still accepted) and shows the test curl commands.</p>
 <div class="card"><form id="f">
 <label>title <input name="title" maxlength="200" required></label>
 <label>price (USD) <input name="price" type="number" min="0.01" max="100" step="0.01" required></label>
 <label>USDC wallet <input name="wallet" pattern="0x[0-9a-fA-F]{40}" required></label>
 <label>mime <select name="mime"><option>text/markdown</option><option>text/plain</option><option>text/html</option><option>application/json</option></select></label>
 <label>content <textarea name="body" rows="12" cols="60" required></textarea></label>
-<label>secret <input name="secret" type="password" required></label>
+<label>secret (optional, legacy) <input name="secret" type="password"></label>
 <button>publish</button></form>
-<pre id="out">Your paywall link and test commands appear here. Unpaid: curl the link for a 402. Paid: retry with an X-Payment proof for 200.</pre></div>
-<p class="sub">New here? <a href="/">Create a link with email instead</a> — you keep 98% hosted (NanoTab keeps 2%), agents pay in USDC on Base. No wallet yet? <a href="/wallet-guide">Plain-English wallet guide</a>.</p><p class="sub" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
+<pre id="out">Your agent paywall link (HTTP 402) and test commands appear here. Unpaid: curl the link for a 402 with the price. Paid: retry with an X-Payment proof for 200.</pre></div>
+<p class="sub">New here? <a href="/">Create a link with no account</a> — you keep 98% hosted (NanoTab keeps 2%), agents pay in USDC on Base. No wallet yet? Generate one in the browser on the create page, or read the <a href="/wallet-guide">plain-English wallet guide</a>.</p><p class="sub" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
 <script>
 const f=document.getElementById('f'),out=document.getElementById('out');
 f.onsubmit=async(e)=>{e.preventDefault();const d=new FormData(f);
 const price_cents=Math.round(parseFloat(d.get('price'))*100);
 const body={title:d.get('title'),mime:d.get('mime'),price_cents,
 merchant_wallet:d.get('wallet'),body_b64:btoa(unescape(encodeURIComponent(d.get('body'))))};
-const r=await fetch('/v1/publish',{method:'POST',headers:{'content-type':'application/json','X-Nanotab-Key':d.get('secret')},body:JSON.stringify(body)});
+const hdrs={'content-type':'application/json'};const sec=d.get('secret');if(sec)hdrs['X-Nanotab-Key']=sec;
+const r=await fetch('/v1/publish',{method:'POST',headers:hdrs,body:JSON.stringify(body)});
 const j=await r.json();
 if(!r.ok){out.textContent='error '+r.status+': '+j.error;return;}
-const curl='curl -i '+j.url+" # expect 402\\ncurl -i -H 'X-Payment: <base64-proof>' "+j.url;
-out.textContent='permalink: '+j.url+'\\ntest 402: '+curl;};
+const curl='curl -i '+j.url;
+out.textContent='agent paywall link (HTTP 402): '+j.url+'\\nexample agent request: '+curl+'  # unpaid -> 402 + price in JSON; pay USDC on Base, retry with X-Payment for 200';};
 </script></body></html>`;
   return new Response(html, {
     headers: {
