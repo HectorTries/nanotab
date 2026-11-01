@@ -174,7 +174,11 @@ function topbar(ctaHref: string, ctaLabel: string): string {
 </div></header>`;
 }
 
-const FOOTER = `<footer>NanoTab Pay · <a href="/developers">For developers</a> · <a href="/agent-auth">Agent review</a> · <a href="/marketplace">marketplace</a> (<a href="/v1/marketplace.json">json</a>) · <a href="/stats">stats</a> · <a href="https://nanotab.dev">nanotab.dev</a> · USDC on Base via x402 · Self-host fee 0.1% · Hosted fee 2%</footer>`;
+export const CONTACT_EMAIL = 'support@nanotab.dev';
+
+export const TRUST_LINKS = `<a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds &amp; disputes</a> · <a href="/contact">Contact</a> · <a href="/about">About</a>`;
+
+const FOOTER = `<footer>NanoTab Pay · <a href="/developers">For developers</a> · <a href="/agent-auth">Agent review</a> · <a href="/marketplace">marketplace</a> (<a href="/v1/marketplace.json">json</a>) · <a href="/stats">stats</a> · <a href="https://nanotab.dev">nanotab.dev</a> · USDC on Base via x402 · Self-host fee 0.1% · Hosted fee 2%<br>${TRUST_LINKS}</footer>`;
 
 function topbarPlain(ctaHref: string, ctaLabel: string): string {
   return `<header class="topbar"><div class="topbar-in">
@@ -183,7 +187,7 @@ function topbarPlain(ctaHref: string, ctaLabel: string): string {
 </div></header>`;
 }
 
-const FOOTER_PLAIN = `<footer>NanoTab Pay · <a href="/#how">How it works</a> · <a href="/#faq">Questions</a> · <a href="/marketplace">Browse links</a> · <a href="/developers">For developers</a> · <a href="https://nanotab.dev">nanotab.dev</a><br>Paywall any link in seconds. You set the price. You get paid automatically.</footer>`;
+const FOOTER_PLAIN = `<footer>NanoTab Pay · <a href="/#how">How it works</a> · <a href="/#faq">Questions</a> · <a href="/marketplace">Browse links</a> · <a href="/developers">For developers</a> · <a href="https://nanotab.dev">nanotab.dev</a><br>Paywall any link in seconds. You set the price. You keep 98% of every payment (NanoTab keeps 2%).<br>${TRUST_LINKS}</footer>`;
 
 export function landingHtml(): string {
   return head(
@@ -195,31 +199,33 @@ export function landingHtml(): string {
 <div>
 <div class="badge">Free to start &nbsp;·&nbsp; Takes about a minute</div>
 <h1>Paywall any link <span class="accent">in seconds.</span></h1>
-<p class="sub">AI agents pay to read it. <b>You get paid every time.</b></p>
-<p class="sub" style="font-size:16px">You set the price. You get paid automatically.</p>
+<p class="sub"><b>AI agents pay to read your link; humans can too.</b> Same link, same price. <b>You get paid every time.</b></p>
+<p class="sub" style="font-size:16px">You set the price. Readers pay in USDC on Base — you keep 98% of every payment, NanoTab keeps 2%.</p>
 <p class="who-line">For <b>writers</b> with articles and guides, <b>experts</b> with reports and research, and <b>anyone</b> with a useful list or know-how worth reading.</p>
-<div class="hero-ctas"><a class="btn" href="#create">Paywall a link — free</a><a class="btn secondary" href="#how">See how it works</a></div>
-<p class="hero-note">No charge to start. Your readers never need an account — they pay and read straight away.</p>
+<div class="hero-ctas"><a class="btn" href="#create">Paywall a link</a><a class="btn secondary" href="#how">See how it works</a></div>
+<p class="hero-note"><a href="/r/DemoSample">Try it: pay $0.05 to read a sample</a> · <a href="/demo">What is this demo?</a></p>
+<p class="hero-note" id="hero-stats">Live now — we are new, so early sellers stand out. <a href="/stats">See live stats</a></p>
+<p class="hero-note">Readers never need a NanoTab account. Agents pay automatically; a person pays with a USDC wallet on Base. No card checkout.</p>
 </div>
-<div class="preview" aria-label="What your reader sees">
-<div class="preview-head"><span><b>What your reader sees</b></span><span>Your new link</span></div>
+<div class="preview" aria-label="What readers and agents see">
+<div class="preview-head"><span><b>What readers &amp; agents see</b></span><span>Your new link</span></div>
 <div class="preview-body">
 <div class="mock-title">My complete guide to growing tomatoes</div>
-<div class="mock-price">£0.25</div>
-<div class="mock-line">to read in full</div>
-<span class="mock-btn">Read now →</span>
-<div class="mock-line">Pays in seconds. <b>No account needed.</b></div>
+<div class="mock-price">$0.25</div>
+<div class="mock-line">USDC on Base · to read in full</div>
+<span class="mock-btn">Pay $0.25 &amp; read →</span>
+<div class="mock-line">An AI agent pays this automatically. A person can pay too, with a wallet. <b>No NanoTab account either way.</b></div>
 <hr class="flow-sep">
-<div class="mock-line"><b>What you see:</b> £0.25 added for you, every time. Each read is counted, so you always know what you have earned.</div>
+<div class="mock-line"><b>What you see:</b> $0.245 lands in your wallet (98% of $0.25), every time. Each paid read is counted, so you always know what you have earned.</div>
 </div>
-<div class="preview-foot">You share one link. Readers pay, then read — <b>every time</b>.</div>
+<div class="preview-foot">One link for agents and people: they pay, then read — <b>every time</b>.</div>
 </div>
 </div>
 <div id="create" style="scroll-margin-top:80px">
 <div class="card">
 <h2>Paywall a link<span class="step-tag">Start here</span></h2>
-<p class="card-sub">Three short steps, then Next. Jot everything down first — you only sign in at the end, when you are ready to share and get paid.</p>
-<div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="dot-1"></span><span class="wiz-dot" id="dot-2"></span><span class="wiz-dot" id="dot-3"></span></span><span id="wiz-label">Step 1 of 3 — Your link</span></div>
+<p class="card-sub">Four short steps. Jot everything down first — you only sign in at the end, when you are ready to share and get paid. Sign-in is by email magic link (no password); an email address is required.</p>
+<div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="dot-1"></span><span class="wiz-dot" id="dot-2"></span><span class="wiz-dot" id="dot-3"></span><span class="wiz-dot" id="dot-4"></span></span><span id="wiz-label">Step 1 of 4 — Your link</span></div>
 <div class="wiz-panel" id="panel-1">
 <label for="p-link">1 · Link you want to charge for</label>
 <input id="p-link" type="url" placeholder="https://your-site.com/your-article" autocomplete="off" spellcheck="false">
@@ -229,14 +235,6 @@ export function landingHtml(): string {
 <div class="wiz-nav"><button type="button" class="btn" onclick="goStep(2)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
 </div>
 <div class="wiz-panel hidden" id="panel-2">
-<label for="p-body">2 · Words behind your link</label><textarea id="p-body" placeholder="Paste your full article, guide, or notes here… Only people who pay will see this."></textarea>
-<div class="hint">Only people who pay will see these words. Everyone else sees the price and the title.</div>
-<label for="p-file">…or add a file instead</label>
-<input id="p-file" type="file" accept=".txt,.md,.markdown,.json,.html,text/plain,text/markdown,application/json,text/html">
-<div class="hint" id="file-hint">Simple text files work best, up to 1 MB. Adding a file fills the box above. Nothing leaves this browser until you share.</div>
-<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(1)">← Back</button><button type="button" class="btn" onclick="goStep(3)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
-</div>
-<div class="wiz-panel hidden" id="panel-3">
 <label for="p-kind">What are you sharing?</label>
 <select id="p-kind">
 <option value="short">A short read (a few minutes)</option>
@@ -245,29 +243,40 @@ export function landingHtml(): string {
 <option value="list">A list or spreadsheet</option>
 <option value="other">Something else</option>
 </select>
+<div class="hint">This only suggests a sensible price in the next step — you can always change it there.</div>
+<label for="p-body">2 · Words behind your link</label><textarea id="p-body" placeholder="Paste your full article, guide, or notes here… Only people who pay will see this."></textarea>
+<div class="hint">Only people who pay will see these words. Everyone else sees the price and the title. Paste the words themselves — a link on its own is not enough, because anyone could open the original. See <a href="#paywall-how">how the paywall actually works</a>.</div>
+<label for="p-file">…or add a file instead</label>
+<input id="p-file" type="file" accept=".txt,.md,.markdown,.json,.html,text/plain,text/markdown,application/json,text/html">
+<div class="hint" id="file-hint">Simple text files work best, up to 1 MB. Adding a file fills the box above. Nothing leaves this browser until you share.</div>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(1)">← Back</button><button type="button" class="btn" onclick="goStep(3)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+</div>
+<div class="wiz-panel hidden" id="panel-3">
 <label for="p-price">3 · Price each time someone reads</label>
 <div class="chips" role="group" aria-label="Suggested prices">
-<button type="button" class="chip" data-price="0.05" onclick="pickPrice('0.05')">£0.05</button>
-<button type="button" class="chip on" data-price="0.25" onclick="pickPrice('0.25')">£0.25</button>
-<button type="button" class="chip" data-price="1.00" onclick="pickPrice('1.00')">£1</button>
+<button type="button" class="chip" data-price="0.05" onclick="pickPrice('0.05')">$0.05</button>
+<button type="button" class="chip on" data-price="0.25" onclick="pickPrice('0.25')">$0.25</button>
+<button type="button" class="chip" data-price="1.00" onclick="pickPrice('1.00')">$1.00</button>
 </div>
 <div class="price-row"><input id="p-price" type="number" min="0.01" max="100" step="0.01" value="0.25"></div>
 <div class="earn-preview" id="earn-preview"></div>
-<div class="hint">Tap a price above, or type your own. You can charge as little as 1p.</div>
-<div class="pay-step hidden" id="pay-step">
-<h3>Where should we send your money?</h3>
-<label for="p-payto">Your payment code</label><input id="p-payto" placeholder="Starts with 0x…" autocomplete="off" spellcheck="false">
-<div class="hint">Copy the long code starting with 0x from the app where you keep your money. Every payment goes there automatically.</div>
+<div class="hint">Tap a price above, or type your own. Prices are in US dollars — readers pay that amount in USDC on Base. You can charge as little as $0.01.</div>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(2)">← Back</button><button type="button" class="btn" onclick="goStep(4)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
 </div>
-<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(2)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Next →</button></div>
+<div class="wiz-panel hidden" id="panel-4">
+<h3 style="margin:4px 0 2px;font-size:17px">4 · Where should we send your money?</h3>
+<label for="p-payto">Your USDC wallet address on Base</label><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false">
+<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. New to wallets? Read our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free).</div>
+<div class="hint">You need a wallet for now — we cannot hold money for you yet. No-wallet payouts are on our roadmap; see <a href="#faq">Common questions</a>. Never share a private key or recovery phrase — NanoTab will never ask for one.</div>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Next →</button></div>
 </div>
 <div id="pub-out"></div>
-<div id="pub-lock"><span>Nearly there — tap Next to sign in and share. Everything you typed stays saved in this browser and comes back after sign-in.</span></div>
+<div id="pub-lock"><span>Nearly there — tap Next to sign in and share. Sign-in is by email magic link (no password). Everything you typed stays saved in this browser and comes back after sign-in.</span></div>
 </div>
 <div class="card hidden" id="dash-card">
 <h2>My links <span style="color:var(--mut);font-size:13px;font-weight:400" id="dash-count"></span></h2>
-<p class="card-sub">Share a link anywhere your readers are. Every time someone pays to read, money is on its way to you and counted here.</p>
-<div id="dash-list"><i>loading...</i></div>
+<p class="card-sub">Share a link anywhere your readers are. Every time someone pays to read, 98% lands in your wallet and the read is counted here.</p>
+<div id="dash-list"><i>No links yet — share your first above.</i></div>
 </div>
 </div>
 <div class="audience" aria-label="Who NanoTab Pay is for">
@@ -281,25 +290,39 @@ export function landingHtml(): string {
 <div class="steps">
 <div class="step"><span class="n">Step 1</span><h3>Add your link and words</h3><p>Paste the link, paste the words behind it, and give it a title. It takes about a minute.</p></div>
 <div class="step"><span class="n">Step 2</span><h3>Share your new link</h3><p>You get one short link to share anywhere — your site, your newsletter, your social posts.</p></div>
-<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time an AI agent pays to read, money is on its way to you automatically. Watch every read add up in My links above.</p></div>
+<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. Watch every read add up in My links above.</p></div>
+</div>
+</section>
+<section class="block" id="paywall-how" style="scroll-margin-top:80px" aria-label="How the paywall actually works">
+<h2>How the paywall actually works</h2>
+<p class="secsub">No fine print, no magic. This is exactly what the link does — and what it cannot do.</p>
+<div class="steps">
+<div class="step"><span class="n">Pasted words</span><h3>Hosted by NanoTab</h3><p>Words you paste (or a file you add) are stored by NanoTab and only served after payment. There is no way to read them through your NanoTab link without paying — the unpaid answer is just the price.</p></div>
+<div class="step"><span class="n">Public links</span><h3>The original stays open</h3><p>If the same words are also free at a public link, that link stays reachable — we cannot lock a page we do not host. The paywall covers the copy behind your NanoTab link. For real protection, paste the words here, or link only to a page you control.</p></div>
+<div class="step"><span class="n">After paying</span><h3>Personal read, no resale</h3><p>Paying unlocks a personal read. Like anything readable online, the words could technically be copied — we will not pretend otherwise. Our <a href="/terms">Terms</a> say no copying for resale or redistribution; the paywall controls who gets access in the first place.</p></div>
 </div>
 </section>
 <section class="block" aria-label="What you earn">
 <h2>What you earn</h2>
-<p class="secsub">You set the price. You get paid automatically. No monthly fee, and no charge to start.</p>
+<p class="secsub">You set the price. Readers pay in USDC on Base, and 98% goes straight to your wallet.</p>
 <div class="earn-grid">
-<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Your share of every payment</div><div class="price-big">You keep 98p of every £1</div><p>We keep a small share of each payment to run NanoTab and look after your links. The rest is yours — readers always pay exactly the price you set.</p>
-<div class="earn-rows"><div class="earn-row"><span>You charge 5p</span><b>You receive 4.9p</b></div><div class="earn-row"><span>You charge 25p</span><b>You receive 24.5p</b></div><div class="earn-row"><span>You charge £1</span><b>You receive 98p</b></div></div></div>
-<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">Free to start</div><p>Share as many links as you like. Every paid read is counted in My links, so you can see what is earning.</p>
-<div class="earn-rows"><div class="earn-row"><span>To start</span><b>£0</b></div><div class="earn-row"><span>Each month</span><b>£0</b></div><div class="earn-row"><span>Your share</span><b>Almost all of every payment</b></div></div></div>
+<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Your share of every payment</div><div class="price-big">You keep 98¢ of every $1</div><p>That is 98% of every payment. NanoTab keeps 2% to run the service and look after your links. Amounts settle in USDC on Base, straight to your wallet. Readers always pay exactly the price you set.</p>
+<div class="earn-rows"><div class="earn-row"><span>You charge $0.05</span><b>You receive $0.049</b></div><div class="earn-row"><span>You charge $0.25</span><b>You receive $0.245</b></div><div class="earn-row"><span>You charge $1.00</span><b>You receive $0.98</b></div></div></div>
+<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Every paid read is counted in My links, so you can see what is earning.</p>
+<div class="earn-rows"><div class="earn-row"><span>To start</span><b>$0</b></div><div class="earn-row"><span>Each month</span><b>$0</b></div><div class="earn-row"><span>NanoTab fee</span><b>2% of each payment</b></div></div></div>
 </div>
 </section>
 <section class="block" id="faq" style="scroll-margin-top:80px" aria-label="Common questions">
 <h2>Common questions</h2>
 <p class="secsub">Short answers, in plain English.</p>
-<details class="faq-item"><summary>Do my readers need an account?</summary><p>No. They tap your link, pay, and read straight away. No sign-up and nothing to install.</p></details>
-<details class="faq-item"><summary>How do I get paid?</summary><p>Automatically, to your balance. Every time someone pays to read, your share moves to you on its own — you never chase anyone for money.</p></details>
+<details class="faq-item"><summary>Do my readers need an account?</summary><p>No NanoTab account. AI agents pay automatically. A person paying needs a USDC wallet on Base — there is no card checkout. Either way, they pay and read straight away.</p></details>
+<details class="faq-item"><summary>How do I sign in?</summary><p>With your email. We send you a one-time magic link (it works for 15 minutes) — no password to remember. An email address is required: it is how we know which links are yours.</p></details>
+<details class="faq-item"><summary>How do I get paid?</summary><p>Straight to your USDC wallet on Base — there is no NanoTab balance to withdraw from. Every payment is split on-chain: 98% to your wallet, 2% to NanoTab. You need a wallet before your first sale (see our <a href="/wallet-guide">plain-English wallet guide</a>). No-wallet payouts do not exist yet; they are on our roadmap.</p></details>
+<details class="faq-item"><summary>What does NanoTab cost?</summary><p>2% of each payment on hosted links — you keep 98%. No monthly fee. The developer self-host path is 0.1%; see <a href="/developers">For developers</a>.</p></details>
 <details class="faq-item"><summary>What can I paywall?</summary><p>Almost any link that is yours to share: an article, guide, report, list, or file. If you wrote it, made it, or have permission to share it, you can charge for it.</p></details>
+<details class="faq-item"><summary>Can readers just open my original page instead?</summary><p>If the same words are also free at a public link, yes — that link stays open, and we say so plainly. The paywall protects the copy stored behind your NanoTab link. Paste the words into NanoTab, or share only a link you control. Full detail: <a href="#paywall-how">How the paywall actually works</a>.</p></details>
+<details class="faq-item"><summary>Can people copy or resell what they bought?</summary><p>Paying unlocks a personal read. Like anything readable online it could technically be copied, so we do not pretend otherwise — our <a href="/terms">Terms</a> say no redistribution or resale, and the paywall still controls who gets access in the first place.</p></details>
+<details class="faq-item"><summary>I do not have a crypto wallet. Can I still sell?</summary><p>Not yet — you need a USDC wallet address on Base for payouts. Getting one is free and takes a few minutes: see the <a href="/wallet-guide">wallet guide</a>. No-wallet payouts are planned, but we will not claim they exist until they do.</p></details>
 </section>
 <div class="card" style="text-align:center">
 <h2>Building with code?</h2>
@@ -309,7 +332,7 @@ export function landingHtml(): string {
 <div class="card" style="text-align:center">
 <h2>Your words are already worth something.</h2>
 <p style="color:var(--mut)">Paste the link, set the price, share it. The next reader who needs it pays you.</p>
-<button onclick="document.getElementById('create').scrollIntoView({behavior:'smooth'})">Paywall your first link — free</button>
+<p style="margin-top:10px"><a href="#create">Paywall your first link →</a> · <a href="/demo">Try the $0.05 sample first</a></p>
 </div>
 ${FOOTER_PLAIN}
 </div>
@@ -317,7 +340,7 @@ ${FOOTER_PLAIN}
 var $=function(id){return document.getElementById(id)};
 var signedIn=false;
 var stepNow=1;
-var LABELS={1:'Step 1 of 3 — Your link',2:'Step 2 of 3 — Your words',3:'Step 3 of 3 — Your price'};
+var LABELS={1:'Step 1 of 4 — Your link',2:'Step 2 of 4 — Your words',3:'Step 3 of 4 — Your price',4:'Step 4 of 4 — Your wallet'};
 var PRICES={short:'0.05',article:'0.25',report:'1.00',list:'0.25',other:'0.25'};
 async function req(p,o){o=o||{};o.credentials='include';if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
 var DKEY='nt_draft';
@@ -325,12 +348,12 @@ function saveDraft(){try{localStorage.setItem(DKEY,JSON.stringify({l:$('p-link')
 function restoreDraft(){try{var d=JSON.parse(localStorage.getItem(DKEY)||'null');if(!d)return;if(d.l)$('p-link').value=d.l;if(d.t)$('p-title').value=d.t;if(d.k)$('p-kind').value=d.k;if(d.p)$('p-price').value=d.p;if(d.w)$('p-payto').value=d.w;if(d.b)$('p-body').value=d.b;}catch(e){}}
 function clearDraft(){try{localStorage.removeItem(DKEY)}catch(e){}}
 function markChips(){var v=parseFloat($('p-price').value);var s=isNaN(v)?'':v.toFixed(2);var chips=document.querySelectorAll('.chip');for(var i=0;i<chips.length;i++){chips[i].classList.toggle('on',Number(chips[i].dataset.price).toFixed(2)===s)}}
-function fmtPrice(v){return '£'+v.toFixed(2)}
-function updateEarn(){var el=$('earn-preview');if(!el)return;var v=parseFloat($('p-price').value);if(!(v>0)){el.textContent='Type a price above — readers pay that amount each time.';return}el.innerHTML='Readers pay <b>'+fmtPrice(v)+'</b> each time. You receive most of it automatically — we keep a small share to run NanoTab.'}
+function fmtPrice(v){return '$'+v.toFixed(2)}
+function updateEarn(){var el=$('earn-preview');if(!el)return;var v=parseFloat($('p-price').value);if(!(v>0)){el.textContent='Type a price above — readers pay that amount each time.';return}el.innerHTML='Readers pay <b>'+fmtPrice(v)+'</b> in USDC on Base each time. You receive <b>'+fmtPrice(v*0.98)+'</b> (98%) straight to your wallet — NanoTab keeps 2% ('+fmtPrice(v*0.02)+').'}
 function pickPrice(v){$('p-price').value=v;markChips();updateEarn();saveDraft()}
 function showStep(n){
  stepNow=n;
- for(var i=1;i<=3;i++){$('panel-'+i).classList.toggle('hidden',i!==n);$('dot-'+i).classList.toggle('on',i<=n)}
+ for(var i=1;i<=4;i++){$('panel-'+i).classList.toggle('hidden',i!==n);$('dot-'+i).classList.toggle('on',i<=n)}
  $('wiz-label').textContent=LABELS[n];
 }
 function checkLink(){
@@ -343,13 +366,14 @@ function checkWords(){
  var e=checkLink();if(e)return e;
  if(!$('p-body').value.trim())return 'Add your words first: paste them in step 2, or add a file.';
  var price=parseFloat($('p-price').value);
- if(!(price>0)||price>100)return 'Set a price between £0.01 and £100.';
+ if(!(price>0)||price>100)return 'Set a price between $0.01 and $100.';
  return null;
 }
 function goStep(n){
  if(n>stepNow){
    if(n>=2){var e1=checkLink();if(e1){$('pub-out').innerHTML='<div class="out">'+e1+'</div>';showStep(1);return}}
    if(n>=3&&!$('p-body').value.trim()){$('pub-out').innerHTML='<div class="out">Add your words first: paste them here, or add a file.</div>';showStep(2);return}
+   if(n>=4){var pr=parseFloat($('p-price').value);if(!(pr>0)||pr>100){$('pub-out').innerHTML='<div class="out">Set a price between $0.01 and $100 first.</div>';showStep(3);return}}
  }
  $('pub-out').innerHTML='';
  showStep(n);saveDraft();
@@ -368,12 +392,11 @@ restoreDraft();markChips();updateEarn();showStep(1);
 function setSignedIn(email){
  signedIn=true;
  var l=$('pub-lock');if(l)l.classList.add('hidden');
- var ps=$('pay-step');if(ps)ps.classList.remove('hidden');
  var b=$('btn-next');if(b)b.textContent='Share my link →';
  var out=$('pub-out');
  if(new URLSearchParams(location.search).get('welcome')==='1'&&out){
-   out.innerHTML='<div class="out">Signed in as <b>'+email+'</b> — your words are saved below. Check your price, add where to send your money, then tap <b>Share my link</b>.</div>';
-   showStep(3);
+   out.innerHTML='<div class="out">Signed in as <b>'+email+'</b> — your words are saved below. Add your USDC wallet address on Base, then tap <b>Share my link</b>.</div>';
+   showStep(4);
  }
 }
 async function checkSession(){
@@ -388,7 +411,7 @@ function renderDash(items){
   var tags='';
   if(l.created_by_agent)tags+='<span class="tag">Added automatically</span>';
   if(l.status&&l.status!=='live')tags+='<span class="tag pending">Not live yet</span>';
-  return '<div class="item"><div class="t">'+esc(l.title)+' — £'+l.price_usd+tags+'</div><div class="m"><a href="'+l.url+'">'+l.url+'</a> · '+l.paid_calls+' paid reads · '+l.created_at.slice(0,10)+'</div><button class="ghost" data-u="'+l.url+'" onclick="copyL(this.dataset.u)">copy link</button><button class="ghost" data-s="'+l.slug+'" onclick="delL(this.dataset.s)">remove</button></div>'}).join('');
+  return '<div class="item"><div class="t">'+esc(l.title)+' — $'+l.price_usd+tags+'</div><div class="m"><a href="'+l.url+'">'+l.url+'</a> · '+l.paid_calls+' paid reads · '+l.created_at.slice(0,10)+'</div><button class="ghost" data-u="'+l.url+'" onclick="copyL(this.dataset.u)">copy link</button><button class="ghost" data-s="'+l.slug+'" onclick="delL(this.dataset.s)">remove</button></div>'}).join('');
 }
 async function refreshDash(){var r=await req('/v1/listings');if(r.ok)renderDash(r.j)}
 async function copyL(u){try{await navigator.clipboard.writeText(u);alert('Copied — share it anywhere.')}catch(e){prompt('Copy this link:',u)}}
@@ -402,7 +425,7 @@ function onNext(){
    return;
  }
  var payto=$('p-payto').value.trim();
- if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">That payment code does not look right yet. It starts with 0x and is 42 characters long — copy it carefully and try again.</div>';$('p-payto').focus();return}
+ if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">That wallet address does not look right yet. Your USDC wallet address on Base starts with 0x and is 42 characters long — copy it carefully from your wallet app and try again. <a href="/wallet-guide">Wallet guide</a></div>';$('p-payto').focus();return}
  publish();
 }
 async function publish(){
@@ -421,6 +444,7 @@ async function publish(){
  $('pub-out').innerHTML='<div class="out"><b>You are live:</b> <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">copy link</button> <span style="color:var(--mut)">Share it anywhere. Readers pay, then read — and you get paid every time.</span></div>';
  refreshDash();
 }
+(async function(){try{var r=await fetch('/stats');var j=await r.json();var el=$('hero-stats');if(el&&j&&Number(j.total_paid_calls)>0){el.innerHTML=Number(j.total_paid_calls)+' paid reads so far across hosted links — we are new, so early sellers stand out. <a href="/stats">See live stats</a>'}}catch(e){}})();
 checkSession();
 </script></body></html>`;
 }
@@ -530,7 +554,7 @@ GET https://pay.nanotab.dev/stats                 # totals + fee terms</code></p
 <div class="card" style="text-align:center">
 <h2>Not writing code today?</h2>
 <p style="color:var(--mut)">The hosted flow needs no server, no key and no gas. Paste a link and you are selling in seconds.</p>
-<a class="btn" href="/#create" style="margin-top:8px">Paywall Any Link — free</a>
+<a class="btn" href="/#create" style="margin-top:8px">Paywall Any Link</a>
 </div>
 ${FOOTER}
 </div></body></html>`;
@@ -603,4 +627,114 @@ async function review(slug,action){
 }
 loadQueue();
 </script></body></html>`;
+}
+
+// --- Plain-English info pages (trust, wallet help, demo) -----------------
+// Shared shell: same design system, footer with trust links on every page.
+
+function infoPage(title: string, desc: string, body: string): string {
+  return head(title, desc) + topbarPlain('/#create', 'Paywall a link') + `
+<div class="wrap" style="max-width:760px">
+<section class="block" style="padding-top:48px">${body}</section>
+${FOOTER_PLAIN}
+</div></body></html>`;
+}
+
+export function termsHtml(): string {
+  return infoPage(
+    'Terms — NanoTab Pay',
+    'NanoTab Pay terms in plain English: 2% hosted fee, USDC on Base settlement to your wallet, personal-read licence, no resale.',
+    `<p class="eyebrow">Plain English · NanoTab Pay</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Terms of use</h2>
+<p class="secsub">Last updated: November 2026. Questions or disputes: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
+<div class="card"><h2 style="font-size:18px">What NanoTab Pay is</h2><p class="card-sub" style="margin-bottom:0">NanoTab Pay lets you put words, files and links behind a pay-per-read link. AI agents pay to read your link; humans can too — same link, same price. Payments are made in USDC on the Base network. We do not hold your money: each payment is split on-chain, 98% to the wallet address you give us and 2% to NanoTab.</p></div>
+<div class="card"><h2 style="font-size:18px">Fees and settlement</h2><p class="card-sub" style="margin-bottom:0">Hosted links: NanoTab keeps 2% of every payment; you keep 98%. There is no monthly fee. Prices are set by you in US dollars and paid in USDC. Settled payments go straight to your wallet — there is no NanoTab balance and nothing to withdraw. The developer self-host path carries a 0.1% fee instead; see <a href="/developers">For developers</a>.</p></div>
+<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">Only publish content you wrote, made, or have permission to sell. You are responsible for it being lawful and as described. Agent-submitted links may be held for owner review before they go live. We may remove links that break the law or these terms.</p></div>
+<div class="card"><h2 style="font-size:18px">What paying buys</h2><p class="card-sub" style="margin-bottom:0">Paying unlocks a personal read of that link's content. It does not buy ownership, and it does not allow copying for resale, redistribution, or republication. Sellers: the paywall controls access to the copy NanoTab serves; it cannot stop someone re-typing what they have read, and we do not claim otherwise.</p></div>
+<div class="card"><h2 style="font-size:18px">Availability and liability</h2><p class="card-sub" style="margin-bottom:0">We run NanoTab Pay as a small, new service and aim to keep it available, but we do not guarantee uninterrupted service. To the extent the law allows, our liability is limited to the fees we took on the affected payments. Nothing here removes your statutory rights. Refunds and disputes are covered at <a href="/refunds">Refunds &amp; disputes</a>.</p></div>
+<p style="color:var(--mut);font-size:14.5px">See also: <a href="/privacy">Privacy</a> · <a href="/about">About NanoTab</a> · <a href="/contact">Contact</a></p>`
+  );
+}
+
+export function privacyHtml(): string {
+  return infoPage(
+    'Privacy — NanoTab Pay',
+    'What NanoTab Pay collects and why: email for magic-link sign-in, your listing content and wallet address, paid-read counts. No data selling.',
+    `<p class="eyebrow">Plain English · NanoTab Pay</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Privacy, in short</h2>
+<p class="secsub">Last updated: November 2026. Data questions: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
+<div class="card"><h2 style="font-size:18px">What we collect, and why</h2><p class="card-sub" style="margin-bottom:0"><b style="color:var(--txt)">Email address</b> — to send your sign-in magic link and to know which links are yours. Sign-in needs an email; there is no password. <b style="color:var(--txt)">Listing content, title, price and wallet address</b> — so we can serve your paywall and send you 98% of each payment. <b style="color:var(--txt)">Paid-read counts</b> — so your dashboard and our public stats are honest. Readers do not need an account, and we do not ask readers for email.</p></div>
+<div class="card"><h2 style="font-size:18px">Cookies</h2><p class="card-sub" style="margin-bottom:0">One session cookie (<code>nt_sess</code>) keeps you signed in for 30 days. Your unpublished draft is stored in your own browser (local storage) until you share it. We do not use advertising cookies.</p></div>
+<div class="card"><h2 style="font-size:18px">Who else is involved</h2><p class="card-sub" style="margin-bottom:0">Sign-in emails are sent via Resend from login@mail.nanotab.dev. The site runs on Cloudflare. Payments settle on the public Base blockchain — wallet addresses and amounts there are public by design. Agent submissions may be auto-reviewed by TypeSafe Jev (title and a short content excerpt). We never sell personal data.</p></div>
+<div class="card"><h2 style="font-size:18px">Your choices</h2><p class="card-sub" style="margin-bottom:0">Remove any of your links at any time from My links. To ask what we hold about your email, or to have it deleted, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>. If you are in the UK or EEA, you have rights to access, correct and erase your personal data; we will honour them.</p></div>
+<p style="color:var(--mut);font-size:14.5px">See also: <a href="/terms">Terms</a> · <a href="/contact">Contact</a></p>`
+  );
+}
+
+export function refundsHtml(): string {
+  return infoPage(
+    'Refunds & disputes — NanoTab Pay',
+    'How refunds and disputes work on NanoTab Pay: on-chain USDC payments, what we can and cannot reverse, and how to reach us.',
+    `<p class="eyebrow">Plain English · NanoTab Pay</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Refunds &amp; disputes</h2>
+<p class="secsub">Last updated: November 2026. For any payment problem, email <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> first — we will always try to put it right.</p>
+<div class="card"><h2 style="font-size:18px">How payments settle (and what that means)</h2><p class="card-sub" style="margin-bottom:0">Payments are USDC transfers on the Base blockchain. Once confirmed on-chain they cannot be pulled back by NanoTab — no one can reverse them unilaterally, and we will not pretend otherwise. Our 2% fee is taken as part of that same transfer; you receive 98% directly in your wallet.</p></div>
+<div class="card"><h2 style="font-size:18px">When we will arrange a refund</h2><p class="card-sub" style="margin-bottom:0">If you paid and the content was not delivered, was not as described, or you were charged twice for the same read, email us with the link, the amount and (if you have it) the transaction hash. Where the payment reached the seller, we will contact the seller and arrange a return transfer; where NanoTab is at fault, we will cover it. Duplicate or clearly mistaken payments fall in the same route.</p></div>
+<div class="card"><h2 style="font-size:18px">Sellers</h2><p class="card-sub" style="margin-bottom:0">Describe your content honestly in its title. If a buyer disputes a read, we may ask you to refund or to fix the listing, and repeated misleading listings may be removed. You can remove your own links at any time from My links.</p></div>
+<div class="card"><h2 style="font-size:18px">Timescales</h2><p class="card-sub" style="margin-bottom:0">Email <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> and we aim to reply within two working days. Refund transfers, once agreed, are sent on Base and are usually visible within minutes.</p></div>
+<p style="color:var(--mut);font-size:14.5px">See also: <a href="/terms">Terms</a> · <a href="/contact">Contact</a></p>`
+  );
+}
+
+export function contactHtml(): string {
+  return infoPage(
+    'Contact — NanoTab Pay',
+    'Contact NanoTab Pay: support@nanotab.dev for help, payment disputes and privacy requests.',
+    `<p class="eyebrow">Plain English · NanoTab Pay</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Contact us</h2>
+<p class="secsub">One inbox for everything — help, payment disputes, privacy requests.</p>
+<div class="card"><h2 style="font-size:18px">Email</h2><p class="card-sub" style="margin-bottom:0"><a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> — we aim to reply within two working days. Sign-in links come from a different address (login@mail.nanotab.dev); that mailbox sends sign-ins only, so please use ${CONTACT_EMAIL} for anything you need an answer to.</p></div>
+<div class="card"><h2 style="font-size:18px">For a payment problem, include</h2><p class="card-sub" style="margin-bottom:0">The paywall link (pay.nanotab.dev/r/…), the amount, roughly when you paid, and the transaction hash if you have it. See <a href="/refunds">Refunds &amp; disputes</a> for how we handle it. Never send a private key or recovery phrase — we will never ask for one.</p></div>
+<div class="card"><h2 style="font-size:18px">Who we are</h2><p class="card-sub" style="margin-bottom:0">NanoTab is a small independent project. The code is open source: <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a>. More on <a href="/about">About NanoTab</a>.</p></div>`
+  );
+}
+
+export function aboutHtml(): string {
+  return infoPage(
+    'About — NanoTab Pay',
+    'About NanoTab: AI agents pay to read your link, humans can too. 98% to your USDC wallet on Base, 2% to NanoTab. Open source, new and live.',
+    `<p class="eyebrow">Plain English · NanoTab Pay</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">About NanoTab</h2>
+<p class="secsub">NanoTab Pay in one line: AI agents pay to read your link; humans can too.</p>
+<div class="card"><h2 style="font-size:18px">What we do</h2><p class="card-sub" style="margin-bottom:0">Writers, experts and list-makers paste their words, set a price, and share one link. Agents pay automatically in USDC on Base; a person can pay too, with a wallet. The seller keeps 98% of every payment — NanoTab keeps 2% — settled straight to the seller's wallet. No monthly fee, no reader accounts.</p></div>
+<div class="card"><h2 style="font-size:18px">Honest limits</h2><p class="card-sub" style="margin-bottom:0">We are new and small, and we say so. Sellers need a USDC wallet on Base for now (no-wallet payouts are planned, not live). The paywall protects the copy we host; a public original stays public. Paid reads are personal reads — no resale. Detail: <a href="/#paywall-how">How the paywall actually works</a> and our <a href="/terms">Terms</a>.</p></div>
+<div class="card"><h2 style="font-size:18px">Open and checkable</h2><p class="card-sub" style="margin-bottom:0">Code: <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a>. Live totals: <a href="/stats">/stats</a>. Try the real thing: <a href="/demo">the $0.05 sample paywall</a>. Developer self-host path (0.1% fee): <a href="/developers">For developers</a>. Contact: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p></div>`
+  );
+}
+
+export function walletGuideHtml(): string {
+  return infoPage(
+    'Wallet guide — NanoTab Pay',
+    'Plain-English wallet guide: what a USDC wallet address on Base is, how to get one free, and how to paste it into NanoTab safely.',
+    `<p class="eyebrow">Plain English · Two minutes</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Getting a wallet, in plain English</h2>
+<p class="secsub">You need one wallet address so NanoTab can send you 98% of every payment. It is free, and you only do this once.</p>
+<div class="card"><h2 style="font-size:18px">What you are actually getting</h2><p class="card-sub" style="margin-bottom:0">A wallet app holds your money address. NanoTab pays in <b style="color:var(--txt)">USDC</b> (a digital dollar) on the <b style="color:var(--txt)">Base</b> network. Your <b style="color:var(--txt)">wallet address</b> is a long code starting with <code>0x</code> (42 characters) — that, and only that, is what you paste into NanoTab. It is safe to share an address; it can only receive money.</p></div>
+<div class="card"><h2 style="font-size:18px">Step by step</h2><p class="card-sub" style="margin-bottom:0">1. Install a wallet app — Coinbase Wallet or MetaMask are the common free ones (phone or browser).<br>2. Create a wallet and write down its recovery phrase on paper. Never type that phrase into any website, and never send it to anyone — NanoTab will never ask for it.<br>3. In the app, make sure the network says <b style="color:var(--txt)">Base</b> (both apps can switch networks; the same address works, but NanoTab pays on Base).<br>4. Tap Receive (or your account name) and copy the address starting <code>0x</code>.<br>5. Paste it into step 4 on the <a href="/#create">create page</a>. Done — every sale lands there automatically.</p></div>
+<div class="card"><h2 style="font-size:18px">Good to know</h2><p class="card-sub" style="margin-bottom:0">There is no NanoTab balance and nothing to withdraw — payments go straight to this wallet, 98% to you and 2% to NanoTab. You do not need to buy anything to receive payments. Spending or moving USDC onward is handled inside your wallet app. No wallet yet and not ready? No-wallet payouts are on our roadmap — for now the wallet is required, and we would rather say that plainly than hold your money.</p></div>
+<p style="color:var(--mut);font-size:14.5px">Back to: <a href="/#create">Paywall a link</a> · <a href="/#faq">Common questions</a> · <a href="/contact">Contact</a></p>`
+  );
+}
+
+export function demoHtml(): string {
+  return infoPage(
+    'Demo — try a real NanoTab paywall for $0.05',
+    'A real, payable NanoTab demo: a short sample behind a live $0.05 USDC-on-Base paywall. Unpaid requests get a 402; paid agents get the words.',
+    `<p class="eyebrow">Live demo · Real paywall</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Try a real paywall: $0.05</h2>
+<p class="secsub">This is not a mock-up. The link below is a live NanoTab paywall holding a short sample text. It costs $0.05 in USDC on Base — the same flow your readers and agents would use.</p>
+<div class="card"><h2 style="font-size:18px">The sample (preview)</h2><p class="card-sub">Title: <b style="color:var(--txt)">Sample: How to keep tomatoes happy in a small garden</b></p><p class="card-sub" style="margin-bottom:0">Free preview — first lines only: <i>“Tomatoes want sun, steady water, and more room than you think. The five rules that actually matter…”</i> The full text (five short rules) unlocks on payment.</p></div>
+<div class="card"><h2 style="font-size:18px">Pay and read</h2><p class="card-sub">Open the paywall link with an agent, or fetch it from code: the unpaid answer is a 402 with the price; pay $0.05 USDC on Base and the same link returns the words. In a plain browser you will see the paywall explanation page — there is no card checkout, for the demo or for any NanoTab link. Demo payments go to the NanoTab demo wallet.</p><p style="margin:14px 0 4px"><a class="btn" href="/r/DemoSample">Open the $0.05 demo paywall →</a></p><p style="margin:10px 0 0;font-size:14px"><a href="/marketplace">Browse the marketplace</a> · <a href="/stats">Live stats</a> · <a href="/#create">Create your own link</a></p></div>
+<div class="card"><h2 style="font-size:18px">Honest status</h2><p class="card-sub" style="margin-bottom:0">NanoTab is new. Live paid-read totals are on <a href="/stats">/stats</a> — we show the real number there rather than borrow someone else's. If the count looks small, that is because it is.</p></div>`
+  );
 }
