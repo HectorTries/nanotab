@@ -37,8 +37,18 @@ APIs:
   `image/png`, `image/jpeg`. → `201 {url, slug, x402: {accepts}}`.
 - `POST /v1/agent/submit` — agent submissions, auth `X-Agent-Key` =
   `AGENT_KEY` secret (unset = disabled, fail closed). Same body plus
-  `agent_name?`. Stores the listing as `status: "pending"` →
-  `202 {url, slug, status}`. Nothing publishes yet.
+  `agent_name?`. Every submission is auto-reviewed by TypeSafe Jev
+  (one System One call: `spam`, `content_legal`, `price_sane` nouls +
+  `quality` score over junk/mismatch…excellent). Clean + verified
+  (`spam<0.2`, `content_legal>0.8`, `price_sane>0.8`, `quality>=fine`;
+  `VERIFIED_AGENTS` unset = any key-authenticated agent) → live
+  instantly, `201 {url, slug, status:"live", jev}`. Everything else is
+  stored `status: "pending"` with the verdict on the record →
+  `202 {url, slug, status, jev?}`. Code hard blocks run first and skip
+  Jev: spam-domain blocklist (`src/blocklist.ts`) → `403`, over 10
+  submissions/hour/agent → `429`, previously rejected URL → `403`.
+  Missing `TYPESAFE_API_KEY` or any Jev error fails open to the
+  pending queue — submissions never break on Jev.
 - `GET /v1/agent/pending` / `POST /v1/agent/review {slug, action}` —
   the review queue, owner-gated (session; `OWNER_EMAILS` comma
   allowlist when set; publish key accepted for automation). Approve →
@@ -77,7 +87,10 @@ Secrets (Cloudflare, never in repo):
 ```sh
 wrangler secret put PUBLISH_KEY    # legacy publish/review automation
 wrangler secret put AGENT_KEY      # enables POST /v1/agent/submit
+wrangler secret put TYPESAFE_API_KEY # Jev auto-reviewer (unset = manual queue only)
 wrangler secret put RESEND_API_KEY # magic-link email (unset = dev-mode link)
 # optional reviewer allowlist (wrangler.toml [vars] or secret):
 #   OWNER_EMAILS=hector@example.com (unset = any signed-in user may review)
+# optional auto-publish allowlist (unset = any AGENT_KEY agent verified):
+#   VERIFIED_AGENTS=agent-one,agent-two
 ```
