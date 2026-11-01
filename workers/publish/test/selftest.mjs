@@ -182,7 +182,27 @@ let slug, url;
   check('page: /marketplace → 200 HTML', mktPage.status === 200 && mktHtml.includes('Marketplace') && mktHtml.includes(slug));
   const home = await worker.fetch(req('/'), env, {});
   const homeHtml = await home.text();
-  check('page: / → 200 landing with paywall headline', home.status === 200 && homeHtml.includes('Paywall anything'));
+  check('page: / → 200 landing with paywall headline', home.status === 200 && homeHtml.includes('Paywall Any Link in seconds'));
+  check('page: / step-flow (link → content/upload → price → Next → /login)',
+    homeHtml.includes('id="p-link"') && homeHtml.includes('id="p-body"') && homeHtml.includes('id="p-file"') &&
+    homeHtml.includes('id="p-price"') && homeHtml.includes('Next') && homeHtml.includes('/login?next='));
+  check('page: / demotes developers to labelled secondary path',
+    homeHtml.includes('For developers') && homeHtml.includes('href="/developers"'));
+  const login = await worker.fetch(req('/login'), env, {});
+  const loginHtml = await login.text();
+  check('page: /login → 200 single-purpose sign-in',
+    login.status === 200 && loginHtml.includes('Sign in to publish') && loginHtml.includes('/v1/auth/request') &&
+    !loginHtml.includes('id="p-body"'));
+  const devs = await worker.fetch(req('/developers'), env, {});
+  const devsHtml = await devs.text();
+  check('page: /developers → 200 developer path',
+    devs.status === 200 && devsHtml.includes('For developers') && devsHtml.includes('nanotab protect') &&
+    devsHtml.includes('/v1/agent/submit') && devsHtml.includes('/agent-auth'));
+  const queue = await worker.fetch(req('/agent-auth'), env, {});
+  const queueHtml = await queue.text();
+  check('page: /agent-auth → 200 daily review queue shell',
+    queue.status === 200 && queueHtml.includes('Agent authorization queue') && queueHtml.includes('/v1/agent/pending') &&
+    queueHtml.includes('/v1/agent/review'));
 }
 
 // --- GET /publish + 404 ---
