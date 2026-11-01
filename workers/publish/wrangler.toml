@@ -3,19 +3,15 @@ main = "src/index.ts"
 compatibility_date = "2025-06-01"
 
 # --- NanoTab publish worker (MVP step 2: hosted one-click paywalls) ---
-# Auth is a shared-secret stub: set it via secret, NEVER commit it:
-#   wrangler secret put PUBLISH_KEY
-# Local dev: wrangler dev --var PUBLISH_KEY:dev-secret
-# Real magic-link auth replaces the stub in step 4.
-# Create for real (NOT done yet — local dev emulates both):
-#   wrangler kv namespace create NANOTAB_LISTINGS
-#   wrangler r2 bucket create nanotab-content
+# No accounts anywhere. Secrets (NEVER commit):
+#   wrangler secret put ADMIN_KEY   (owner review: /agent-auth, /v1/agent/*)
+#   wrangler secret put AGENT_KEY   (agent submissions: /v1/agent/submit)
+# Local dev: wrangler dev --var ADMIN_KEY:dev-admin --var AGENT_KEY:dev-agent
 [vars]
 NANOTAB_FEE_BPS = "200"
 MAX_PRICE_CENTS = "10000"
 NETWORK = "base"
 ASSET = "0x833589fcD6eDB6e08f4C7c32d4f71B54BdA4B4E5"
-AUTH_FROM = "NanoTab Pay <login@mail.nanotab.dev>"
 
 # R2 bucket nanotab-content: bytes live here (key `r/<slug>`); KV `rb:<slug>`
 # is the automatic fallback when the binding is absent or a write fails.

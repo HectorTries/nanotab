@@ -1,12 +1,13 @@
 // NanoTab publish worker — hosted one-click agent paywalls (MVP step 2).
+// No accounts, no email, no sessions anywhere: publishing and paying are
+// accountless. Owner review is protected by ADMIN_KEY only.
 //
-// POST /v1/publish  (accountless: no auth required; magic-link session OR
-//   X-Nanotab-Key stub optionally associate/automate the listing)
+// POST /v1/publish  (no credentials needed; publishing works with zero cookies)
 //   {title, mime, price_cents, merchant_wallet, body_b64, source_url?} →
 //   stores R2 bytes + KV metadata → 201 {url, slug, x402}. Human links are
 //   live instantly. Agent links differ: POST /v1/agent/submit (X-Agent-Key)
 //   queues status 'pending' → GET /r/:slug 403 until the owner approves via
-//   GET /v1/agent/pending + POST /v1/agent/review (see /agent-auth page).
+//   GET /v1/agent/pending + POST /v1/agent/review (ADMIN_KEY; see /agent-auth).
 // GET /r/:slug + GET /p/:slug  one listing, routed by intent: a valid
 //   X-Payment → R2 bytes with x-nanotab:* headers (buyer-tx verify only —
 //   NO settler on publish); unpaid + Accept: application/json or an
@@ -35,7 +36,7 @@ import {
   verifyPayment,
   type PaymentProof,
 } from '../../../packages/x402-verify/src/index.ts';
-import { landingHtml, loginHtml, developersHtml, agentAuthHtml, termsHtml, privacyHtml, refundsHtml, contactHtml, aboutHtml, walletGuideHtml, demoHtml } from './landing.ts';
+import { landingHtml, developersHtml, agentAuthHtml, termsHtml, privacyHtml, refundsHtml, contactHtml, aboutHtml, walletGuideHtml, demoHtml } from './landing.ts';
 import { isBlockedDomain } from './blocklist.ts';
 
 // Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
@@ -64,11 +65,8 @@ declare global {
 export {};
 
 interface Env {
-  PUBLISH_KEY?: string; // legacy shared-secret stub (wrangler secret ONLY) — magic-link preferred
+  ADMIN_KEY?: string; // owner review key (wrangler secret ONLY); protects /agent-auth + /v1/agent/pending + /v1/agent/review; unset → review disabled (fail closed)
   AGENT_KEY?: string; // agent submission key (wrangler secret ONLY); unset → agent submissions disabled (fail closed)
-  OWNER_EMAILS?: string; // comma-separated reviewer allowlist for /agent-auth; unset → any signed-in user may review (scaffold)
-  RESEND_API_KEY?: string; // Resend key for magic-link emails (wrangler secret ONLY); unset → /v1/auth/request returns the link (dev mode)
-  AUTH_FROM?: string; // sender, e.g. "NanoTab <hello@nanotab.dev>" (default)
   NANOTAB_FEE_BPS?: string; // e.g. "200" = 2% (default 200)
   MAX_PRICE_CENTS?: string; // publish price cap (default "10000" = $100)
   BASE_RPC_URL?: string; // optional custom Base RPC
@@ -104,7 +102,6 @@ interface Listing {
   // the full paid body is never part of it. Absent on legacy records and
   // derived lazily from the stored bytes on first public-page read.
   abstract?: string;
-  owner?: string; // sha256hex(owner email); absent = legacy key-published
   agent_verified?: boolean; // true when the submitting agent may auto-publish (see isVerifiedAgent)
   jev?: JevVerdict; // TypeSafe Jev auto-review verdict; absent = Jev unavailable at submission (fail-open)
 }
@@ -142,7 +139,7 @@ const MIME_ALLOWLIST = [
 ];
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB decoded
 const MAX_B64_CHARS = Math.ceil(MAX_BODY_BYTES / 3) * 4;
-const RESERVED_SLUGS = new Set(['api', 'stats', 'admin', 'v1', 'r', 'publish', 'marketplace', 'login', 'developers', 'agent-auth', 'app']);
+const RESERVED_SLUGS = new Set(['api', 'stats', 'admin', 'v1', 'r', 'publish', 'marketplace', 'developers', 'agent-auth', 'app']);
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const SLUG_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -371,89 +368,26 @@ function listing402Body(reqUrl: string, l: Listing, feeBps: number, feeTo: strin
   };
 }
 
-// --- auth: magic-link (POST /v1/auth/request {email} → link; GET /v1/auth/verify?token= → session) ---
-// Session: KV `sess:<token>` = {email, exp}; cookie `nt_sess` httpOnly.
-// Owner id stored on listings = sha256hex(lower(email)). Publish is accountless:
-// a session, when present, sets the owner; the legacy key is accepted too; neither is required.
-// Email send via Resend (RESEND_API_KEY secret); if unset, /v1/auth/request returns {link} directly (dev mode).
-const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,253}\.[^\s@]{2,}$/;
-const AUTH_TOKEN_TTL = 15 * 60; // 15 min
-const SESS_TTL = 30 * 24 * 3600; // 30 days
-
-function randToken(n = 32): string {
-  const b = new Uint8Array(n);
-  crypto.getRandomValues(b);
-  return [...b].map((x) => x.toString(16).padStart(2, '0')).join('').slice(0, n * 2);
+// --- Owner review guard: ADMIN_KEY only (no accounts, no cookies) ---
+// API calls send X-Admin-Key; the /agent-auth page passes ?key=... .
+// Fail closed: unset/missing/wrong key → 403.
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let out = 0;
+  for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return out === 0;
 }
 
-async function ownerOf(email: string): Promise<string> {
-  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(email.trim().toLowerCase()));
-  return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
-}
-
-async function sessionEmail(req: Request, env: Env): Promise<string | null> {
-  const kv = needKv(env);
-  const m = req.headers.get('cookie')?.match(/(?:^|;\s*)nt_sess=([0-9a-f]{64})/);
-  const hdr = req.headers.get('authorization');
-  const bearer = hdr?.toLowerCase().startsWith('bearer ') ? hdr.slice(7).trim() : '';
-  const tok = m?.[1] || (/^[0-9a-f]{64}$/.test(bearer) ? bearer : '');
-  if (!tok) return null;
-  const s = (await kv.get(`sess:${tok}`, 'json').catch(() => null)) as { email: string; exp: number } | null;
-  if (!s?.email || Date.now() > (s.exp ?? 0)) return null;
-  return s.email;
-}
-
-async function sendMagicLink(env: Env, email: string, link: string): Promise<{ emailed: boolean }> {
-  if (!env.RESEND_API_KEY) return { emailed: false };
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      from: env.AUTH_FROM ?? 'NanoTab <hello@nanotab.dev>',
-      to: [email],
-      subject: 'Sign in to NanoTab',
-      text: `Sign in to NanoTab publish:\n\n${link}\n\nExpires in 15 minutes.`,
-    }),
-  });
-  if (!r.ok) throw new HttpErr(502, `email send failed (${r.status})`);
-  return { emailed: true };
-}
-
-function safeNext(v: unknown): string {
-  // Only same-site absolute paths may be redirect targets after sign-in.
-  if (typeof v !== 'string' || v.length > 512) return '/';
-  if (!/^\/(?!\/)[^\s\\]*$/.test(v)) return '/';
-  return v;
-}
-
-async function handleAuthRequest(req: Request, env: Env): Promise<Response> {
-  const kv = needKv(env);
-  let body: any;
-  try { body = await req.json(); } catch { throw new HttpErr(400, 'invalid JSON body'); }
-  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
-  if (!EMAIL_RE.test(email)) throw new HttpErr(400, 'invalid email');
-  const next = safeNext(body?.next);
-  const token = randToken(32);
-  await kv.put(`auth:${token}`, JSON.stringify({ email, exp: Date.now() + AUTH_TOKEN_TTL * 1000, next }), { expirationTtl: AUTH_TOKEN_TTL });
-  const origin = new URL(req.url).origin;
-  const link = `${origin}/v1/auth/verify?token=${token}`;
-  const { emailed } = await sendMagicLink(env, email, link);
-  console.log(`[nanotab-publish] magic-link requested for ${email} (emailed=${emailed})`);
-  return Response.json(emailed ? { ok: true, emailed: true } : { ok: true, emailed: false, link });
-}
-
-async function handleAuthVerify(req: Request, env: Env): Promise<Response> {
-  const kv = needKv(env);
-  const token = new URL(req.url).searchParams.get('token') ?? '';
-  if (!/^[0-9a-f]{64}$/.test(token)) throw new HttpErr(400, 'invalid token');
-  const a = (await kv.get(`auth:${token}`, 'json').catch(() => null)) as { email: string; exp: number; next?: string } | null;
-  if (!a?.email || Date.now() > (a.exp ?? 0)) throw new HttpErr(401, 'expired or invalid token');
-  await kv.delete(`auth:${token}`).catch(() => {});
-  const sess = randToken(32);
-  await kv.put(`sess:${sess}`, JSON.stringify({ email: a.email, exp: Date.now() + SESS_TTL * 1000 }), { expirationTtl: SESS_TTL });
-  const res = Response.redirect(new URL(safeNext(a.next), req.url).toString(), 302);
-  res.headers.set('set-cookie', `nt_sess=${sess}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESS_TTL}`);
-  return res;
+function requireAdmin(req: Request, env: Env): string {
+  const expected = (env.ADMIN_KEY ?? '').trim();
+  if (!expected) throw new HttpErr(403, 'forbidden (owner review is not configured)');
+  const fromHeader = (req.headers.get('X-Admin-Key') ?? '').trim();
+  const fromQuery = (new URL(req.url).searchParams.get('key') ?? '').trim();
+  const provided = fromHeader || fromQuery;
+  if (!provided || !timingSafeEqual(provided, expected)) {
+    throw new HttpErr(403, 'forbidden (owner review requires a valid admin key)');
+  }
+  return 'admin';
 }
 
 // Shared body validation for human publishes and agent submissions.
@@ -514,20 +448,10 @@ async function freshSlug(kv: KVNamespace): Promise<string> {
 // --- POST /v1/publish (human: publishes instantly, no review friction) ---
 async function handlePublish(req: Request, env: Env): Promise<Response> {
   const { kv, r2 } = needStores(env);
-  // Accountless publish: posting needs no account, email or sign-in. A
-  // magic-link session, when present, associates the listing with that
-  // account (owner) so it shows under My links; the legacy X-Nanotab-Key
-  // is still accepted for automation. With neither, the listing is created
-  // anonymously (no owner) and is live immediately. The payout address in
-  // the body is a public 0x address only — a private key is never sent here.
-  let owner: string | undefined;
-  const sessEmail = await sessionEmail(req, env).catch(() => null);
-  if (sessEmail) {
-    owner = await ownerOf(sessEmail);
-  } else if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) {
-    owner = undefined; // legacy key publish (no owner)
-  }
-  // No else: absent session/key is not an error — accountless creation.
+  // Accountless publish: no accounts, no email, no cookies. Anyone may
+  // publish with zero credentials; the listing is live immediately. The
+  // payout address in the body is a public 0x address only — a private
+  // key is never sent here.
   let body: any;
   try {
     body = await req.json();
@@ -552,7 +476,6 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     status: 'live',
     abstract: deriveAbstract(p.bytes, p.mime, p.title),
     ...(p.source_url ? { source_url: p.source_url } : {}),
-    ...(owner ? { owner } : {}),
   };
   await putBytes(kv, r2, listing, p.bytes, p.b64);
   await putListing(kv, listing);
@@ -570,21 +493,11 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
 }
 
 // --- Agentic submissions: agents create paywalls, owner approves daily ---
-// POST /v1/agent/submit (X-Agent-Key) queues a listing as 'pending'.
-// GET  /v1/agent/pending + POST /v1/agent/review are the daily review queue,
-// gated to the account owner (session; OWNER_EMAILS allowlist when set, or
-// the legacy publish key for automation). Unapproved links never publish:
-// GET /r/:slug returns 403 while pending and 404 once rejected.
-async function requireReviewer(req: Request, env: Env): Promise<string> {
-  if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) return 'publish-key';
-  const email = await sessionEmail(req, env).catch(() => null);
-  if (!email) throw new HttpErr(401, 'unauthorized (sign in to review agent submissions)');
-  const allow = (env.OWNER_EMAILS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (allow.length && !allow.includes(email.toLowerCase())) {
-    throw new HttpErr(403, 'forbidden (agent review is restricted to the account owner)');
-  }
-  return email;
-}
+// POST /v1/agent/submit (X-Agent-Key) stays open to agents (Jev + rate
+// limits apply). GET /v1/agent/pending + POST /v1/agent/review are the
+// daily review queue, gated by ADMIN_KEY (X-Admin-Key header or ?key=).
+// Unapproved links never publish: GET /r/:slug returns 403 while pending
+// and 404 once rejected.
 
 // --- TypeSafe Jev auto-reviewer (agent submissions only) ---
 // One System One call with four typed questions. Any failure (missing key,
@@ -766,7 +679,7 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
 
 async function handleAgentPending(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
-  await requireReviewer(req, env);
+  requireAdmin(req, env);
   const origin = new URL(req.url).origin;
   const keys = await listRKeys(kv);
   const items = (
@@ -794,7 +707,7 @@ async function handleAgentPending(req: Request, env: Env): Promise<Response> {
 
 async function handleAgentReview(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
-  const reviewer = await requireReviewer(req, env);
+  const reviewer = requireAdmin(req, env);
   let body: any;
   try {
     body = await req.json();
@@ -888,7 +801,7 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
       });
     }
     return Response.json(
-      { error: 'pending approval: this agent-submitted link has not been approved by the account owner yet', status: 'pending', slug },
+      { error: 'pending approval: this agent-submitted link has not been approved by the owner yet', status: 'pending', slug },
       { status: 403, headers: { 'access-control-allow-origin': '*' } }
     );
   }
@@ -1028,9 +941,25 @@ function pendingHtml(l: Listing): string {
 <div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><div class="card">
 <div class="kicker">403 · Pending approval</div>
 <h1>${escHtml(l.title)}</h1>
-<p class="mut">This link was created by an agent (${escHtml(l.agent_name ?? 'agent')}) and is waiting in the account owner's daily review queue. It is not published yet — no price terms are served and no payment can unlock it until the owner approves it.</p>
-<p class="mut">Are you the owner? <a href="/agent-auth">Review the queue</a> · <a href="/marketplace">Browse published links</a></p>
+<p class="mut">This link was created by an agent (${escHtml(l.agent_name ?? 'agent')}) and is waiting in the owner's daily review queue. It is not published yet — no price terms are served and no payment can unlock it until the owner approves it.</p>
+<p class="mut">Are you the owner? Open your bookmarked owner review URL (with your admin key) to review the queue · <a href="/marketplace">Browse published links</a></p>
 <p class="mut" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p>
+</div></div></body></html>`;
+}
+
+function agentAuthForbiddenHtml(): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Owner review — NanoTab Pay</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif}.wrap{max-width:640px;margin:0 auto;padding:56px 20px}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:32px;margin-top:28px}.kicker{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#e86a6a;font-weight:600}h1{font-size:26px;letter-spacing:-.02em;line-height:1.25;margin:10px 0 8px}.mut{color:#9fb0c0;font-size:14.5px}a{color:#3ecf8e}code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:13px}</style></head><body>
+<div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><div class="card">
+<div class="kicker">403 · Owner only</div>
+<h1>Owner review is locked</h1>
+<p class="mut">This page is for the site owner only. Open it with your admin key in the URL: <code>/agent-auth?key=YOUR_ADMIN_KEY</code>. There are no accounts and no sign-in — the key in the URL is the only credential, and no session cookie is set.</p>
+<p class="mut"><a href="/">Back to NanoTab Pay</a> · <a href="/marketplace">Browse published links</a></p>
 </div></div></body></html>`;
 }
 
@@ -1103,7 +1032,7 @@ pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;
 .foot{color:#7f8fa3;font-size:13px;text-align:center;margin-top:18px}</style></head><body>
 <div class="wrap"><div class="top"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><a href="/marketplace">Marketplace</a></div><div class="card">
 <div class="kicker">Paywalled content</div>
-<h1>${escHtml(l.title)}</h1>${l.created_by_agent ? '<p class="mut"><span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600">Created by agent</span> <span style="font-size:13px">· approved by the account owner</span></p>' : ''}
+<h1>${escHtml(l.title)}</h1>${l.created_by_agent ? '<p class="mut"><span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600">Created by agent</span> <span style="font-size:13px">· approved by the owner</span></p>' : ''}
 <span class="preview-label">Free preview</span>
 <section class="abstract" aria-label="Free preview"><p>${escHtml(abstract)}</p></section>
 <div class="paywall">
@@ -1222,48 +1151,9 @@ async function listRKeys(kv: KVNamespace): Promise<string[]> {
   }
   return [...new Set(out)];
 }
-async function handleOwnerListings(req: Request, env: Env): Promise<Response> {
-  const kv = needKv(env);
-  const email = await sessionEmail(req, env);
-  if (!email) throw new HttpErr(401, 'unauthorized (sign in first)');
-  const me = await ownerOf(email);
-  const origin = new URL(req.url).origin;
-  const keys = await listRKeys(kv);
-  const items = (
-    await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
-  )
-    .filter((l): l is Listing => !!l?.slug && l.owner === me)
-    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
-    .map((l) => ({
-      url: `${origin}/r/${l.slug}`,
-      slug: l.slug,
-      title: l.title,
-      price_usd: (Number(l.price_cents) / 100).toFixed(2),
-      mime: l.mime,
-      merchant: l.merchant_wallet,
-      paid_calls: l.paid_calls ?? 0,
-      created_at: l.created_at,
-      status: l.status ?? 'live',
-      created_by_agent: !!l.created_by_agent,
-    }));
-  return Response.json(items);
-}
-
-async function handleOwnerDelete(req: Request, env: Env, slug: string): Promise<Response> {
-  const { kv, r2 } = needStores(env);
-  const email = await sessionEmail(req, env);
-  if (!email) throw new HttpErr(401, 'unauthorized (sign in first)');
-  const me = await ownerOf(email);
-  const l = await getListing(kv, slug);
-  if (!l) throw new HttpErr(404, 'listing not found');
-  if (l.owner !== me) throw new HttpErr(403, 'forbidden (not your listing)');
-  if (r2) await r2.delete(l.r2_key).catch(() => {});
-  await kv.delete(`rb:${slug}`).catch(() => {});
-  await kv.delete(`r:${slug}`).catch(() => {});
-  await kv.delete(`listing:${slug}`).catch(() => {});
-  console.log(`[nanotab-publish] deleted ${slug} by ${email}`);
-  return Response.json({ ok: true, slug });
-}
+// (Account-based listing management removed: there are no accounts.
+// Publishers keep their /r/<slug> + /p/<slug> links — bookmark them.
+// There is no per-account dashboard to recover a lost link from.)
 
 // --- GET /publish (API paste form; the accountless flow on / is the primary path) ---
 function handlePublishPage(): Response {
@@ -1275,14 +1165,13 @@ function handlePublishPage(): Response {
 <style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif}.wrap{max-width:640px;margin:0 auto;padding:40px 20px 56px}a{color:#3ecf8e}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}h1{font-size:28px;letter-spacing:-.02em;margin:28px 0 8px}.sub{color:#9fb0c0}.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:24px;margin-top:20px}label{display:block;margin:14px 0 5px;color:#9fb0c0;font-size:14px;font-weight:500}input,textarea,select{width:100%;background:#0e1218;border:1px solid #232b36;border-radius:9px;color:#f2f5f7;padding:11px 13px;font-size:15px;font-family:inherit}textarea{font-family:"IBM Plex Mono",monospace;min-height:140px}button{background:#3ecf8e;border:1px solid #3ecf8e;border-radius:10px;color:#06281a;font-weight:600;font-size:15.5px;padding:11px 22px;cursor:pointer;margin-top:16px}pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;white-space:pre-wrap;word-break:break-all;font-size:13px;font-family:"IBM Plex Mono",monospace}</style></head><body>
 <div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a>
 <h1>Publish via API</h1>
-<p class="sub">Most people should use the <a href="/">accountless create flow</a> — no account, no email, no key. This page is for automation: it posts to <code>/v1/publish</code> (no auth required; the shared <code>X-Nanotab-Key</code> secret is still accepted) and shows the test curl commands.</p>
+<p class="sub">Most people should use the <a href="/">accountless create flow</a> — no account, no email, no key. This page is for automation: it posts to <code>/v1/publish</code> (no credentials needed) and shows the test curl commands. Keep your link — bookmark it after you publish.</p>
 <div class="card"><form id="f">
 <label>title <input name="title" maxlength="200" required></label>
 <label>price (USD) <input name="price" type="number" min="0.01" max="100" step="0.01" required></label>
 <label>USDC wallet <input name="wallet" pattern="0x[0-9a-fA-F]{40}" required></label>
 <label>mime <select name="mime"><option>text/markdown</option><option>text/plain</option><option>text/html</option><option>application/json</option></select></label>
 <label>content <textarea name="body" rows="12" cols="60" required></textarea></label>
-<label>secret (optional, legacy) <input name="secret" type="password"></label>
 <button>publish</button></form>
 <pre id="out">Your agent paywall link (HTTP 402) and test commands appear here. Unpaid: curl the link for a 402 with the price. Paid: retry with an X-Payment proof for 200.</pre></div>
 <p class="sub">New here? <a href="/">Create a link with no account</a> — you keep 98% hosted (NanoTab keeps 2%), agents pay in USDC on Base. No wallet yet? Generate one in the browser on the create page, or read the <a href="/wallet-guide">plain-English wallet guide</a>.</p><p class="sub" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
@@ -1292,7 +1181,7 @@ f.onsubmit=async(e)=>{e.preventDefault();const d=new FormData(f);
 const price_cents=Math.round(parseFloat(d.get('price'))*100);
 const body={title:d.get('title'),mime:d.get('mime'),price_cents,
 merchant_wallet:d.get('wallet'),body_b64:btoa(unescape(encodeURIComponent(d.get('body'))))};
-const hdrs={'content-type':'application/json'};const sec=d.get('secret');if(sec)hdrs['X-Nanotab-Key']=sec;
+const hdrs={'content-type':'application/json'};
 const r=await fetch('/v1/publish',{method:'POST',headers:hdrs,body:JSON.stringify(body)});
 const j=await r.json();
 if(!r.ok){out.textContent='error '+r.status+': '+j.error;return;}
@@ -1484,19 +1373,24 @@ export default {
           },
         });
       }
-      if (req.method === 'GET' && pathname === '/login') {
-        return new Response(loginHtml(), {
-          headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' },
-        });
-      }
       if (req.method === 'GET' && pathname === '/developers') {
         return new Response(developersHtml(), {
           headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' },
         });
       }
       if (req.method === 'GET' && pathname === '/agent-auth') {
+        // Owner-only page: ADMIN_KEY via ?key=... (no cookies, no accounts).
+        // Missing/wrong key → 403 page, never the queue.
+        try {
+          requireAdmin(req, env);
+        } catch {
+          return new Response(agentAuthForbiddenHtml(), {
+            status: 403,
+            headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'no-store' },
+          });
+        }
         return new Response(agentAuthHtml(), {
-          headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' },
+          headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'no-store' },
         });
       }
       if (req.method === 'GET' && ['/terms', '/privacy', '/refunds', '/refund-policy', '/contact', '/about', '/wallet-guide', '/demo'].includes(pathname)) {
@@ -1539,27 +1433,7 @@ export default {
       if (req.method === 'POST' && pathname === '/v1/agent/review') {
         return await handleAgentReview(req, env);
       }
-      if (req.method === 'POST' && pathname === '/v1/auth/request') {
-        return await handleAuthRequest(req, env);
-      }
-      if (req.method === 'GET' && pathname === '/v1/auth/verify') {
-        return await handleAuthVerify(req, env);
-      }
-      if (req.method === 'GET' && pathname === '/v1/me') {
-        const email = await sessionEmail(req, env);
-        if (!email) throw new HttpErr(401, 'unauthorized (sign in first)');
-        return Response.json({ email });
-      }
-      if (req.method === 'GET' && pathname === '/v1/listings') {
-        return await handleOwnerListings(req, env);
-      }
-      if (req.method === 'DELETE' && pathname.startsWith('/v1/listings/')) {
-        const slug = pathname.slice('/v1/listings/'.length);
-        if (!/^[A-Za-z0-9]{10}$/.test(slug)) {
-          return Response.json({ error: 'listing not found' }, { status: 404 });
-        }
-        return await handleOwnerDelete(req, env, slug);
-      }
+      // Account routes were removed entirely — they fall through to 404 below.
       if (req.method === 'GET' && pathname.startsWith('/r/')) {
         const slug = pathname.slice('/r/'.length);
         if (!/^[A-Za-z0-9]{10}$/.test(slug)) {
@@ -1581,7 +1455,7 @@ export default {
           headers: {
             'access-control-allow-origin': '*',
             'access-control-allow-methods': 'GET,POST,OPTIONS',
-            'access-control-allow-headers': '*, X-Payment, X-Nanotab-Key, X-Agent-Key',
+            'access-control-allow-headers': '*, X-Payment, X-Agent-Key, X-Admin-Key',
           },
         });
       }
