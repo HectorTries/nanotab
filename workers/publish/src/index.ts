@@ -31,6 +31,7 @@ import {
   type PaymentProof,
 } from '../../../packages/x402-verify/src/index.ts';
 import { landingHtml, loginHtml, developersHtml, agentAuthHtml } from './landing.ts';
+import { isBlockedDomain } from './blocklist.ts';
 
 // Minimal ambient Worker-runtime types (avoids @cloudflare/workers-types dep;
 // wrangler/workerd provide the real globals at runtime).
@@ -66,6 +67,8 @@ interface Env {
   NANOTAB_FEE_BPS?: string; // e.g. "200" = 2% (default 200)
   MAX_PRICE_CENTS?: string; // publish price cap (default "10000" = $100)
   BASE_RPC_URL?: string; // optional custom Base RPC
+  TYPESAFE_API_KEY?: string; // TypeSafe Jev auto-reviewer key (wrangler secret ONLY); unset/error → fail open to manual queue
+  VERIFIED_AGENTS?: string; // comma-separated agent_name allowlist for Jev auto-publish; unset → any AGENT_KEY-authenticated agent counts verified
   FEE_WALLET?: string; // NanoTab fee recipient override (optional; defaults to protocol wallet)
   NANOTAB_LISTINGS?: KVNamespace; // listing metadata `r:<slug>` + counters `listing:<slug>`
   NANOTAB_CONTENT?: R2Bucket; // nanotab-content bucket, key `r/<slug>`
@@ -92,6 +95,26 @@ interface Listing {
   reviewed_at?: string;
   reviewed_by?: string;
   owner?: string; // sha256hex(owner email); absent = legacy key-published
+  agent_verified?: boolean; // true when the submitting agent may auto-publish (see isVerifiedAgent)
+  jev?: JevVerdict; // TypeSafe Jev auto-review verdict; absent = Jev unavailable at submission (fail-open)
+}
+
+// TypeSafe Jev verdict stored on agent-submitted listings. Noul scores are
+// probabilities 0..1; quality_score is the 0..4 expected score across
+// QUALITY_LEVELS, quality is the winning level label.
+export const QUALITY_LEVELS = ['junk/mismatch', 'weak', 'fine', 'good', 'excellent'] as const;
+export type QualityLevel = (typeof QUALITY_LEVELS)[number];
+
+interface JevVerdict {
+  spam: number;
+  content_legal: number;
+  price_sane: number;
+  quality_score: number;
+  quality: QualityLevel;
+  quality_confidence: number;
+  model: string;
+  checked_at: string;
+  decision: 'auto-publish' | 'held';
 }
 
 function isLive(l: Listing): boolean {
@@ -437,6 +460,107 @@ async function requireReviewer(req: Request, env: Env): Promise<string> {
   return email;
 }
 
+// --- TypeSafe Jev auto-reviewer (agent submissions only) ---
+// One System One call with four typed questions. Any failure (missing key,
+// network, non-200, malformed answers) returns null and the caller fails
+// open to the manual /agent-auth queue — submissions never break on Jev.
+const TYPESAFE_URL = 'https://api.typesafe.ai/v1/systemone';
+const JEV_TIMEOUT_MS = 10_000;
+const AGENT_SUBMIT_LIMIT_PER_HOUR = 10;
+
+async function sha256Hex(s: string): Promise<string> {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(h)].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+function isVerifiedAgent(env: Env, agentName: string): boolean {
+  // The AGENT_KEY secret already authenticates the agent. VERIFIED_AGENTS,
+  // when set, further restricts auto-publish to named agents.
+  const allow = (env.VERIFIED_AGENTS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!allow.length) return true;
+  return allow.includes(agentName);
+}
+
+function contentExcerpt(bytes: Uint8Array): string {
+  try {
+    return new TextDecoder('utf-8', { fatal: false }).decode(bytes).slice(0, 2000);
+  } catch {
+    return '';
+  }
+}
+
+async function callJev(env: Env, p: { title: string; price_cents: number; bytes: Uint8Array; source_url?: string; agent_name: string }): Promise<JevVerdict | null> {
+  if (!env.TYPESAFE_API_KEY) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), JEV_TIMEOUT_MS);
+  try {
+    const r = await fetch(TYPESAFE_URL, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { authorization: `Bearer ${env.TYPESAFE_API_KEY}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'jev-latest',
+        state: {
+          url: p.source_url ?? '',
+          title: p.title,
+          content_excerpt: contentExcerpt(p.bytes),
+          price: `$${(p.price_cents / 100).toFixed(2)} (${p.price_cents} cents)`,
+          agent_id: p.agent_name,
+        },
+        questions: {
+          spam: { type: 'noul', instructions: 'Is this submitted paywall content spam or abusive?' },
+          content_legal: { type: 'noul', instructions: 'Is this benign, lawful content?' },
+          price_sane: { type: 'noul', instructions: 'Is this price plausible for this content type (no extreme gouging or rate-limit abuse)?' },
+          quality: {
+            type: 'score',
+            instructions: 'Does the content genuinely match what the link title promises?',
+            criteria: ['junk/mismatch', 'weak', 'fine', 'good', 'excellent'],
+          },
+        },
+      }),
+    });
+    if (!r.ok) {
+      console.log(`[nanotab-publish] jev unavailable (${r.status}); failing open to manual queue`);
+      return null;
+    }
+    const j: any = await r.json().catch(() => null);
+    const a = j?.answers;
+    const spam = a?.spam?.noul, legal = a?.content_legal?.noul, sane = a?.price_sane?.noul;
+    const qScore = a?.quality?.score, qConf = a?.quality?.confidence, qProbs = a?.quality?.probabilities;
+    if (![spam, legal, sane, qScore].every((n) => typeof n === 'number' && Number.isFinite(n))) {
+      console.log('[nanotab-publish] jev returned malformed answers; failing open to manual queue');
+      return null;
+    }
+    // Winning level = argmax probability, falling back to the rounded score.
+    let qi = Math.min(4, Math.max(0, Math.round(qScore)));
+    if (qProbs && typeof qProbs === 'object') {
+      let best = -1;
+      for (let i = 0; i < QUALITY_LEVELS.length; i++) {
+        const v = Number(qProbs[String(i)]);
+        if (Number.isFinite(v) && v > best) { best = v; qi = i; }
+      }
+    }
+    return {
+      spam, content_legal: legal, price_sane: sane,
+      quality_score: qScore, quality: QUALITY_LEVELS[qi],
+      quality_confidence: typeof qConf === 'number' && Number.isFinite(qConf) ? qConf : 0,
+      model: typeof j?.model === 'string' ? j.model : 'jev-latest',
+      checked_at: new Date().toISOString(),
+      decision: 'held',
+    };
+  } catch (e) {
+    console.log(`[nanotab-publish] jev call failed (${(e as Error).message}); failing open to manual queue`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function jevAutoPublishes(verified: boolean, v: JevVerdict): boolean {
+  return verified && v.spam < 0.2 && v.content_legal > 0.8 && v.price_sane > 0.8
+    && QUALITY_LEVELS.indexOf(v.quality) >= QUALITY_LEVELS.indexOf('fine');
+}
+
 async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
   const { kv, r2 } = needStores(env);
   if (!env.AGENT_KEY || req.headers.get('X-Agent-Key') !== env.AGENT_KEY) {
@@ -450,6 +574,30 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
   }
   const maxPrice = Number(env.MAX_PRICE_CENTS ?? '10000');
   const p = parsePublishBody(body, maxPrice);
+  const agentName = p.agent_name ?? 'agent';
+
+  // Hard blocks (code, skip Jev): spam domain, hourly rate, rejected resubmit.
+  if (isBlockedDomain(p.source_url)) {
+    throw new HttpErr(403, 'blocked: source domain is on the spam blocklist');
+  }
+  const hourBucket = new Date().toISOString().slice(0, 13);
+  const rateKey = `agentcount:${agentName}:${hourBucket}`;
+  const submitted = Number(((await kv.get(rateKey).catch(() => null)) as string | null) ?? 0);
+  if (submitted >= AGENT_SUBMIT_LIMIT_PER_HOUR) {
+    throw new HttpErr(429, `rate limited: over ${AGENT_SUBMIT_LIMIT_PER_HOUR} submissions/hour for this agent`);
+  }
+  await kv.put(rateKey, String(submitted + 1), { expirationTtl: 3600 }).catch(() => {});
+  const urlFingerprint = p.source_url ? await sha256Hex(p.source_url) : await sha256Hex(`${p.merchant_wallet}|${p.title}`);
+  if (await kv.get(`rurl:${urlFingerprint}`).catch(() => null)) {
+    throw new HttpErr(403, 'blocked: this URL was previously rejected and may not be resubmitted');
+  }
+
+  // Jev auto-review: one call, four typed judgments. Fail-open on any error.
+  const verified = isVerifiedAgent(env, agentName);
+  const verdict = await callJev(env, { title: p.title, price_cents: p.price_cents, bytes: p.bytes, source_url: p.source_url, agent_name: agentName });
+  const auto = !!verdict && jevAutoPublishes(verified, verdict);
+  if (verdict) verdict.decision = auto ? 'auto-publish' : 'held';
+
   const slug = await freshSlug(kv);
   const listing: Listing = {
     slug,
@@ -462,18 +610,28 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
     created_at: new Date().toISOString(),
     paid_calls: 0,
     source: 'agent',
-    status: 'pending',
+    status: auto ? 'live' : 'pending',
     created_by_agent: true,
-    agent_name: p.agent_name ?? 'agent',
+    agent_name: agentName,
+    agent_verified: verified,
     ...(p.source_url ? { source_url: p.source_url } : {}),
+    ...(verdict ? { jev: verdict } : {}),
+    ...(auto ? { reviewed_at: new Date().toISOString(), reviewed_by: 'jev-auto' } : {}),
   };
   await putBytes(kv, r2, listing, p.bytes, p.b64);
   await putListing(kv, listing);
   const origin = new URL(req.url).origin;
   const url = `${origin}/r/${slug}`;
-  console.log(`[nanotab-publish] agent submission queued ${slug} by ${listing.agent_name} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c)`);
+  if (auto) {
+    console.log(`[nanotab-publish] jev auto-published ${slug} by ${agentName} (spam=${verdict!.spam}, legal=${verdict!.content_legal}, price=${verdict!.price_sane}, quality=${verdict!.quality})`);
+    return Response.json(
+      { url, slug, status: 'live', jev: verdict, message: 'Auto-published by Jev review: verified agent, clean scores, quality at or above fine.' },
+      { status: 201 }
+    );
+  }
+  console.log(`[nanotab-publish] agent submission queued ${slug} by ${agentName} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c)${verdict ? ` jev: spam=${verdict.spam}, legal=${verdict.content_legal}, price=${verdict.price_sane}, quality=${verdict.quality}` : ' jev: unavailable, manual review'}`);
   return Response.json(
-    { url, slug, status: 'pending', message: 'Queued for daily owner review. The link returns 403 until approved; no approval means it never publishes.' },
+    { url, slug, status: 'pending', ...(verdict ? { jev: verdict } : {}), message: 'Queued for daily owner review. The link returns 403 until approved; no approval means it never publishes.' },
     { status: 202 }
   );
 }
@@ -500,6 +658,8 @@ async function handleAgentPending(req: Request, env: Env): Promise<Response> {
       source_url: l.source_url ?? null,
       created_at: l.created_at,
       created_by_agent: true,
+      agent_verified: !!l.agent_verified,
+      jev: l.jev ?? null,
     }));
   return Response.json(items);
 }
@@ -527,6 +687,11 @@ async function handleAgentReview(req: Request, env: Env): Promise<Response> {
     reviewed_by: reviewer,
   };
   await putListing(kv, updated);
+  if (action === 'reject') {
+    // Remember the fingerprint so the same URL cannot be resubmitted.
+    const fp = updated.source_url ? await sha256Hex(updated.source_url) : await sha256Hex(`${updated.merchant_wallet}|${updated.title}`);
+    await kv.put(`rurl:${fp}`, slug).catch(() => {});
+  }
   console.log(`[nanotab-publish] agent submission ${slug} ${action}d by ${reviewer}`);
   return Response.json({ ok: true, slug, status: updated.status });
 }
