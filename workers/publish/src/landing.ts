@@ -1,6 +1,6 @@
 // pay.nanotab.dev pages. Leading product: Paywall Any Link.
-//   /            hero + step-flow (paste link → content → price → Next)
-//   /login       clean single-purpose sign-in (required to publish/collect)
+//   /            hero + step-flow (paste link → content → price → wallet → Publish; no sign-in)
+//   /login       optional sign-in to manage links / review agent submissions
 //   /developers  demoted developer path (SDK / self-host docs funnel)
 //   /agent-auth  daily authorization queue: owner approves agent links
 // Design system: premium fintech dark (shared with the 402 paywall page).
@@ -110,6 +110,18 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--acc);box
 .faq-item p{color:var(--mut);font-size:15px;margin:0 0 16px;max-width:640px}
 .pay-step{background:var(--panel2);border:1px solid var(--line2);border-radius:10px;padding:6px 16px 16px;margin-top:18px}
 .pay-step h3{margin:12px 0 2px;font-size:16.5px}
+.payto-row{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.payto-row input{flex:1;min-width:220px}
+.btn-gen{flex:none;margin-top:0;white-space:nowrap}
+.pk-panel{background:var(--panel2);border:1px solid rgba(232,179,75,.5);border-radius:10px;padding:16px;margin-top:16px}
+.pk-warn{font-size:14.5px;line-height:1.6;color:var(--txt)}
+.pk-warn b{color:var(--warn)}
+.pk-row{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin-top:8px}
+.pk-row input{flex:1;min-width:220px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:13.5px}
+.pk-row button{margin-top:0}
+.pk-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pk-actions button{margin-top:0}
+.agent-curl{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.8px;line-height:1.6;word-break:break-all;margin-top:8px}
 textarea{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:14px;min-height:140px;resize:vertical;line-height:1.6}
 input[type=file]{padding:9px 13px;font-size:14px;color:var(--mut)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -205,7 +217,7 @@ export function landingHtml(): string {
 <div class="hero-ctas"><a class="btn" href="#create">Paywall a link</a><a class="btn secondary" href="#how">See how it works</a></div>
 <p class="hero-note"><a href="/r/DemoSample">Try it: pay $0.05 to read a sample</a> · <a href="/demo">What is this demo?</a></p>
 <p class="hero-note" id="hero-stats">Live now — we are new, so early sellers stand out. <a href="/stats">See live stats</a></p>
-<p class="hero-note">Readers never need a NanoTab account. Agents pay automatically; a person pays with a USDC wallet on Base. No card checkout.</p>
+<p class="hero-note">Nobody needs a NanoTab account — not readers, not you. Agents pay automatically; a person pays with a USDC wallet on Base. No card checkout. Posting needs no account either: paste, price, publish.</p>
 </div>
 <div class="preview" aria-label="What readers and agents see">
 <div class="preview-head"><span><b>What readers &amp; agents see</b></span><span>Your new link</span></div>
@@ -224,7 +236,7 @@ export function landingHtml(): string {
 <div id="create" style="scroll-margin-top:80px">
 <div class="card">
 <h2>Paywall a link<span class="step-tag">Start here</span></h2>
-<p class="card-sub">Four short steps. Jot everything down first — you only sign in at the end, when you are ready to share and get paid. Sign-in is by email magic link (no password); an email address is required.</p>
+<p class="card-sub">Four short steps. <b style="color:var(--txt)">No account needed</b> — no email, no sign-in, no password. Paste your words, set a price, add a payout wallet (or generate one in one click below), and publish. Your link goes live straight away. Signing in is optional: sign in first only if you want your links listed under My links so you can manage them later.</p>
 <div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="dot-1"></span><span class="wiz-dot" id="dot-2"></span><span class="wiz-dot" id="dot-3"></span><span class="wiz-dot" id="dot-4"></span></span><span id="wiz-label">Step 1 of 4 — Your link</span></div>
 <div class="wiz-panel" id="panel-1">
 <label for="p-link">1 · Link you want to charge for</label>
@@ -265,17 +277,27 @@ export function landingHtml(): string {
 </div>
 <div class="wiz-panel hidden" id="panel-4">
 <h3 style="margin:4px 0 2px;font-size:17px">4 · Where should we send your money?</h3>
-<label for="p-payto">Your USDC wallet address on Base</label><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false">
-<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. New to wallets? Read our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free).</div>
-<div class="hint">You need a wallet for now — we cannot hold money for you yet. No-wallet payouts are on our roadmap; see <a href="#faq">Common questions</a>. Never share a private key or recovery phrase — NanoTab will never ask for one.</div>
-<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Next →</button></div>
+<label for="p-payto">Your USDC wallet address on Base</label>
+<div class="payto-row"><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false"><button type="button" class="btn-gen" id="btn-generate-wallet" onclick="generateInstantWallet()">⚡ Generate instant wallet</button></div>
+<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. Posting needs no account: this address is all we need to pay you.</div>
+<div class="hint">No wallet yet? Tap <b>Generate instant wallet</b> — it creates a wallet in your browser in one click. The wallet is yours and self-custodied: NanoTab never sees the private key. Funds go to the address above in USDC on Base. <b>If you lose the private key, the funds at that address are lost</b> — we cannot recover it. Already have a wallet? Paste its address instead. See our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free). NanoTab will never ask you to send a private key anywhere.</div>
+<div id="wallet-panel" class="pk-panel hidden">
+<div class="pk-warn"><b>Your new wallet — save this private key now.</b> This key controls your payouts. Anyone who has it can take the money. Store it in a password manager. We cannot recover it.</div>
+<label for="p-pk">Private key (shown once)</label>
+<div class="pk-row"><input id="p-pk" type="password" readonly value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button type="button" class="ghost" id="btn-pk-toggle" onclick="togglePkVisibility()">Show</button><button type="button" class="ghost" id="btn-pk-copy" onclick="copyPrivateKey()">Copy key</button></div>
+<div class="hint" id="wallet-addr-note"></div>
+<div class="pk-actions"><button type="button" class="ghost" id="btn-pk-save" onclick="saveWalletOnDevice()">Save on this device</button><button type="button" class="ghost" id="btn-pk-nosave" onclick="dontSaveWallet()">Don't save on this device</button><button type="button" class="ghost" id="btn-pk-clear" onclick="clearWalletFromScreen()">Hide &amp; clear from screen</button></div>
+<div class="hint" id="wallet-save-note">The key is generated in your browser and never sent to any server. It is only saved if you tap Save on this device. Don't save keeps it in this tab's memory until you close the tab.</div>
+</div>
+<div id="wallet-saved-note" class="hint hidden"></div>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
 </div>
 <div id="pub-out"></div>
-<div id="pub-lock"><span>Nearly there — tap Next to sign in and share. Sign-in is by email magic link (no password). Everything you typed stays saved in this browser and comes back after sign-in.</span></div>
+<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and your paywall is live instantly. Signing in is optional: <a href="/login">sign in</a> first only if you want this link listed under My links so you can manage it later.</span></div>
 </div>
 <div class="card hidden" id="dash-card">
 <h2>My links <span style="color:var(--mut);font-size:13px;font-weight:400" id="dash-count"></span></h2>
-<p class="card-sub">Share a link anywhere your readers are. Every time someone pays to read, 98% lands in your wallet and the read is counted here.</p>
+<p class="card-sub">Share a link anywhere your readers are. Every time someone pays to read, 98% lands in your wallet and the read is counted here. Links you publish while signed in appear here; links published without signing in are still live — keep their URLs from the publish confirmation.</p>
 <div id="dash-list"><i>No links yet — share your first above.</i></div>
 </div>
 </div>
@@ -290,7 +312,7 @@ export function landingHtml(): string {
 <div class="steps">
 <div class="step"><span class="n">Step 1</span><h3>Add your link and words</h3><p>Paste the link, paste the words behind it, and give it a title. It takes about a minute.</p></div>
 <div class="step"><span class="n">Step 2</span><h3>Share your new link</h3><p>You get one short link to share anywhere — your site, your newsletter, your social posts.</p></div>
-<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. Watch every read add up in My links above.</p></div>
+<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. If you signed in first, watch every read add up in My links above.</p></div>
 </div>
 </section>
 <section class="block" id="paywall-how" style="scroll-margin-top:80px" aria-label="How the paywall actually works">
@@ -308,7 +330,7 @@ export function landingHtml(): string {
 <div class="earn-grid">
 <div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Your share of every payment</div><div class="price-big">You keep 98¢ of every $1</div><p>That is 98% of every payment. NanoTab keeps 2% to run the service and look after your links. Amounts settle in USDC on Base, straight to your wallet. Readers always pay exactly the price you set.</p>
 <div class="earn-rows"><div class="earn-row"><span>You charge $0.05</span><b>You receive $0.049</b></div><div class="earn-row"><span>You charge $0.25</span><b>You receive $0.245</b></div><div class="earn-row"><span>You charge $1.00</span><b>You receive $0.98</b></div></div></div>
-<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Every paid read is counted in My links, so you can see what is earning.</p>
+<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Sign in first and every paid read is counted in My links, so you can see what is earning.</p>
 <div class="earn-rows"><div class="earn-row"><span>To start</span><b>$0</b></div><div class="earn-row"><span>Each month</span><b>$0</b></div><div class="earn-row"><span>NanoTab fee</span><b>2% of each payment</b></div></div></div>
 </div>
 </section>
@@ -316,13 +338,13 @@ export function landingHtml(): string {
 <h2>Common questions</h2>
 <p class="secsub">Short answers, in plain English.</p>
 <details class="faq-item"><summary>Do my readers need an account?</summary><p>No NanoTab account. AI agents pay automatically. A person paying needs a USDC wallet on Base — there is no card checkout. Either way, they pay and read straight away.</p></details>
-<details class="faq-item"><summary>How do I sign in?</summary><p>With your email. We send you a one-time magic link (it works for 15 minutes) — no password to remember. An email address is required: it is how we know which links are yours.</p></details>
-<details class="faq-item"><summary>How do I get paid?</summary><p>Straight to your USDC wallet on Base — there is no NanoTab balance to withdraw from. Every payment is split on-chain: 98% to your wallet, 2% to NanoTab. You need a wallet before your first sale (see our <a href="/wallet-guide">plain-English wallet guide</a>). No-wallet payouts do not exist yet; they are on our roadmap.</p></details>
+<details class="faq-item"><summary>Do I need an account to publish?</summary><p>No. Posting needs no account — no email, no sign-in. Paste your words, set a price, give a payout wallet address (or generate one in one click), and publish: the link is live straight away. Signing in is optional. If you <a href="/login">sign in</a> first with an email magic link (no password), your links are tied to your account and listed under My links so you can manage or remove them later, and you can review agent submissions. Publishing itself never waits for sign-in.</p></details>
+<details class="faq-item"><summary>How do I get paid?</summary><p>Straight to your USDC wallet on Base — there is no NanoTab balance to withdraw from. Every payment is split on-chain: 98% to your wallet, 2% to NanoTab. Bring your own wallet address, or tap Generate instant wallet on the create page: it creates a wallet in your browser and the funds go to that address in USDC on Base. See our <a href="/wallet-guide">plain-English wallet guide</a>.</p></details>
 <details class="faq-item"><summary>What does NanoTab cost?</summary><p>2% of each payment on hosted links — you keep 98%. No monthly fee. The developer self-host path is 0.1%; see <a href="/developers">For developers</a>.</p></details>
 <details class="faq-item"><summary>What can I paywall?</summary><p>Almost any link that is yours to share: an article, guide, report, list, or file. If you wrote it, made it, or have permission to share it, you can charge for it.</p></details>
 <details class="faq-item"><summary>Can readers just open my original page instead?</summary><p>If the same words are also free at a public link, yes — that link stays open, and we say so plainly. The paywall protects the copy stored behind your NanoTab link. Paste the words into NanoTab, or share only a link you control. Full detail: <a href="#paywall-how">How the paywall actually works</a>.</p></details>
 <details class="faq-item"><summary>Can people copy or resell what they bought?</summary><p>Paying unlocks a personal read. Like anything readable online it could technically be copied, so we do not pretend otherwise — our <a href="/terms">Terms</a> say no redistribution or resale, and the paywall still controls who gets access in the first place.</p></details>
-<details class="faq-item"><summary>I do not have a crypto wallet. Can I still sell?</summary><p>Not yet — you need a USDC wallet address on Base for payouts. Getting one is free and takes a few minutes: see the <a href="/wallet-guide">wallet guide</a>. No-wallet payouts are planned, but we will not claim they exist until they do.</p></details>
+<details class="faq-item"><summary>I do not have a crypto wallet. Can I still sell?</summary><p>Yes. Tap <b>Generate instant wallet</b> in step 4 — it creates a standard wallet in your browser in one click and fills in the payout address for you. The wallet is yours and self-custodied: the private key is shown once in your browser and never sent to NanoTab or any server. Store it in a password manager. Funds go to that address in USDC on Base, and if the key is lost the funds are lost — we cannot recover it. Prefer your own wallet app instead? Paste its Base address. Background: the <a href="/wallet-guide">wallet guide</a>.</p></details>
 </section>
 <div class="card" style="text-align:center">
 <h2>Building with code?</h2>
@@ -384,18 +406,184 @@ $('p-file').addEventListener('change',function(){
  var f=$('p-file').files&&$('p-file').files[0];if(!f)return;
  if(f.size>1024*1024){$('file-hint').textContent='That file is over 1 MB — paste a smaller piece instead.';return}
  var rd=new FileReader();
- rd.onload=function(){$('p-body').value=String(rd.result||'');saveDraft();$('file-hint').textContent='Added '+f.name+' into the box above. Nothing is shared until you tap Next.'};
+ rd.onload=function(){$('p-body').value=String(rd.result||'');saveDraft();$('file-hint').textContent='Added '+f.name+' into the box above. Nothing is shared until you tap Publish link.'};
  rd.onerror=function(){$('file-hint').textContent='Could not read that file — paste your words instead.'};
  rd.readAsText(f);
 });
 restoreDraft();markChips();updateEarn();showStep(1);
+/* Instant wallet: standard EVM keypair generated IN THE BROWSER. Mirrors
+   viem generatePrivateKey + privateKeyToAccount (secp256k1 + Keccak-256 +
+   EIP-55) with no library load and no network call: randomness comes from
+   crypto.getRandomValues and derivation is the local BigInt math below.
+   The private key lives only in genPk (tab memory) and, on explicit Save,
+   localStorage WKEY. It is never placed in a fetch, beacon, URL or log;
+   the publish payload sends only the public payout address. */
+var genPk='';var genAddr='';var WKEY='nt_instant_wallet_v1';
+var WP=BigInt('0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f');
+var WN=BigInt('0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141');
+var WGX=BigInt('0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798');
+var WGY=BigInt('0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8');
+var WMASK=(BigInt(1)<<BigInt(64))-BigInt(1);
+function wMod(a,m){var r=a%m;return r<BigInt(0)?r+m:r}
+function wPow(b,e,m){var r=BigInt(1);b=wMod(b,m);while(e>BigInt(0)){if((e&BigInt(1))===BigInt(1))r=(r*b)%m;b=(b*b)%m;e=e>>BigInt(1)}return r}
+function wInv(a,m){return wPow(a,m-BigInt(2),m)}
+function wJacDouble(Pt){
+ if(Pt.Z===BigInt(0)||Pt.Y===BigInt(0))return{X:BigInt(0),Y:BigInt(1),Z:BigInt(0)};
+ var A=wMod(Pt.X*Pt.X,WP);var B=wMod(Pt.Y*Pt.Y,WP);var C=wMod(B*B,WP);
+ var D=wMod(BigInt(2)*wMod((Pt.X+B)*(Pt.X+B)-A-C,WP),WP);var E=wMod(BigInt(3)*A,WP);var F=wMod(E*E,WP);
+ return{X:wMod(F-BigInt(2)*D,WP),Y:wMod(E*wMod(D-wMod(F-BigInt(2)*D,WP),WP)-BigInt(8)*C,WP),Z:wMod(BigInt(2)*Pt.Y*Pt.Z,WP)};
+}
+function wJacAdd(Pt,Qt){
+ if(Pt.Z===BigInt(0))return Qt;if(Qt.Z===BigInt(0))return Pt;
+ var Z1Z1=wMod(Pt.Z*Pt.Z,WP);var Z2Z2=wMod(Qt.Z*Qt.Z,WP);
+ var U1=wMod(Pt.X*Z2Z2,WP);var U2=wMod(Qt.X*Z1Z1,WP);
+ var S1=wMod(Pt.Y*Qt.Z*Z2Z2,WP);var S2=wMod(Qt.Y*Pt.Z*Z1Z1,WP);
+ if(U1===U2){if(S1!==S2)return{X:BigInt(0),Y:BigInt(1),Z:BigInt(0)};return wJacDouble(Pt)}
+ var H=wMod(U2-U1,WP);var r=wMod(BigInt(2)*(S2-S1),WP);var I=wMod(BigInt(4)*H*H,WP);var J=wMod(H*I,WP);var V=wMod(U1*I,WP);
+ var X3=wMod(r*r-J-BigInt(2)*V,WP);
+ return{X:X3,Y:wMod(r*wMod(V-X3,WP)-BigInt(2)*S1*J,WP),Z:wMod(wMod((Pt.Z+Qt.Z)*(Pt.Z+Qt.Z)-Z1Z1-Z2Z2,WP)*H,WP)};
+}
+function wToAffine(Pt){
+ if(Pt.Z===BigInt(0))return null;
+ var iz=wInv(Pt.Z,WP);var iz2=wMod(iz*iz,WP);var iz3=wMod(iz2*iz,WP);
+ return{x:wMod(Pt.X*iz2,WP),y:wMod(Pt.Y*iz3,WP)};
+}
+function wScalarMul(k){
+ var result={X:BigInt(0),Y:BigInt(1),Z:BigInt(0)};var addend={X:WGX,Y:WGY,Z:BigInt(1)};
+ while(k>BigInt(0)){if((k&BigInt(1))===BigInt(1))result=wJacAdd(result,addend);addend=wJacDouble(addend);k=k>>BigInt(1)}
+ return wToAffine(result);
+}
+var WRC=['0x0000000000000001','0x0000000000008082','0x800000000000808a','0x8000000080008000','0x000000000000808b','0x0000000080000001','0x8000000080008081','0x8000000000008009','0x000000000000008a','0x0000000000000088','0x0000000080008009','0x000000008000000a','0x000000008000808b','0x800000000000008b','0x8000000000008089','0x8000000000008003','0x8000000000008002','0x8000000000000080','0x000000000000800a','0x800000008000000a','0x8000000080008081','0x8000000000008080','0x0000000080000001','0x8000000080008008'].map(function(h){return BigInt(h)});
+var WRHO=[[0,36,3,41,18],[1,44,10,45,2],[62,6,43,15,61],[28,55,25,21,56],[27,20,39,8,14]];
+function wRotl(v,n){if(n===0)return v&WMASK;var b=BigInt(n);return((v<<b)|(v>>(BigInt(64)-b)))&WMASK}
+function wKeccakF(st){
+ for(var round=0;round<24;round++){
+  var C=[];var D=[];
+  for(var x=0;x<5;x++)C[x]=st[x]^st[x+5]^st[x+10]^st[x+15]^st[x+20];
+  for(var x2=0;x2<5;x2++)D[x2]=C[(x2+4)%5]^wRotl(C[(x2+1)%5],1);
+  for(var x3=0;x3<5;x3++)for(var y=0;y<5;y++)st[x3+5*y]=st[x3+5*y]^D[x3];
+  var B=[];for(var i=0;i<25;i++)B[i]=BigInt(0);
+  for(var x4=0;x4<5;x4++)for(var y2=0;y2<5;y2++)B[y2+5*((2*x4+3*y2)%5)]=wRotl(st[x4+5*y2],WRHO[x4][y2]);
+  for(var x5=0;x5<5;x5++)for(var y3=0;y3<5;y3++)st[x5+5*y3]=B[x5+5*y3]^(((~B[((x5+1)%5)+5*y3])&WMASK)&B[((x5+2)%5)+5*y3]);
+  st[0]=st[0]^WRC[round];
+ }
+}
+function wKeccak256(bytes){
+ var rate=136;var st=[];for(var i=0;i<25;i++)st[i]=BigInt(0);
+ var padded=new Uint8Array(rate);padded.set(bytes.subarray(0,rate));padded[bytes.length]=padded[bytes.length]^1;padded[rate-1]=padded[rate-1]^128;
+ for(var l=0;l<rate/8;l++){var lane=BigInt(0);for(var j=7;j>=0;j--)lane=(lane<<BigInt(8))|BigInt(padded[l*8+j]);st[l]=st[l]^lane}
+ wKeccakF(st);
+ var out=new Uint8Array(32);
+ for(var l2=0;l2<4;l2++){var lane2=st[l2];for(var j2=0;j2<8;j2++){out[l2*8+j2]=Number(lane2&BigInt(255));lane2=lane2>>BigInt(8)}}
+ return out;
+}
+function wBytesToHex(b){var s='';for(var i=0;i<b.length;i++){var h=b[i].toString(16);if(h.length<2)h='0'+h;s+=h}return s}
+function wBigTo32(v){var h=v.toString(16);while(h.length<64)h='0'+h;var out=new Uint8Array(32);for(var i=0;i<32;i++)out[i]=parseInt(h.slice(i*2,i*2+2),16);return out}
+function walletAddressFromPrivateKey(pkHex){
+ var k=BigInt(pkHex);var pub=wScalarMul(k);
+ var buf=new Uint8Array(64);buf.set(wBigTo32(pub.x),0);buf.set(wBigTo32(pub.y),32);
+ var h=wKeccak256(buf);var addrHex=wBytesToHex(h.slice(12));
+ var hashHex=wBytesToHex(wKeccak256(new TextEncoder().encode(addrHex)));
+ var out='0x';
+ for(var i=0;i<40;i++)out+=parseInt(hashHex.charAt(i),16)>=8?addrHex.charAt(i).toUpperCase():addrHex.charAt(i);
+ return out;
+}
+function generateInstantWallet(){
+ var btn=$('btn-generate-wallet');if(btn)btn.disabled=true;
+ try{
+  var pk='';
+  while(!pk){
+   var raw=new Uint8Array(32);crypto.getRandomValues(raw);
+   var hex='';for(var i=0;i<32;i++){var hb=raw[i].toString(16);if(hb.length<2)hb='0'+hb;hex+=hb}
+   var k=BigInt('0x'+hex);
+   if(k>BigInt(0)&&k<WN)pk='0x'+hex;
+  }
+  genPk=pk;genAddr=walletAddressFromPrivateKey(pk);
+  $('p-payto').value=genAddr;
+  var f=$('p-pk');f.value=genPk;f.type='password';
+  var t=$('btn-pk-toggle');if(t)t.textContent='Show';
+  $('wallet-addr-note').textContent='Payout address filled: '+genAddr+' — payouts go here in USDC on Base. The private key above controls this address. If you edit the address, the key will no longer match it.';
+  $('wallet-save-note').textContent='Not saved yet. Copy the key into a password manager, then choose Save on this device or Do not save on this device. The key never leaves this browser unless you copy it.';
+  $('wallet-panel').classList.remove('hidden');
+  var sn=$('wallet-saved-note');sn.classList.add('hidden');sn.textContent='';
+ }catch(e){
+  $('pub-out').innerHTML='<div class="out">Could not generate a wallet in this browser. Paste your own USDC wallet address on Base instead. <a href="/wallet-guide">Wallet guide</a></div>';
+ }
+ if(btn)btn.disabled=false;
+}
+function togglePkVisibility(){
+ var f=$('p-pk');var b=$('btn-pk-toggle');if(!f)return;
+ if(f.type==='password'){f.type='text';if(b)b.textContent='Hide'}
+ else{f.type='password';if(b)b.textContent='Show'}
+}
+async function copyPrivateKey(){
+ if(!genPk){alert('Generate a wallet first.');return}
+ try{await navigator.clipboard.writeText(genPk);$('wallet-save-note').textContent='Copied. Paste it into a password manager now — anyone with this key can take payouts sent to '+genAddr+'.'}
+ catch(e){prompt('Copy this private key into a password manager:',genPk)}
+}
+function saveWalletOnDevice(){
+ if(!genPk||!genAddr){alert('Generate a wallet first.');return}
+ try{
+  localStorage.setItem(WKEY,JSON.stringify({address:genAddr,privateKey:genPk}));
+  $('wallet-save-note').textContent='Saved on this device for '+genAddr+'. It stays in this browser only — still keep a copy in a password manager. Use Forget in the note below to remove it.';
+  refreshSavedWalletNote();
+ }catch(e){$('wallet-save-note').textContent='This browser would not save it. Copy the key into a password manager instead.'}
+}
+function dontSaveWallet(){
+ try{
+  var raw=localStorage.getItem(WKEY);
+  if(raw){var s=JSON.parse(raw);if(s&&s.address===genAddr)localStorage.removeItem(WKEY)}
+ }catch(e){}
+ $('wallet-save-note').textContent='Not saved on this device. The key stays only in the memory of this tab until you close the tab — copy it into a password manager before you leave, or the funds at '+genAddr+' cannot be recovered.';
+ refreshSavedWalletNote();
+}
+function clearWalletFromScreen(){
+ var f=$('p-pk');if(f){f.value='';f.type='password'}
+ var b=$('btn-pk-toggle');if(b)b.textContent='Show';
+ genPk='';
+ $('wallet-panel').classList.add('hidden');
+ var sn=$('wallet-saved-note');
+ sn.textContent='Private key cleared from screen. If you did not save or copy it, generate a new wallet — the cleared key cannot be shown again. The payout address above stays filled.';
+ sn.classList.remove('hidden');
+ refreshSavedWalletNote();
+}
+function refreshSavedWalletNote(){
+ var sn=$('wallet-saved-note');if(!sn)return;
+ var s=null;
+ try{var raw=localStorage.getItem(WKEY);if(raw)s=JSON.parse(raw)}catch(e){}
+ if(!s||!/^0x[0-9a-fA-F]{40}$/.test(s.address||'')||!/^0x[0-9a-fA-F]{64}$/.test(s.privateKey||'')){
+  if(sn.textContent.indexOf('Private key cleared')!==0)sn.classList.add('hidden');
+  return;
+ }
+ sn.innerHTML='Saved wallet on this device: <code>'+s.address+'</code> <button type="button" class="ghost" onclick="useSavedWallet()">Use this address</button> <button type="button" class="ghost" onclick="forgetSavedWallet()">Forget saved key</button>';
+ sn.classList.remove('hidden');
+}
+function useSavedWallet(){
+ try{
+  var s=JSON.parse(localStorage.getItem(WKEY)||'null');
+  if(!s)return;
+  genPk=s.privateKey;genAddr=s.address;
+  $('p-payto').value=genAddr;
+  var f=$('p-pk');f.value=genPk;f.type='password';
+  $('wallet-addr-note').textContent='Payout address filled: '+genAddr+' — payouts go here in USDC on Base.';
+  $('wallet-save-note').textContent='Loaded the wallet saved on this device. Keep a copy in a password manager too.';
+  $('wallet-panel').classList.remove('hidden');
+  showStep(4);
+ }catch(e){}
+}
+function forgetSavedWallet(){
+ try{localStorage.removeItem(WKEY)}catch(e){}
+ var sn=$('wallet-saved-note');sn.textContent='Saved key removed from this device.';sn.classList.remove('hidden');
+}
+document.addEventListener('visibilitychange',function(){
+ if(document.hidden){var f=$('p-pk');if(f&&f.type==='text'){f.type='password';var b=$('btn-pk-toggle');if(b)b.textContent='Show'}}
+});
 function setSignedIn(email){
  signedIn=true;
  var l=$('pub-lock');if(l)l.classList.add('hidden');
- var b=$('btn-next');if(b)b.textContent='Share my link →';
  var out=$('pub-out');
  if(new URLSearchParams(location.search).get('welcome')==='1'&&out){
-   out.innerHTML='<div class="out">Signed in as <b>'+email+'</b> — your words are saved below. Add your USDC wallet address on Base, then tap <b>Share my link</b>.</div>';
+   out.innerHTML='<div class="out">Signed in as <b>'+email+'</b> — links you publish now are listed under My links. Add your USDC wallet address on Base (or generate one), then tap <b>Publish link</b>.</div>';
    showStep(4);
  }
 }
@@ -420,12 +608,9 @@ function onNext(){
  saveDraft();
  var err=checkWords();
  if(err){$('pub-out').innerHTML='<div class="out">'+err+'</div>';return}
- if(!signedIn){
-   location.href='/login?next='+encodeURIComponent('/?welcome=1#create');
-   return;
- }
  var payto=$('p-payto').value.trim();
- if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">That wallet address does not look right yet. Your USDC wallet address on Base starts with 0x and is 42 characters long — copy it carefully from your wallet app and try again. <a href="/wallet-guide">Wallet guide</a></div>';$('p-payto').focus();return}
+ if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">That wallet address does not look right yet. Your USDC wallet address on Base starts with 0x and is 42 characters long — paste your own address, or tap Generate instant wallet above. <a href="/wallet-guide">Wallet guide</a></div>';$('p-payto').focus();return}
+ if(genAddr&&payto.toLowerCase()!==genAddr.toLowerCase()&&genPk){if(!confirm('You generated a wallet but changed the payout address. The generated private key will not control the address you publish to. Publish to the changed address anyway?'))return}
  publish();
 }
 async function publish(){
@@ -439,12 +624,14 @@ async function publish(){
  if(link)payload.source_url=link;
  var r=await req('/v1/publish',{method:'POST',body:JSON.stringify(payload)});
  $('btn-next').disabled=false;
- if(!r.ok){if(r.st===401){signedIn=false;$('pub-out').innerHTML='<div class="out">You are signed out — <a href="/login?next='+encodeURIComponent('/?welcome=1#create')+'">sign in again</a>; your words are saved.</div>';saveDraft()}else{$('pub-out').innerHTML='<div class="out">Something went wrong just now. Please try again in a moment.</div>'}return}
+ if(!r.ok){$('pub-out').innerHTML='<div class="out">Something went wrong just now. Please try again in a moment.</div>';return}
  clearDraft();
- $('pub-out').innerHTML='<div class="out"><b>You are live:</b> <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">copy link</button> <span style="color:var(--mut)">Share it anywhere. Readers pay, then read — and you get paid every time.</span></div>';
- refreshDash();
+ var curl='curl -i '+r.j.url;
+ $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Agent paywall link (HTTP 402): <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">Copy paywall link</button> <button class="ghost" data-u="'+curl+'" onclick="copyL(this.dataset.u)">Copy test curl</button><div class="agent-curl">'+curl+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the link anywhere.</span></div>';
+ if(signedIn)refreshDash();
 }
 (async function(){try{var r=await fetch('/stats');var j=await r.json();var el=$('hero-stats');if(el&&j&&Number(j.total_paid_calls)>0){el.innerHTML=Number(j.total_paid_calls)+' paid reads so far across hosted links — we are new, so early sellers stand out. <a href="/stats">See live stats</a>'}}catch(e){}})();
+refreshSavedWalletNote();
 checkSession();
 </script></body></html>`;
 }
@@ -452,13 +639,13 @@ checkSession();
 export function loginHtml(): string {
   return head(
     'Sign in — NanoTab Pay',
-    'Sign in to share your links and get paid. We email you a sign-in link — no password to remember.'
+    'Sign in to manage your links and review agent submissions. Publishing needs no account. We email you a sign-in link — no password to remember.'
   ) + topbarPlain('/#create', 'Paywall a link') + `
 <div class="center-wrap">
 <a class="logo" href="/" style="justify-content:center"><span class="logo-mark">N</span> NanoTab Pay</a>
 <div class="card" style="margin-top:28px">
-<h2 style="font-size:24px">Sign in to publish</h2>
-<p class="card-sub">You need an account to share links and receive your money. We email you a sign-in link — no password, nothing else on this page.</p>
+<h2 style="font-size:24px">Sign in to manage links</h2>
+<p class="card-sub">Publishing needs no account — you can <a href="/#create">create a paywall without signing in</a> and get paid to your wallet. Sign in only to see My links, remove links, or review agent submissions. We email you a sign-in link — no password.</p>
 <div id="login-form">
 <label for="email">Email</label>
 <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
@@ -470,7 +657,7 @@ export function loginHtml(): string {
 <button id="btn-continue" onclick="goNext()" style="width:100%">Continue →</button>
 </div>
 </div>
-<p class="hint" style="text-align:center">New here? The same link creates your account.<br>Everything you typed stays saved in this browser and comes back after sign-in.<br><a href="/">← Back to start</a> · <a href="/developers">For developers</a></p>
+<p class="hint" style="text-align:center">New here? The same link creates your account — but you do not need one to publish.<br>Everything you typed stays saved in this browser and comes back after sign-in.<br><a href="/">← Back to start</a> · <a href="/developers">For developers</a></p>
 </div>
 ${FOOTER_PLAIN}
 <script>
@@ -663,8 +850,8 @@ export function privacyHtml(): string {
     `<p class="eyebrow">Plain English · NanoTab Pay</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">Privacy, in short</h2>
 <p class="secsub">Last updated: November 2026. Data questions: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
-<div class="card"><h2 style="font-size:18px">What we collect, and why</h2><p class="card-sub" style="margin-bottom:0"><b style="color:var(--txt)">Email address</b> — to send your sign-in magic link and to know which links are yours. Sign-in needs an email; there is no password. <b style="color:var(--txt)">Listing content, title, price and wallet address</b> — so we can serve your paywall and send you 98% of each payment. <b style="color:var(--txt)">Paid-read counts</b> — so your dashboard and our public stats are honest. Readers do not need an account, and we do not ask readers for email.</p></div>
-<div class="card"><h2 style="font-size:18px">Cookies</h2><p class="card-sub" style="margin-bottom:0">One session cookie (<code>nt_sess</code>) keeps you signed in for 30 days. Your unpublished draft is stored in your own browser (local storage) until you share it. We do not use advertising cookies.</p></div>
+<div class="card"><h2 style="font-size:18px">What we collect, and why</h2><p class="card-sub" style="margin-bottom:0"><b style="color:var(--txt)">Publishing needs no email and no account.</b> <b style="color:var(--txt)">Email address</b> — only if you choose to sign in, to send your sign-in magic link and to know which links are yours; there is no password. <b style="color:var(--txt)">Listing content, title, price and wallet address</b> — so we can serve your paywall and send you 98% of each payment. The wallet address is public; a generated wallet&apos;s private key is created in your browser and never sent to us. <b style="color:var(--txt)">Paid-read counts</b> — so your dashboard and our public stats are honest. Readers do not need an account, and we do not ask readers for email.</p></div>
+<div class="card"><h2 style="font-size:18px">Cookies</h2><p class="card-sub" style="margin-bottom:0">One session cookie (<code>nt_sess</code>) keeps you signed in for 30 days, if you sign in. Your unpublished draft is stored in your own browser (local storage) until you share it. If you generate a wallet and tap Save on this device, its private key is stored only in your browser&apos;s local storage — never on our servers. We do not use advertising cookies.</p></div>
 <div class="card"><h2 style="font-size:18px">Who else is involved</h2><p class="card-sub" style="margin-bottom:0">Sign-in emails are sent via Resend from login@mail.nanotab.dev. The site runs on Cloudflare. Payments settle on the public Base blockchain — wallet addresses and amounts there are public by design. Agent submissions may be auto-reviewed by TypeSafe Jev (title and a short content excerpt). We never sell personal data.</p></div>
 <div class="card"><h2 style="font-size:18px">Your choices</h2><p class="card-sub" style="margin-bottom:0">Remove any of your links at any time from My links. To ask what we hold about your email, or to have it deleted, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>. If you are in the UK or EEA, you have rights to access, correct and erase your personal data; we will honour them.</p></div>
 <p style="color:var(--mut);font-size:14.5px">See also: <a href="/terms">Terms</a> · <a href="/contact">Contact</a></p>`
@@ -706,8 +893,8 @@ export function aboutHtml(): string {
     `<p class="eyebrow">Plain English · NanoTab Pay</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">About NanoTab</h2>
 <p class="secsub">NanoTab Pay in one line: AI agents pay to read your link; humans can too.</p>
-<div class="card"><h2 style="font-size:18px">What we do</h2><p class="card-sub" style="margin-bottom:0">Writers, experts and list-makers paste their words, set a price, and share one link. Agents pay automatically in USDC on Base; a person can pay too, with a wallet. The seller keeps 98% of every payment — NanoTab keeps 2% — settled straight to the seller's wallet. No monthly fee, no reader accounts.</p></div>
-<div class="card"><h2 style="font-size:18px">Honest limits</h2><p class="card-sub" style="margin-bottom:0">We are new and small, and we say so. Sellers need a USDC wallet on Base for now (no-wallet payouts are planned, not live). The paywall protects the copy we host; a public original stays public. Paid reads are personal reads — no resale. Detail: <a href="/#paywall-how">How the paywall actually works</a> and our <a href="/terms">Terms</a>.</p></div>
+<div class="card"><h2 style="font-size:18px">What we do</h2><p class="card-sub" style="margin-bottom:0">Writers, experts and list-makers paste their words, set a price, and share one link. Agents pay automatically in USDC on Base; a person can pay too, with a wallet. The seller keeps 98% of every payment — NanoTab keeps 2% — settled straight to the seller's wallet. No monthly fee, no accounts needed to publish or to read.</p></div>
+<div class="card"><h2 style="font-size:18px">Honest limits</h2><p class="card-sub" style="margin-bottom:0">We are new and small, and we say so. Sellers need a USDC payout address on Base — bring your own wallet, or generate one instantly in the browser on the create page (self-custodied; if you lose its private key, funds at that address are lost). The paywall protects the copy we host; a public original stays public. Paid reads are personal reads — no resale. Detail: <a href="/#paywall-how">How the paywall actually works</a> and our <a href="/terms">Terms</a>.</p></div>
 <div class="card"><h2 style="font-size:18px">Open and checkable</h2><p class="card-sub" style="margin-bottom:0">Code: <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a>. Live totals: <a href="/stats">/stats</a>. Try the real thing: <a href="/demo">the $0.05 sample paywall</a>. Developer self-host path (0.1% fee): <a href="/developers">For developers</a>. Contact: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p></div>`
   );
 }
@@ -718,10 +905,11 @@ export function walletGuideHtml(): string {
     'Plain-English wallet guide: what a USDC wallet address on Base is, how to get one free, and how to paste it into NanoTab safely.',
     `<p class="eyebrow">Plain English · Two minutes</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">Getting a wallet, in plain English</h2>
-<p class="secsub">You need one wallet address so NanoTab can send you 98% of every payment. It is free, and you only do this once.</p>
-<div class="card"><h2 style="font-size:18px">What you are actually getting</h2><p class="card-sub" style="margin-bottom:0">A wallet app holds your money address. NanoTab pays in <b style="color:var(--txt)">USDC</b> (a digital dollar) on the <b style="color:var(--txt)">Base</b> network. Your <b style="color:var(--txt)">wallet address</b> is a long code starting with <code>0x</code> (42 characters) — that, and only that, is what you paste into NanoTab. It is safe to share an address; it can only receive money.</p></div>
-<div class="card"><h2 style="font-size:18px">Step by step</h2><p class="card-sub" style="margin-bottom:0">1. Install a wallet app — Coinbase Wallet or MetaMask are the common free ones (phone or browser).<br>2. Create a wallet and write down its recovery phrase on paper. Never type that phrase into any website, and never send it to anyone — NanoTab will never ask for it.<br>3. In the app, make sure the network says <b style="color:var(--txt)">Base</b> (both apps can switch networks; the same address works, but NanoTab pays on Base).<br>4. Tap Receive (or your account name) and copy the address starting <code>0x</code>.<br>5. Paste it into step 4 on the <a href="/#create">create page</a>. Done — every sale lands there automatically.</p></div>
-<div class="card"><h2 style="font-size:18px">Good to know</h2><p class="card-sub" style="margin-bottom:0">There is no NanoTab balance and nothing to withdraw — payments go straight to this wallet, 98% to you and 2% to NanoTab. You do not need to buy anything to receive payments. Spending or moving USDC onward is handled inside your wallet app. No wallet yet and not ready? No-wallet payouts are on our roadmap — for now the wallet is required, and we would rather say that plainly than hold your money.</p></div>
+<p class="secsub">You need one wallet address so NanoTab can send you 98% of every payment. Fastest: generate one in one click on the create page. Or bring your own — free, and you only do this once.</p>
+<div class="card"><h2 style="font-size:18px">Fastest: generate one in your browser</h2><p class="card-sub" style="margin-bottom:0">On step 4 of the <a href="/#create">create page</a>, tap <b style="color:var(--txt)">Generate instant wallet</b>. Your browser creates a standard wallet and fills in the address. You will see the private key once: that key controls the payouts, anyone who has it can take the money, so store it in a password manager — we cannot recover it. The key is created in your browser and never sent to NanoTab or any server; it is only saved on the device if you tap Save on this device. Funds go to that address in USDC on Base. If the key is lost, the funds are lost. Import the key into a wallet app (for example MetaMask or Coinbase Wallet) whenever you want to move the money.</p></div>
+<div class="card"><h2 style="font-size:18px">What you are actually getting</h2><p class="card-sub" style="margin-bottom:0">A wallet holds your money address. NanoTab pays in <b style="color:var(--txt)">USDC</b> (a digital dollar) on the <b style="color:var(--txt)">Base</b> network. Your <b style="color:var(--txt)">wallet address</b> is a long code starting with <code>0x</code> (42 characters) — that, and only that, is what goes into NanoTab. It is safe to share an address; it can only receive money. The private key is the secret that controls it: never share it with anyone who asks.</p></div>
+<div class="card"><h2 style="font-size:18px">Or bring your own wallet</h2><p class="card-sub" style="margin-bottom:0">1. Install a wallet app — Coinbase Wallet or MetaMask are the common free ones (phone or browser).<br>2. Create a wallet and write down its recovery phrase on paper. Never type that phrase into any website, and never send it to anyone — NanoTab will never ask for it.<br>3. In the app, make sure the network says <b style="color:var(--txt)">Base</b> (both apps can switch networks; the same address works, but NanoTab pays on Base).<br>4. Tap Receive (or your account name) and copy the address starting <code>0x</code>.<br>5. Paste it into step 4 on the <a href="/#create">create page</a>. Done — every sale lands there automatically.</p></div>
+<div class="card"><h2 style="font-size:18px">Good to know</h2><p class="card-sub" style="margin-bottom:0">There is no NanoTab balance and nothing to withdraw — payments go straight to your wallet, 98% to you and 2% to NanoTab. You do not need to buy anything to receive payments. Spending or moving USDC onward is handled inside your wallet app.</p></div>
 <p style="color:var(--mut);font-size:14.5px">Back to: <a href="/#create">Paywall a link</a> · <a href="/#faq">Common questions</a> · <a href="/contact">Contact</a></p>`
   );
 }
