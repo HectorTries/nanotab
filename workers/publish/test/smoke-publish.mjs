@@ -1,16 +1,11 @@
-// Smoke test: run `wrangler dev --var PUBLISH_KEY:<key>` in workers/publish
-// first (local mode emulates KV/R2 automatically), then:
-//   PUBLISH_URL=http://localhost:8788 PUBLISH_KEY=<key> npm test
+// Smoke test: run `wrangler dev` in workers/publish first (local mode
+// emulates KV/R2 automatically), then:
+//   PUBLISH_URL=http://localhost:8788 npm test
+// Publishing needs no credentials — there are no accounts.
 const PUB = process.env.PUBLISH_URL || 'http://localhost:8788';
-const KEY = process.env.PUBLISH_KEY;
 const MERCHANT = '0x2222222222222222222222222222222222222222';
 const PROTOCOL = '0xc47b6d6a4137373ab169aeeedb95971d4939ef0b';
 const USDC = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
-
-if (!KEY) {
-  console.log('FAIL need PUBLISH_KEY env (the --var value passed to wrangler dev)');
-  process.exit(2);
-}
 
 const j = async (r) => ({ status: r.status, body: await r.text() });
 let fail = 0;
@@ -27,7 +22,7 @@ const pubBody = {
 };
 let r = await fetch(`${PUB}/v1/publish`, {
   method: 'POST',
-  headers: { 'content-type': 'application/json', 'X-Nanotab-Key': KEY },
+  headers: { 'content-type': 'application/json' },
   body: JSON.stringify(pubBody),
 });
 let t = await j(r);
@@ -68,7 +63,7 @@ try {
 // 4. bad wallet → 400
 r = await fetch(`${PUB}/v1/publish`, {
   method: 'POST',
-  headers: { 'content-type': 'application/json', 'X-Nanotab-Key': KEY },
+  headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ ...pubBody, merchant_wallet: '0xSHORT' }),
 });
 check('bad-wallet → 400', r.status === 400, (await r.text()).slice(0, 80));
@@ -89,13 +84,13 @@ r = await fetch(`${PUB}/v1/publish`, {
     check('anonymous link → 402 unpaid', rr.status === 402, `status=${rr.status}`);
   }
 }
-// 5b. wrong legacy key still publishes anonymously → 201 (key is optional now)
+// 5b. stray credentials are ignored → still 201 (no accounts at all)
 r = await fetch(`${PUB}/v1/publish`, {
   method: 'POST',
-  headers: { 'content-type': 'application/json', 'X-Nanotab-Key': 'wrong' },
+  headers: { 'content-type': 'application/json', 'X-Admin-Key': 'wrong', cookie: 'nt_sess=deadbeef' },
   body: JSON.stringify(pubBody),
 });
-check('wrong-key → 201 anonymous (key optional)', r.status === 201, (await r.text()).slice(0, 80));
+check('stray-credentials → 201 (ignored, zero cookies needed)', r.status === 201, (await r.text()).slice(0, 80));
 
 // extras: free routes + 404
 r = await fetch(`${PUB}/stats`);

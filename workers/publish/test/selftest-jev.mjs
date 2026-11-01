@@ -5,7 +5,7 @@
 import worker from '../src/index.ts';
 
 const WALLET = '0xb157000000000000000000000000000000000001';
-const SECRET = 'test-secret-123';
+const ADMIN = 'test-admin-123';
 const AGENT_SECRET = 'agent-secret-456';
 
 const mkKV = () => {
@@ -115,7 +115,7 @@ const goodBody = (over = {}) => ({
 // 1. Clean case from a verified agent -> auto-publish instantly.
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'clean'; jevCalls = 0;
   const r = await submit(env, goodBody());
   const j = await r.json();
@@ -133,7 +133,7 @@ const goodBody = (over = {}) => ({
 // 2. Spammy case -> held for review with scores stored and shown in queue.
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'spammy';
   const r = await submit(env, goodBody({ title: 'FREE MONEY CLICK NOW', source_url: 'https://example.com/free-money' }));
   const j = await r.json();
@@ -141,7 +141,7 @@ const goodBody = (over = {}) => ({
   check('jev spammy: verdict stored (spam + junk quality)', j.jev?.spam === 0.92 && j.jev?.quality === 'junk/mismatch' && j.jev?.decision === 'held');
   const read = await worker.fetch(req(`/r/${j.slug}`), env, {});
   check('jev spammy: held link -> 403', read.status === 403);
-  const q = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Nanotab-Key': SECRET } }), env, {});
+  const q = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Admin-Key': ADMIN } }), env, {});
   const queue = await q.json();
   const row = queue.find((e) => e.slug === j.slug);
   check('jev spammy: queue row carries jev flag + scores', !!row?.jev && row.jev.spam === 0.92 && row.agent_verified === true);
@@ -153,7 +153,7 @@ for (const [name, envExtra, mode] of [
   ['API 500', { TYPESAFE_API_KEY: 'test-key' }, 'error'],
 ]) {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2(), ...envExtra };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2(), ...envExtra };
   jevMode = mode;
   const r = await submit(env, goodBody({ source_url: `https://example.com/failopen-${name.replace(/\s/g, '-')}` }));
   const j = await r.json();
@@ -163,7 +163,7 @@ for (const [name, envExtra, mode] of [
 // 4. Unverified agent (VERIFIED_AGENTS set, agent not listed) never auto-publishes.
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', VERIFIED_AGENTS: 'someone-else', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', VERIFIED_AGENTS: 'someone-else', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'clean';
   const r = await submit(env, goodBody({ source_url: 'https://example.com/unverified' }));
   const j = await r.json();
@@ -173,14 +173,14 @@ for (const [name, envExtra, mode] of [
 // 5. Hard blocks skip Jev entirely.
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'clean'; jevCalls = 0;
   const r = await submit(env, goodBody({ source_url: 'https://spam.example/win' }));
   check('hard block: spam blocklist domain -> 403, Jev skipped', r.status === 403 && jevCalls === 0, `status=${r.status}`);
 }
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   let last;
   for (let i = 0; i < 11; i++) {
     last = await submit(env, goodBody({ title: `pack ${i}`, source_url: `https://example.com/pack-${i}` }));
@@ -190,13 +190,13 @@ for (const [name, envExtra, mode] of [
 }
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'spammy';
   const r1 = await submit(env, goodBody({ source_url: 'https://example.com/rejected-once' }));
   const slug = (await r1.json()).slug;
   const rv = await worker.fetch(req('/v1/agent/review', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'X-Nanotab-Key': SECRET },
+    headers: { 'content-type': 'application/json', 'X-Admin-Key': ADMIN },
     body: JSON.stringify({ slug, action: 'reject' }),
   }), env, {});
   check('hard block setup: owner rejects submission', rv.status === 200);
@@ -208,7 +208,7 @@ for (const [name, envExtra, mode] of [
 // 6. Threshold edges: quality exactly 'fine' publishes; 'weak' or spam==0.2 held.
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'fine';
   const r = await submit(env, goodBody({ source_url: 'https://example.com/edge-fine' }));
   const j = await r.json();
@@ -216,7 +216,7 @@ for (const [name, envExtra, mode] of [
 }
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'weakclean';
   const r = await submit(env, goodBody({ source_url: 'https://example.com/edge-weak' }));
   const j = await r.json();
@@ -224,7 +224,7 @@ for (const [name, envExtra, mode] of [
 }
 {
   const kv = mkKV();
-  const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
+  const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, TYPESAFE_API_KEY: 'test-key', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: mkR2() };
   jevMode = 'spamboundary';
   const r = await submit(env, goodBody({ source_url: 'https://example.com/edge-spam' }));
   const j = await r.json();

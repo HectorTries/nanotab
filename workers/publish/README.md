@@ -22,16 +22,13 @@ Pages (Paywall Any Link is the leading product):
   browser, address auto-filled, private key shown once with save /
   don't-save choices; the key never leaves the browser). Human links
   are live instantly; publish success surfaces the `/r/<slug>` HTTP 402
-  agent paywall link plus a copyable `curl -i` test request. Signing in
-  first optionally ties links to the account (My links).
-- `GET /login` — optional magic-link sign-in to manage links and
-  review agent submissions (not a publish gate). `?next=` is a
-  validated same-site redirect carried through the email link.
+  agent paywall link plus a copyable `curl -i` test request.
+  Keep your link — bookmark it; there is no account to find it in later.
 - `GET /developers` — demoted developer path (self-host, SDKs,
   gateway, machine discovery, agentic submissions).
-- `GET /agent-auth` — daily authorization queue: the account owner
-  approves/rejects agent-submitted links (see below).
-- `GET /marketplace`, `GET /publish` (legacy API-key form).
+- `GET /agent-auth?key=…` — daily review queue: the owner (ADMIN_KEY
+  secret, key in URL, no cookies) approves/rejects agent links.
+- `GET /marketplace`, `GET /publish` (plain API form, no credentials).
 - `GET /terms`, `/privacy`, `/refunds` (+ `/refund-policy` alias),
   `/contact`, `/about` — plain-English trust pages, linked in every
   footer. Contact: support@nanotab.dev.
@@ -51,9 +48,8 @@ Pages (Paywall Any Link is the leading product):
 
 APIs:
 
-- `POST /v1/publish` — accountless: no auth required. A magic-link
-  session, when present, sets the listing owner; `X-Nanotab-Key` =
-  `PUBLISH_KEY` is still accepted for automation. Body `{title, mime,
+- `POST /v1/publish` — accountless: no credentials needed, works with
+  zero cookies. Body `{title, mime,
   price_cents (int 1–10000), merchant_wallet (0x…), body_b64 (≤1MB
   decoded), source_url?}`. Mime allowlist: `text/plain`,
   `text/markdown`, `text/html`, `application/json`, `application/pdf`,
@@ -73,8 +69,8 @@ APIs:
   Missing `TYPESAFE_API_KEY` or any Jev error fails open to the
   pending queue — submissions never break on Jev.
 - `GET /v1/agent/pending` / `POST /v1/agent/review {slug, action}` —
-  the review queue, owner-gated (session; `OWNER_EMAILS` comma
-  allowlist when set; publish key accepted for automation). Approve →
+  the review queue, owner-gated by `ADMIN_KEY` (`X-Admin-Key` header
+  or `?key=` on the page; unset = fail closed 403). Approve →
   live with `created_by_agent` badge (“Created by agent” on the
   paywall page + marketplace); reject → stays unpublished.
   Pending links return `403` from `GET /r/:slug` (never 402 terms or
@@ -108,19 +104,16 @@ emulates KV/R2 automatically:
 
 ```sh
 cd workers/publish
-npx -y wrangler@3 dev --var PUBLISH_KEY:dev-secret   # :8788
-PUBLISH_URL=http://localhost:8788 PUBLISH_KEY=dev-secret npm test
+npx -y wrangler@3 dev --var ADMIN_KEY:dev-admin --var AGENT_KEY:dev-agent   # :8788
+node test/selftest.mjs   # offline suite (no server needed)
 ```
 
 Secrets (Cloudflare, never in repo):
 
 ```sh
-wrangler secret put PUBLISH_KEY    # legacy publish/review automation
+wrangler secret put ADMIN_KEY      # owner review (unset = review fail-closed 403)
 wrangler secret put AGENT_KEY      # enables POST /v1/agent/submit
 wrangler secret put TYPESAFE_API_KEY # Jev auto-reviewer (unset = manual queue only)
-wrangler secret put RESEND_API_KEY # magic-link email (unset = dev-mode link)
-# optional reviewer allowlist (wrangler.toml [vars] or secret):
-#   OWNER_EMAILS=hector@example.com (unset = any signed-in user may review)
 # optional auto-publish allowlist (unset = any AGENT_KEY agent verified):
 #   VERIFIED_AGENTS=agent-one,agent-two
 ```

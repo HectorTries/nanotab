@@ -6,7 +6,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 const USDC = '0x833589fCD6eDb6E08f4C7c32D4F71B54bda02913';
 const WALLET = '0xb157000000000000000000000000000000000001';
-const SECRET = 'test-secret-123';
+const ADMIN = 'test-admin-123';
 
 const mkKV = () => {
   const store = new Map();
@@ -33,14 +33,14 @@ const mkR2 = () => {
 const kv = mkKV();
 const r2 = mkR2();
 const AGENT_SECRET = 'agent-secret-456';
-const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, NANOTAB_FEE_BPS: '200', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: r2 };
+const env = { ADMIN_KEY: ADMIN, AGENT_KEY: AGENT_SECRET, NANOTAB_FEE_BPS: '200', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: r2 };
 
 let fail = 0;
 const check = (name, cond, extra = '') => { console.log(`${cond ? 'PASS' : 'FAIL'} ${name} ${extra}`); if (!cond) fail++; };
 const req = (path, init = {}) => new Request(`https://pay.nanotab.dev${path}`, init);
-const post = (body, secret = SECRET) => req('/v1/publish', {
+const post = (body, headers = {}) => req('/v1/publish', {
   method: 'POST',
-  headers: { 'content-type': 'application/json', ...(secret !== null ? { ['X-Nanotab-Key']: secret } : {}) },
+  headers: { 'content-type': 'application/json', ...headers },
   body: typeof body === 'string' ? body : JSON.stringify(body),
 });
 const good = () => ({
@@ -55,40 +55,28 @@ const good = () => ({
     try { r2.store.delete(`r/${slug}`); } catch {}
     try { kv.store.delete(`rb:${slug}`); } catch {}
   };
-  let r = await worker.fetch(post(good(), null), env, {});
+  let r = await worker.fetch(post(good()), env, {});
   let j = await r.json().catch(() => ({}));
-  check('publish: missing auth → 201 anonymous (no login gate)', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || '') && j.url === `https://pay.nanotab.dev/r/${j.slug}`, `status=${r.status}`);
+  check('publish: no credentials → 201 (no accounts)', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || '') && j.url === `https://pay.nanotab.dev/r/${j.slug}`, `status=${r.status}`);
+  check('publish: no Set-Cookie issued', !r.headers.get('set-cookie'));
   let rec = j.slug ? JSON.parse(await kv.get(`r:${j.slug}`)) : null;
-  check('publish: anonymous record live, no owner', !!rec && rec.owner === undefined && rec.status === 'live' && rec.source === 'paste');
+  check('publish: record live, no owner field', !!rec && rec.owner === undefined && rec.status === 'live' && rec.source === 'paste');
   if (j.slug) {
     const g = await worker.fetch(req(`/r/${j.slug}`), env, {});
     check('publish: anonymous link live instantly → 402 (not 401/403)', g.status === 402);
     cleanup(j.slug);
   }
-  r = await worker.fetch(post(good(), 'wrong'), env, {});
+  // Stray credentials/cookies are ignored: publishing needs zero cookies.
+  r = await worker.fetch(post(good(), { 'X-Admin-Key': 'wrong', cookie: 'nt_sess=' + 'a'.repeat(64) }), env, {});
   j = await r.json().catch(() => ({}));
-  check('publish: wrong legacy key still publishes anonymously → 201', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
+  check('publish: stray cookie/key ignored → 201', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
   rec = j.slug ? JSON.parse(await kv.get(`r:${j.slug}`)) : null;
-  check('publish: wrong-key record has no owner', !!rec && rec.owner === undefined);
+  check('publish: stray-credential record has no owner', !!rec && rec.owner === undefined);
   if (j.slug) cleanup(j.slug);
-  r = await worker.fetch(post(good()), { ...env, PUBLISH_KEY: undefined }, {});
+  r = await worker.fetch(post(good()), { ...env, ADMIN_KEY: undefined }, {});
   j = await r.json().catch(() => ({}));
-  check('publish: no key configured + no session → 201 anonymous', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
+  check('publish: no admin key configured → still 201', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
   if (j.slug) cleanup(j.slug);
-  // A session, when present, associates the listing with the account.
-  const tok = 'a'.repeat(64);
-  await kv.put(`sess:${tok}`, JSON.stringify({ email: 'owner@example.com', exp: Date.now() + 3600_000 }));
-  r = await worker.fetch(req('/v1/publish', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', cookie: `nt_sess=${tok}` },
-    body: JSON.stringify(good()),
-  }), env, {});
-  j = await r.json().catch(() => ({}));
-  check('publish: session publish → 201', r.status === 201 && /^[A-Za-z0-9]{10}$/.test(j.slug || ''), `status=${r.status}`);
-  rec = j.slug ? JSON.parse(await kv.get(`r:${j.slug}`)) : null;
-  check('publish: session record carries owner hash', !!rec && typeof rec.owner === 'string' && /^[0-9a-f]{64}$/.test(rec.owner) && rec.status === 'live');
-  if (j.slug) cleanup(j.slug);
-  await kv.delete(`sess:${tok}`).catch(() => {});
 }
 
 // --- POST /v1/publish: validation → 400 ---
@@ -215,10 +203,10 @@ let slug, url;
   const home = await worker.fetch(req('/'), env, {});
   const homeHtml = await home.text();
   check('page: / → 200 landing with paywall headline', home.status === 200 && homeHtml.includes('Paywall Any Link in seconds'));
-  check('page: / step-flow (link → content/upload → price → wallet → Publish, no login gate)',
+  check('page: / step-flow (link → content/upload → price → wallet → Publish, no accounts)',
     homeHtml.includes('id="p-link"') && homeHtml.includes('id="p-body"') && homeHtml.includes('id="p-file"') &&
     homeHtml.includes('id="p-price"') && homeHtml.includes('id="p-payto"') && homeHtml.includes('Publish link') &&
-    !homeHtml.includes('/login?next=') && !homeHtml.includes('sign in at the end'));
+    !homeHtml.includes('/login') && !homeHtml.includes('Sign in') && homeHtml.includes('Keep your link'));
   check('page: / instant wallet (generate button, one-time key panel, honest copy)',
     homeHtml.includes('Generate instant wallet') && homeHtml.includes('id="btn-generate-wallet"') &&
     homeHtml.includes('id="wallet-panel"') && homeHtml.includes('This key controls your payouts') &&
@@ -229,27 +217,34 @@ let slug, url;
   check('page: / private-key guards (masked field, no autocomplete, publish JS never sends the key)',
     homeHtml.includes('id="p-pk" type="password"') && homeHtml.includes('autocomplete="off"') &&
     homeHtml.includes('togglePkVisibility') && homeHtml.includes('saveWalletOnDevice') &&
-    !homeHtml.includes("location.href='/login?next="));
+    !homeHtml.includes('/v1/me') && !homeHtml.includes('/v1/listings'));
   check('page: / publish success surfaces 402 agent link + copyable curl',
     homeHtml.includes('Agent paywall link (HTTP 402)') && homeHtml.includes('Copy paywall link') &&
     homeHtml.includes('curl -i'));
   check('page: / demotes developers to labelled secondary path',
     homeHtml.includes('For developers') && homeHtml.includes('href="/developers"'));
-  const login = await worker.fetch(req('/login'), env, {});
-  const loginHtml = await login.text();
-  check('page: /login → 200 optional sign-in for managing links (not a publish gate)',
-    login.status === 200 && loginHtml.includes('Sign in to manage links') && loginHtml.includes('Publishing needs no account') &&
-    loginHtml.includes('/v1/auth/request') && !loginHtml.includes('id="p-body"'));
+  const gone = await worker.fetch(req('/login'), env, {});
+  check('page: /login removed → 404', gone.status === 404);
+  for (const path of ['/v1/auth/request', '/v1/me', '/v1/listings']) {
+    const g = await worker.fetch(req(path), env, {});
+    check(`removed route ${path} → 404`, g.status === 404);
+  }
+  const gv = await worker.fetch(req('/v1/auth/verify?token=' + 'a'.repeat(64)), env, {});
+  check('removed route /v1/auth/verify → 404 (no cookie set)', gv.status === 404 && !gv.headers.get('set-cookie'));
   const devs = await worker.fetch(req('/developers'), env, {});
   const devsHtml = await devs.text();
   check('page: /developers → 200 developer path',
     devs.status === 200 && devsHtml.includes('For developers') && devsHtml.includes('nanotab protect') &&
     devsHtml.includes('/v1/agent/submit') && devsHtml.includes('/agent-auth'));
-  const queue = await worker.fetch(req('/agent-auth'), env, {});
+  const locked = await worker.fetch(req('/agent-auth'), env, {});
+  const lockedHtml = await locked.text();
+  check('page: /agent-auth without key → 403 owner-only page',
+    locked.status === 403 && lockedHtml.includes('Owner review is locked') && !lockedHtml.includes('/v1/agent/pending'));
+  const queue = await worker.fetch(req(`/agent-auth?key=${ADMIN}`), env, {});
   const queueHtml = await queue.text();
-  check('page: /agent-auth → 200 daily review queue shell',
-    queue.status === 200 && queueHtml.includes('Agent authorization queue') && queueHtml.includes('/v1/agent/pending') &&
-    queueHtml.includes('/v1/agent/review'));
+  check('page: /agent-auth with key → 200 queue + owner banner, no cookie',
+    queue.status === 200 && queueHtml.includes('Agent authorization queue') && queueHtml.includes('You are viewing as owner') &&
+    queueHtml.includes('/v1/agent/pending') && queueHtml.includes('/v1/agent/review') && !queue.headers.get('set-cookie'));
 }
 
 // --- SEO + AI discovery: free abstract, /p/ page, intent routing ---
@@ -397,23 +392,27 @@ let slug, url;
   let mkt = await (await worker.fetch(req('/v1/marketplace.json'), env, {})).json();
   check('agent: marketplace excludes pending', !mkt.some((e) => e.url.endsWith(`/r/${aslug}`)));
 
-  // Review queue is owner-gated.
+  // Review queue is owner-gated by ADMIN_KEY (header or ?key=).
   r = await worker.fetch(req('/v1/agent/pending'), env, {});
-  check('agent: pending list without auth → 401', r.status === 401);
-  r = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Nanotab-Key': SECRET } }), env, {});
+  check('agent: pending list without key → 403', r.status === 403);
+  r = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Admin-Key': 'wrong' } }), env, {});
+  check('agent: pending list wrong key → 403', r.status === 403);
+  r = await worker.fetch(req('/v1/agent/pending', { headers: { cookie: 'nt_sess=' + 'a'.repeat(64) } }), env, {});
+  check('agent: pending list with cookie only → 403 (no sessions)', r.status === 403);
+  r = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Admin-Key': ADMIN } }), env, {});
   const queue = await r.json();
   check('agent: pending list with reviewer key → 200 with submission',
     r.status === 200 && Array.isArray(queue) && queue.some((e) => e.slug === aslug && e.agent_name === 'selftest-agent'));
 
-  const review = (body, key = SECRET) => req('/v1/agent/review', {
+  const review = (body, key = ADMIN) => req('/v1/agent/review', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', ...(key !== null ? { 'X-Nanotab-Key': key } : {}) },
+    headers: { 'content-type': 'application/json', ...(key !== null ? { 'X-Admin-Key': key } : {}) },
     body: JSON.stringify(body),
   });
   r = await worker.fetch(review({ slug: aslug, action: 'maybe' }), env, {});
   check('agent: review bad action → 400', r.status === 400);
   r = await worker.fetch(review({ slug: aslug, action: 'approve' }, null), env, {});
-  check('agent: review without auth → 401', r.status === 401);
+  check('agent: review without key → 403', r.status === 403);
   r = await worker.fetch(review({ slug: aslug, action: 'approve' }), env, {});
   const rv = await r.json();
   check('agent: approve → 200 live', r.status === 200 && rv.status === 'live', JSON.stringify(rv).slice(0, 120));
@@ -444,31 +443,11 @@ let slug, url;
   check('human: earlier publish is live instantly', rec.status === 'live' && rec.source === 'paste');
 }
 
-// --- Magic-link next redirect (login funnel) ---
+// --- Account routes are gone; owner review needs ADMIN_KEY only ---
 {
-  let r = await worker.fetch(req('/v1/auth/request', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: 'owner@example.com', next: '/agent-auth' }),
-  }), env, {});
-  const j = await r.json();
-  check('auth: dev-mode request returns link', r.status === 200 && typeof j.link === 'string');
-  const token = new URL(j.link).searchParams.get('token');
-  r = await worker.fetch(req(`/v1/auth/verify?token=${token}`), env, {});
-  check('auth: verify redirects to requested next', r.status === 302 && (r.headers.get('location') || '').endsWith('/agent-auth'));
-  const cookie = r.headers.get('set-cookie') || '';
-  check('auth: verify sets session cookie', cookie.includes('nt_sess='));
-  const sess = cookie.match(/nt_sess=([0-9a-f]{64})/)?.[1];
-  r = await worker.fetch(req('/v1/agent/pending', { headers: { cookie: `nt_sess=${sess}` } }), env, {});
-  check('auth: owner session can read review queue', r.status === 200);
-  // Open-redirect guard: external next falls back to /.
-  r = await worker.fetch(req('/v1/auth/request', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: 'owner@example.com', next: 'https://evil.example/phish' }),
-  }), env, {});
-  const j2 = await r.json();
-  const t2 = new URL(j2.link).searchParams.get('token');
-  r = await worker.fetch(req(`/v1/auth/verify?token=${t2}`), env, {});
-  check('auth: external next rejected → /', r.status === 302 && new URL(r.headers.get('location')).pathname === '/');
+  const noAdminEnv = { AGENT_KEY: AGENT_SECRET, NANOTAB_FEE_BPS: '200', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: r2 };
+  const r = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Admin-Key': ADMIN } }), noAdminEnv, {});
+  check('removed: review with ADMIN_KEY unset → 403 (fail closed)', r.status === 403);
 }
 
 process.exit(fail ? 1 : 0);
