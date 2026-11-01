@@ -1,8 +1,11 @@
 // NanoTab publish worker — hosted one-click agent paywalls (MVP step 2).
 //
-// POST /v1/publish  (auth: X-Nanotab-Key shared-secret STUB; real magic-link in step 4)
-//   {title, mime, price_cents, merchant_wallet, body_b64} → stores R2 bytes +
-//   KV metadata → 201 {url, slug, x402}.
+// POST /v1/publish  (auth: magic-link session OR X-Nanotab-Key stub)
+//   {title, mime, price_cents, merchant_wallet, body_b64, source_url?} →
+//   stores R2 bytes + KV metadata → 201 {url, slug, x402}. Human links are
+//   live instantly. Agent links differ: POST /v1/agent/submit (X-Agent-Key)
+//   queues status 'pending' → GET /r/:slug 403 until the owner approves via
+//   GET /v1/agent/pending + POST /v1/agent/review (see /agent-auth page).
 // GET /r/:slug  behaves exactly like the gateway: no X-Payment → 402 (same
 //   body shape, per-listing payTo/amount); valid payment → R2 bytes with
 //   x-nanotab:* headers. Buyer-tx verify only — NO settler on publish.
@@ -56,6 +59,8 @@ export {};
 
 interface Env {
   PUBLISH_KEY?: string; // legacy shared-secret stub (wrangler secret ONLY) — magic-link preferred
+  AGENT_KEY?: string; // agent submission key (wrangler secret ONLY); unset → agent submissions disabled (fail closed)
+  OWNER_EMAILS?: string; // comma-separated reviewer allowlist for /agent-auth; unset → any signed-in user may review (scaffold)
   RESEND_API_KEY?: string; // Resend key for magic-link emails (wrangler secret ONLY); unset → /v1/auth/request returns the link (dev mode)
   AUTH_FROM?: string; // sender, e.g. "NanoTab <hello@nanotab.dev>" (default)
   NANOTAB_FEE_BPS?: string; // e.g. "200" = 2% (default 200)
@@ -76,8 +81,21 @@ interface Listing {
   merchant_wallet: string;
   created_at: string;
   paid_calls: number;
-  source: 'paste';
+  source: 'paste' | 'agent';
+  // Publication state. Absent = live (legacy listings predate this field).
+  // Agent submissions start 'pending' and only go live on owner approval;
+  // human publishes are 'live' immediately.
+  status?: 'live' | 'pending' | 'rejected';
+  created_by_agent?: boolean; // true for agent submissions (badge on approved links)
+  agent_name?: string; // self-reported agent identity on submissions
+  source_url?: string; // original link the content was paywalled from (provenance)
+  reviewed_at?: string;
+  reviewed_by?: string;
   owner?: string; // sha256hex(owner email); absent = legacy key-published
+}
+
+function isLive(l: Listing): boolean {
+  return !l.status || l.status === 'live';
 }
 
 const MIME_ALLOWLIST = [
@@ -91,7 +109,7 @@ const MIME_ALLOWLIST = [
 ];
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB decoded
 const MAX_B64_CHARS = Math.ceil(MAX_BODY_BYTES / 3) * 4;
-const RESERVED_SLUGS = new Set(['api', 'stats', 'admin', 'v1', 'r', 'publish', 'marketplace']);
+const RESERVED_SLUGS = new Set(['api', 'stats', 'admin', 'v1', 'r', 'publish', 'marketplace', 'login', 'developers', 'agent-auth', 'app']);
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const SLUG_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -258,14 +276,22 @@ async function sendMagicLink(env: Env, email: string, link: string): Promise<{ e
   return { emailed: true };
 }
 
+function safeNext(v: unknown): string {
+  // Only same-site absolute paths may be redirect targets after sign-in.
+  if (typeof v !== 'string' || v.length > 512) return '/';
+  if (!/^\/(?!\/)[^\s\\]*$/.test(v)) return '/';
+  return v;
+}
+
 async function handleAuthRequest(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
   let body: any;
   try { body = await req.json(); } catch { throw new HttpErr(400, 'invalid JSON body'); }
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
   if (!EMAIL_RE.test(email)) throw new HttpErr(400, 'invalid email');
+  const next = safeNext(body?.next);
   const token = randToken(32);
-  await kv.put(`auth:${token}`, JSON.stringify({ email, exp: Date.now() + AUTH_TOKEN_TTL * 1000 }), { expirationTtl: AUTH_TOKEN_TTL });
+  await kv.put(`auth:${token}`, JSON.stringify({ email, exp: Date.now() + AUTH_TOKEN_TTL * 1000, next }), { expirationTtl: AUTH_TOKEN_TTL });
   const origin = new URL(req.url).origin;
   const link = `${origin}/v1/auth/verify?token=${token}`;
   const { emailed } = await sendMagicLink(env, email, link);
@@ -277,36 +303,21 @@ async function handleAuthVerify(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
   const token = new URL(req.url).searchParams.get('token') ?? '';
   if (!/^[0-9a-f]{64}$/.test(token)) throw new HttpErr(400, 'invalid token');
-  const a = (await kv.get(`auth:${token}`, 'json').catch(() => null)) as { email: string; exp: number } | null;
+  const a = (await kv.get(`auth:${token}`, 'json').catch(() => null)) as { email: string; exp: number; next?: string } | null;
   if (!a?.email || Date.now() > (a.exp ?? 0)) throw new HttpErr(401, 'expired or invalid token');
   await kv.delete(`auth:${token}`).catch(() => {});
   const sess = randToken(32);
   await kv.put(`sess:${sess}`, JSON.stringify({ email: a.email, exp: Date.now() + SESS_TTL * 1000 }), { expirationTtl: SESS_TTL });
-  const res = Response.redirect(new URL('/', req.url).toString(), 302);
+  const res = Response.redirect(new URL(safeNext(a.next), req.url).toString(), 302);
   res.headers.set('set-cookie', `nt_sess=${sess}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESS_TTL}`);
   return res;
 }
 
-// --- POST /v1/publish ---
-async function handlePublish(req: Request, env: Env): Promise<Response> {
-  const { kv, r2 } = needStores(env);
-  // Auth: magic-link session (preferred) OR legacy X-Nanotab-Key stub.
-  let owner: string | undefined;
-  const sessEmail = await sessionEmail(req, env).catch(() => null);
-  if (sessEmail) {
-    owner = await ownerOf(sessEmail);
-  } else if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) {
-    owner = undefined; // legacy key publish (no owner)
-  } else {
-    throw new HttpErr(401, 'unauthorized (sign in via POST /v1/auth/request, or bad X-Nanotab-Key)');
-  }
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    throw new HttpErr(400, 'invalid JSON body');
-  }
-  const maxPrice = Number(env.MAX_PRICE_CENTS ?? '10000');
+// Shared body validation for human publishes and agent submissions.
+function parsePublishBody(body: any, maxPrice: number): {
+  title: string; mime: string; price_cents: number; merchant_wallet: string;
+  bytes: Uint8Array; b64: string; source_url?: string; agent_name?: string;
+} {
   const title = typeof body?.title === 'string' ? body.title.trim() : '';
   if (!title || title.length > 200) throw new HttpErr(400, 'invalid title (1–200 chars)');
   if (!MIME_ALLOWLIST.includes(body?.mime)) {
@@ -330,31 +341,72 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   if (bytes.length < 1 || bytes.length > MAX_BODY_BYTES) {
     throw new HttpErr(400, 'invalid body_b64 (need 1 byte–1MB base64)');
   }
+  let source_url: string | undefined;
+  if (body?.source_url !== undefined && body?.source_url !== '') {
+    if (typeof body.source_url !== 'string' || body.source_url.length > 2048) {
+      throw new HttpErr(400, 'invalid source_url');
+    }
+    let u: URL;
+    try { u = new URL(body.source_url); } catch { throw new HttpErr(400, 'invalid source_url'); }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new HttpErr(400, 'invalid source_url');
+    source_url = body.source_url;
+  }
+  let agent_name: string | undefined;
+  if (typeof body?.agent_name === 'string' && body.agent_name.trim()) {
+    agent_name = body.agent_name.trim().slice(0, 80);
+  }
+  return { title, mime: body.mime, price_cents: body.price_cents, merchant_wallet: body.merchant_wallet, bytes, b64: body.body_b64, source_url, agent_name };
+}
 
-  let slug = '';
+async function freshSlug(kv: KVNamespace): Promise<string> {
   for (let i = 0; i < 3; i++) {
     const cand = makeSlug();
     if (RESERVED_SLUGS.has(cand)) continue;
     if (await getListing(kv, cand)) continue;
-    slug = cand;
-    break;
+    return cand;
   }
-  if (!slug) throw new HttpErr(500, 'slug collision, retry');
+  throw new HttpErr(500, 'slug collision, retry');
+}
+
+// --- POST /v1/publish (human: publishes instantly, no review friction) ---
+async function handlePublish(req: Request, env: Env): Promise<Response> {
+  const { kv, r2 } = needStores(env);
+  // Auth: magic-link session (preferred) OR legacy X-Nanotab-Key stub.
+  let owner: string | undefined;
+  const sessEmail = await sessionEmail(req, env).catch(() => null);
+  if (sessEmail) {
+    owner = await ownerOf(sessEmail);
+  } else if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) {
+    owner = undefined; // legacy key publish (no owner)
+  } else {
+    throw new HttpErr(401, 'unauthorized (sign in via POST /v1/auth/request, or bad X-Nanotab-Key)');
+  }
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    throw new HttpErr(400, 'invalid JSON body');
+  }
+  const maxPrice = Number(env.MAX_PRICE_CENTS ?? '10000');
+  const p = parsePublishBody(body, maxPrice);
+  const slug = await freshSlug(kv);
 
   const listing: Listing = {
     slug,
-    title,
-    mime: body.mime,
-    bytes: bytes.length,
+    title: p.title,
+    mime: p.mime,
+    bytes: p.bytes.length,
     r2_key: `r/${slug}`,
-    price_cents: String(body.price_cents),
-    merchant_wallet: body.merchant_wallet,
+    price_cents: String(p.price_cents),
+    merchant_wallet: p.merchant_wallet,
     created_at: new Date().toISOString(),
     paid_calls: 0,
     source: 'paste',
+    status: 'live',
+    ...(p.source_url ? { source_url: p.source_url } : {}),
     ...(owner ? { owner } : {}),
   };
-  await putBytes(kv, r2, listing, bytes, body.body_b64);
+  await putBytes(kv, r2, listing, p.bytes, p.b64);
   await putListing(kv, listing);
 
   const origin = new URL(req.url).origin;
@@ -368,11 +420,140 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   );
 }
 
+// --- Agentic submissions: agents create paywalls, owner approves daily ---
+// POST /v1/agent/submit (X-Agent-Key) queues a listing as 'pending'.
+// GET  /v1/agent/pending + POST /v1/agent/review are the daily review queue,
+// gated to the account owner (session; OWNER_EMAILS allowlist when set, or
+// the legacy publish key for automation). Unapproved links never publish:
+// GET /r/:slug returns 403 while pending and 404 once rejected.
+async function requireReviewer(req: Request, env: Env): Promise<string> {
+  if (env.PUBLISH_KEY && req.headers.get('X-Nanotab-Key') === env.PUBLISH_KEY) return 'publish-key';
+  const email = await sessionEmail(req, env).catch(() => null);
+  if (!email) throw new HttpErr(401, 'unauthorized (sign in to review agent submissions)');
+  const allow = (env.OWNER_EMAILS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (allow.length && !allow.includes(email.toLowerCase())) {
+    throw new HttpErr(403, 'forbidden (agent review is restricted to the account owner)');
+  }
+  return email;
+}
+
+async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
+  const { kv, r2 } = needStores(env);
+  if (!env.AGENT_KEY || req.headers.get('X-Agent-Key') !== env.AGENT_KEY) {
+    throw new HttpErr(401, 'unauthorized (bad or missing X-Agent-Key; agent submissions disabled if unset)');
+  }
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    throw new HttpErr(400, 'invalid JSON body');
+  }
+  const maxPrice = Number(env.MAX_PRICE_CENTS ?? '10000');
+  const p = parsePublishBody(body, maxPrice);
+  const slug = await freshSlug(kv);
+  const listing: Listing = {
+    slug,
+    title: p.title,
+    mime: p.mime,
+    bytes: p.bytes.length,
+    r2_key: `r/${slug}`,
+    price_cents: String(p.price_cents),
+    merchant_wallet: p.merchant_wallet,
+    created_at: new Date().toISOString(),
+    paid_calls: 0,
+    source: 'agent',
+    status: 'pending',
+    created_by_agent: true,
+    agent_name: p.agent_name ?? 'agent',
+    ...(p.source_url ? { source_url: p.source_url } : {}),
+  };
+  await putBytes(kv, r2, listing, p.bytes, p.b64);
+  await putListing(kv, listing);
+  const origin = new URL(req.url).origin;
+  const url = `${origin}/r/${slug}`;
+  console.log(`[nanotab-publish] agent submission queued ${slug} by ${listing.agent_name} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c)`);
+  return Response.json(
+    { url, slug, status: 'pending', message: 'Queued for daily owner review. The link returns 403 until approved; no approval means it never publishes.' },
+    { status: 202 }
+  );
+}
+
+async function handleAgentPending(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  await requireReviewer(req, env);
+  const origin = new URL(req.url).origin;
+  const keys = await listRKeys(kv);
+  const items = (
+    await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
+  )
+    .filter((l): l is Listing => !!l?.slug && l.status === 'pending')
+    .sort((a, b) => (a.created_at < b.created_at ? -1 : 1)) // oldest first: review queue order
+    .map((l) => ({
+      slug: l.slug,
+      url: `${origin}/r/${l.slug}`,
+      title: l.title,
+      price_usd: (Number(l.price_cents) / 100).toFixed(2),
+      mime: l.mime,
+      bytes: l.bytes,
+      merchant: l.merchant_wallet,
+      agent_name: l.agent_name ?? 'agent',
+      source_url: l.source_url ?? null,
+      created_at: l.created_at,
+      created_by_agent: true,
+    }));
+  return Response.json(items);
+}
+
+async function handleAgentReview(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  const reviewer = await requireReviewer(req, env);
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    throw new HttpErr(400, 'invalid JSON body');
+  }
+  const slug = typeof body?.slug === 'string' ? body.slug : '';
+  const action = body?.action;
+  if (!/^[A-Za-z0-9]{10}$/.test(slug)) throw new HttpErr(400, 'invalid slug');
+  if (action !== 'approve' && action !== 'reject') throw new HttpErr(400, "invalid action (need 'approve' or 'reject')");
+  const listing = await getListing(kv, slug);
+  if (!listing) throw new HttpErr(404, 'listing not found');
+  if (listing.status !== 'pending') throw new HttpErr(409, 'listing is not pending review');
+  const updated: Listing = {
+    ...listing,
+    status: action === 'approve' ? 'live' : 'rejected',
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: reviewer,
+  };
+  await putListing(kv, updated);
+  console.log(`[nanotab-publish] agent submission ${slug} ${action}d by ${reviewer}`);
+  return Response.json({ ok: true, slug, status: updated.status });
+}
+
 // --- GET /r/:slug ---
 async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefined, slug: string): Promise<Response> {
   const { kv, r2 } = needStores(env);
   const listing = await getListing(kv, slug);
   if (!listing) throw new HttpErr(404, 'listing not found');
+  // Spam guardrail: agent links are not published until the owner approves.
+  // Pending returns 403 (never 402 terms, never content, even with payment);
+  // rejected links are indistinguishable from unknown slugs.
+  if (listing.status === 'pending') {
+    const accept = req.headers.get('accept') ?? '';
+    const wantsHtml = accept.includes('text/html') && !accept.includes('application/json');
+    if (wantsHtml) {
+      return new Response(pendingHtml(listing), {
+        status: 403,
+        headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'access-control-allow-origin': '*' },
+      });
+    }
+    return Response.json(
+      { error: 'pending approval: this agent-submitted link has not been approved by the account owner yet', status: 'pending', slug },
+      { status: 403, headers: { 'access-control-allow-origin': '*' } }
+    );
+  }
+  if (listing.status === 'rejected') throw new HttpErr(404, 'listing not found');
 
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
   const feeTo = feeRecipientFor(env.FEE_WALLET);
@@ -491,6 +672,22 @@ function escHtml(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
 
+// Browser page for an agent-submitted link still awaiting owner approval.
+function pendingHtml(l: Listing): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pending approval — NanoTab Pay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif}.wrap{max-width:640px;margin:0 auto;padding:56px 20px}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:32px;margin-top:28px}.kicker{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#e8b34b;font-weight:600}h1{font-size:26px;letter-spacing:-.02em;line-height:1.25;margin:10px 0 8px}.mut{color:#9fb0c0;font-size:14.5px}a{color:#3ecf8e}</style></head><body>
+<div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><div class="card">
+<div class="kicker">403 · Pending approval</div>
+<h1>${escHtml(l.title)}</h1>
+<p class="mut">This link was created by an agent (${escHtml(l.agent_name ?? 'agent')}) and is waiting in the account owner's daily review queue. It is not published yet — no price terms are served and no payment can unlock it until the owner approves it.</p>
+<p class="mut">Are you the owner? <a href="/agent-auth">Review the queue</a> · <a href="/marketplace">Browse published links</a></p>
+</div></div></body></html>`;
+}
+
 // Human-readable 402 paywall page for browsers (content negotiation:
 // Accept: text/html → this; Accept: application/json / agents → raw JSON).
 function paywallHtml(reqUrl: string, l: Listing, feeBps: number, feeTo: string): string {
@@ -515,7 +712,7 @@ pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;
 .foot{color:#7f8fa3;font-size:13px;text-align:center;margin-top:18px}</style></head><body>
 <div class="wrap"><div class="top"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><a href="/marketplace">Marketplace</a></div><div class="card">
 <div class="kicker">Paywalled content · 402 Payment Required</div>
-<h1>${escHtml(l.title)}</h1>
+<h1>${escHtml(l.title)}</h1>${l.created_by_agent ? '<p class="mut"><span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600">Created by agent</span> <span style="font-size:13px">· approved by the account owner</span></p>' : ''}
 <div class="price">$${priceUsd} USDC</div>
 <p class="mut">per view · on Base · merchant <code>${shortWallet}</code> · seller receives $${netUsd} after ${feeBps / 100}% fee</p>
 <p>This link is sold to <b>AI agents</b>, not opened directly in a browser. An agent reads the price, pays USDC on Base, and receives the content — automatically, in one flow.</p>
@@ -537,12 +734,13 @@ async function handleMarketplacePage(req: Request, env: Env): Promise<Response> 
   const items = (
     await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
   )
-    .filter((l): l is Listing => !!l?.slug)
+    .filter((l): l is Listing => !!l?.slug && isLive(l))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   const cards = items.length
     ? items.map((l) => {
         const price = (Number(l.price_cents) / 100).toFixed(2);
-        return `<div class="card"><div class="t">${escHtml(l.title)} <span class="price">$${price}</span></div><div class="m">${l.paid_calls ?? 0} paid calls · ${escHtml(l.mime)} · seller <code>${escHtml(l.merchant_wallet.slice(0, 6))}…${escHtml(l.merchant_wallet.slice(-4))}</code></div><div class="m"><a href="${origin}/r/${l.slug}">${origin}/r/${l.slug}</a></div></div>`;
+        const badge = l.created_by_agent ? ' <span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;vertical-align:2px">Created by agent</span>' : '';
+        return `<div class="card"><div class="t">${escHtml(l.title)}${badge} <span class="price">$${price}</span></div><div class="m">${l.paid_calls ?? 0} paid calls · ${escHtml(l.mime)} · seller <code>${escHtml(l.merchant_wallet.slice(0, 6))}…${escHtml(l.merchant_wallet.slice(-4))}</code></div><div class="m"><a href="${origin}/r/${l.slug}">${origin}/r/${l.slug}</a></div></div>`;
       }).join('')
     : '<div class="card"><i>No public listings yet — <a href="/">publish the first one</a>.</i></div>';
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -564,7 +762,7 @@ async function handleMarketplace(req: Request, env: Env): Promise<Response> {
       keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null)
     )
   )
-    .filter((l): l is Listing => !!l?.slug)
+    .filter((l): l is Listing => !!l?.slug && isLive(l))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
     .map((l) => ({
       url: `${origin}/r/${l.slug}`,
@@ -572,6 +770,8 @@ async function handleMarketplace(req: Request, env: Env): Promise<Response> {
       price_usd: (Number(l.price_cents) / 100).toFixed(2),
       mime: l.mime,
       merchant: l.merchant_wallet,
+      created_by_agent: !!l.created_by_agent,
+      ...(l.source_url ? { source_url: l.source_url } : {}),
     }));
   return Response.json(items, {
     headers: { 'access-control-allow-origin': '*', 'cache-control': 'public, max-age=60' },
@@ -586,11 +786,15 @@ async function handleStats(req: Request, env: Env): Promise<Response> {
   const paidKeys = (paidListed?.keys ?? []).map((k) => k.name);
   const counts = await Promise.all(paidKeys.map(async (k) => num(k)));
   const total_paid_calls = counts.reduce((a, b) => a + b, 0);
-  const listings = await kv.list({ prefix: 'r:' }).catch(() => null);
+  const rKeys = await listRKeys(kv);
+  const allListings = (
+    await Promise.all(rKeys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
+  ).filter((l): l is Listing => !!l?.slug);
   return Response.json(
     {
       total_paid_calls,
-      total_listings: (listings?.keys ?? []).length,
+      total_listings: allListings.filter(isLive).length,
+      pending_agent_listings: allListings.filter((l) => l.status === 'pending').length,
       fee_wallet: feeRecipientFor(env.FEE_WALLET),
       fee_bps: Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS)),
     },
@@ -636,6 +840,8 @@ async function handleOwnerListings(req: Request, env: Env): Promise<Response> {
       merchant: l.merchant_wallet,
       paid_calls: l.paid_calls ?? 0,
       created_at: l.created_at,
+      status: l.status ?? 'live',
+      created_by_agent: !!l.created_by_agent,
     }));
   return Response.json(items);
 }
@@ -778,6 +984,15 @@ export default {
       if (req.method === 'POST' && pathname === '/v1/publish') {
         return await handlePublish(req, env);
       }
+      if (req.method === 'POST' && pathname === '/v1/agent/submit') {
+        return await handleAgentSubmit(req, env);
+      }
+      if (req.method === 'GET' && pathname === '/v1/agent/pending') {
+        return await handleAgentPending(req, env);
+      }
+      if (req.method === 'POST' && pathname === '/v1/agent/review') {
+        return await handleAgentReview(req, env);
+      }
       if (req.method === 'POST' && pathname === '/v1/auth/request') {
         return await handleAuthRequest(req, env);
       }
@@ -813,7 +1028,7 @@ export default {
           headers: {
             'access-control-allow-origin': '*',
             'access-control-allow-methods': 'GET,POST,OPTIONS',
-            'access-control-allow-headers': '*, X-Payment, X-Nanotab-Key',
+            'access-control-allow-headers': '*, X-Payment, X-Nanotab-Key, X-Agent-Key',
           },
         });
       }

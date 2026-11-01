@@ -18,6 +18,7 @@ const mkKV = () => {
     return type === 'json' ? JSON.parse(v) : v;
   },
     put: async (k, v) => { store.set(k, v); },
+    delete: async (k) => { store.delete(k); },
     list: async ({ prefix = '' } = {}) => ({ keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })) }),
   };
 };
@@ -31,7 +32,8 @@ const mkR2 = () => {
 };
 const kv = mkKV();
 const r2 = mkR2();
-const env = { PUBLISH_KEY: SECRET, NANOTAB_FEE_BPS: '200', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: r2 };
+const AGENT_SECRET = 'agent-secret-456';
+const env = { PUBLISH_KEY: SECRET, AGENT_KEY: AGENT_SECRET, NANOTAB_FEE_BPS: '200', NANOTAB_LISTINGS: kv, NANOTAB_CONTENT: r2 };
 
 let fail = 0;
 const check = (name, cond, extra = '') => { console.log(`${cond ? 'PASS' : 'FAIL'} ${name} ${extra}`); if (!cond) fail++; };
@@ -194,6 +196,120 @@ let slug, url;
     html.includes('curl'));
   const r2not = await worker.fetch(req('/nope'), env, {});
   check('404: unknown route → 404 JSON', r2not.status === 404 && typeof (await r2not.json()).error === 'string');
+}
+
+// --- Agentic submissions: queued pending, 403 until owner approves ---
+{
+  const agentPost = (path, body, key = AGENT_SECRET) => req(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(key !== null ? { 'X-Agent-Key': key } : {}) },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+  const agentBody = {
+    title: 'agent dataset drop', mime: 'text/markdown', price_cents: 25,
+    merchant_wallet: WALLET, body_b64: Buffer.from('# agent paid content').toString('base64'),
+    agent_name: 'selftest-agent', source_url: 'https://example.com/dataset',
+  };
+
+  let r = await worker.fetch(agentPost('/v1/agent/submit', agentBody, null), env, {});
+  check('agent: submit without key → 401', r.status === 401);
+  r = await worker.fetch(agentPost('/v1/agent/submit', agentBody, 'wrong'), env, {});
+  check('agent: submit wrong key → 401', r.status === 401);
+  r = await worker.fetch(agentPost('/v1/agent/submit', { ...agentBody, merchant_wallet: '0xZZZ' }), env, {});
+  check('agent: submit bad wallet → 400', r.status === 400);
+
+  r = await worker.fetch(agentPost('/v1/agent/submit', agentBody), env, {});
+  const aj = await r.json();
+  check('agent: submit valid → 202 pending', r.status === 202 && aj.status === 'pending' && /^[A-Za-z0-9]{10}$/.test(aj.slug || ''), JSON.stringify(aj).slice(0, 140));
+  const aslug = aj.slug;
+  const arec = JSON.parse(await kv.get(`r:${aslug}`));
+  check('agent: KV record pending + agent badge fields',
+    arec.status === 'pending' && arec.source === 'agent' && arec.created_by_agent === true &&
+    arec.agent_name === 'selftest-agent' && arec.source_url === 'https://example.com/dataset');
+
+  // Unapproved: 403 for agents and browsers, never 402 terms or content.
+  r = await worker.fetch(req(`/r/${aslug}`), env, {});
+  const pend = await r.json();
+  check('agent: pending fetch → 403 pending (no payTo leak)', r.status === 403 && pend.status === 'pending' && !JSON.stringify(pend).includes(WALLET));
+  r = await worker.fetch(req(`/r/${aslug}`, { headers: { accept: 'text/html' } }), env, {});
+  check('agent: pending browser fetch → 403 HTML', r.status === 403 && (await r.text()).includes('Pending approval'));
+  r = await worker.fetch(req(`/r/${aslug}`, { headers: { 'X-Payment': 'AAAA' } }), env, {});
+  check('agent: pending fetch with payment header → still 403', r.status === 403);
+  let mkt = await (await worker.fetch(req('/v1/marketplace.json'), env, {})).json();
+  check('agent: marketplace excludes pending', !mkt.some((e) => e.url.endsWith(`/r/${aslug}`)));
+
+  // Review queue is owner-gated.
+  r = await worker.fetch(req('/v1/agent/pending'), env, {});
+  check('agent: pending list without auth → 401', r.status === 401);
+  r = await worker.fetch(req('/v1/agent/pending', { headers: { 'X-Nanotab-Key': SECRET } }), env, {});
+  const queue = await r.json();
+  check('agent: pending list with reviewer key → 200 with submission',
+    r.status === 200 && Array.isArray(queue) && queue.some((e) => e.slug === aslug && e.agent_name === 'selftest-agent'));
+
+  const review = (body, key = SECRET) => req('/v1/agent/review', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(key !== null ? { 'X-Nanotab-Key': key } : {}) },
+    body: JSON.stringify(body),
+  });
+  r = await worker.fetch(review({ slug: aslug, action: 'maybe' }), env, {});
+  check('agent: review bad action → 400', r.status === 400);
+  r = await worker.fetch(review({ slug: aslug, action: 'approve' }, null), env, {});
+  check('agent: review without auth → 401', r.status === 401);
+  r = await worker.fetch(review({ slug: aslug, action: 'approve' }), env, {});
+  const rv = await r.json();
+  check('agent: approve → 200 live', r.status === 200 && rv.status === 'live', JSON.stringify(rv).slice(0, 120));
+  r = await worker.fetch(review({ slug: aslug, action: 'approve' }), env, {});
+  check('agent: re-review approved → 409', r.status === 409);
+
+  // Approved: normal 402 flow + badge surfaces.
+  r = await worker.fetch(req(`/r/${aslug}`), env, {});
+  check('agent: approved fetch → 402 paywall', r.status === 402);
+  r = await worker.fetch(req(`/r/${aslug}`, { headers: { accept: 'text/html' } }), env, {});
+  check('agent: approved paywall shows Created by agent badge', r.status === 402 && (await r.text()).includes('Created by agent'));
+  mkt = await (await worker.fetch(req('/v1/marketplace.json'), env, {})).json();
+  const hit = mkt.find((e) => e.url.endsWith(`/r/${aslug}`));
+  check('agent: marketplace lists approved with badge flag', !!hit && hit.created_by_agent === true);
+
+  // Rejected: never publishes, reads as unknown.
+  r = await worker.fetch(agentPost('/v1/agent/submit', { ...agentBody, title: 'spammy agent drop' }), env, {});
+  const rslug = (await r.json()).slug;
+  r = await worker.fetch(review({ slug: rslug, action: 'reject' }), env, {});
+  check('agent: reject → 200 rejected', r.status === 200 && (await r.json()).status === 'rejected');
+  r = await worker.fetch(req(`/r/${rslug}`), env, {});
+  check('agent: rejected fetch → 404', r.status === 404);
+  mkt = await (await worker.fetch(req('/v1/marketplace.json'), env, {})).json();
+  check('agent: marketplace excludes rejected', !mkt.some((e) => e.url.endsWith(`/r/${rslug}`)));
+
+  // Human links still publish instantly alongside the queue.
+  const rec = JSON.parse(await kv.get(`r:${slug}`));
+  check('human: earlier publish is live instantly', rec.status === 'live' && rec.source === 'paste');
+}
+
+// --- Magic-link next redirect (login funnel) ---
+{
+  let r = await worker.fetch(req('/v1/auth/request', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'owner@example.com', next: '/agent-auth' }),
+  }), env, {});
+  const j = await r.json();
+  check('auth: dev-mode request returns link', r.status === 200 && typeof j.link === 'string');
+  const token = new URL(j.link).searchParams.get('token');
+  r = await worker.fetch(req(`/v1/auth/verify?token=${token}`), env, {});
+  check('auth: verify redirects to requested next', r.status === 302 && (r.headers.get('location') || '').endsWith('/agent-auth'));
+  const cookie = r.headers.get('set-cookie') || '';
+  check('auth: verify sets session cookie', cookie.includes('nt_sess='));
+  const sess = cookie.match(/nt_sess=([0-9a-f]{64})/)?.[1];
+  r = await worker.fetch(req('/v1/agent/pending', { headers: { cookie: `nt_sess=${sess}` } }), env, {});
+  check('auth: owner session can read review queue', r.status === 200);
+  // Open-redirect guard: external next falls back to /.
+  r = await worker.fetch(req('/v1/auth/request', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'owner@example.com', next: 'https://evil.example/phish' }),
+  }), env, {});
+  const j2 = await r.json();
+  const t2 = new URL(j2.link).searchParams.get('token');
+  r = await worker.fetch(req(`/v1/auth/verify?token=${t2}`), env, {});
+  check('auth: external next rejected → /', r.status === 302 && new URL(r.headers.get('location')).pathname === '/');
 }
 
 process.exit(fail ? 1 : 0);
