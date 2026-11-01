@@ -378,6 +378,17 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
   const feeTo = feeRecipientFor(env.FEE_WALLET);
   const header = req.headers.get('X-Payment');
   if (!header) {
+    const accept = req.headers.get('accept') ?? '';
+    const wantsHtml = accept.includes('text/html') && !accept.includes('application/json');
+    if (wantsHtml) {
+      return new Response(paywallHtml(req.url, listing, feeBps, feeTo), {
+        status: 402,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'x-content-type-options': 'nosniff',
+        },
+      });
+    }
     return Response.json(listing402Body(req.url, listing, feeBps, feeTo), {
       status: 402,
       headers: {
@@ -476,7 +487,74 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
   return new Response(obj.body, { status: 200, headers });
 }
 
-// --- GET /v1/marketplace.json ---
+function escHtml(s: string): string {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+// Human-readable 402 paywall page for browsers (content negotiation:
+// Accept: text/html → this; Accept: application/json / agents → raw JSON).
+function paywallHtml(reqUrl: string, l: Listing, feeBps: number, feeTo: string): string {
+  const priceUsd = (Number(l.price_cents) / 100).toFixed(2);
+  const netUsd = ((Number(l.price_cents) * (10_000 - feeBps)) / 10_000 / 100).toFixed(2);
+  const shortWallet = `${l.merchant_wallet.slice(0, 6)}…${l.merchant_wallet.slice(-4)}`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escHtml(l.title)} — $${priceUsd} USDC paywall · NanoTab Pay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:56px 20px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;font-size:14px}
+.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}
+.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:32px}
+.kicker{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#3ecf8e;font-weight:600}
+h1{font-size:28px;letter-spacing:-.02em;line-height:1.2;margin:10px 0 8px}
+.price{font-size:44px;font-weight:700;letter-spacing:-.03em;line-height:1.1;color:#3ecf8e;margin:14px 0 4px}
+.mut{color:#9fb0c0;font-size:14px}a{color:#3ecf8e}code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:13px;font-family:"IBM Plex Mono",monospace}
+pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;text-align:left;font-size:12.5px;line-height:1.7;white-space:pre-wrap;word-break:break-all;font-family:"IBM Plex Mono",monospace;color:#b7c5d6}
+.foot{color:#7f8fa3;font-size:13px;text-align:center;margin-top:18px}</style></head><body>
+<div class="wrap"><div class="top"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><a href="/marketplace">Marketplace</a></div><div class="card">
+<div class="kicker">Paywalled content · 402 Payment Required</div>
+<h1>${escHtml(l.title)}</h1>
+<div class="price">$${priceUsd} USDC</div>
+<p class="mut">per view · on Base · merchant <code>${shortWallet}</code> · seller receives $${netUsd} after ${feeBps / 100}% fee</p>
+<p>This link is sold to <b>AI agents</b>, not opened directly in a browser. An agent reads the price, pays USDC on Base, and receives the content — automatically, in one flow.</p>
+<p class="mut" style="margin-bottom:6px">How an agent pays:</p>
+<pre>GET ${escHtml(reqUrl)}  →  402 + price in JSON
+Agent pays $${priceUsd} USDC → ${escHtml(l.merchant_wallet)}
+GET same URL + X-Payment proof  →  200 content</pre>
+<p><a href="/marketplace">Browse marketplace</a> · <a href="/">Create your own link</a> · <a href="${escHtml(reqUrl)}" id="j">View machine terms (JSON)</a></p>
+</div><p class="foot">HTTP 402 · ${escHtml(l.mime)} · ${l.bytes} bytes · USDC on Base via x402</p></div>
+<script>document.getElementById('j').onclick=function(e){e.preventDefault();fetch(location.href,{headers:{accept:'application/json'}}).then(function(r){return r.text()}).then(function(t){document.body.innerHTML='<pre style="max-width:860px;margin:24px auto;padding:16px;white-space:pre-wrap;word-break:break-all">'+t.replace(/</g,'&lt;').slice(0,4000)+'</pre>'})};</script>
+</body></html>`;
+}
+
+// Human marketplace page (GET /marketplace); machines keep /v1/marketplace.json.
+async function handleMarketplacePage(req: Request, env: Env): Promise<Response> {
+  const kv = needKv(env);
+  const origin = new URL(req.url).origin;
+  const keys = await listRKeys(kv);
+  const items = (
+    await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
+  )
+    .filter((l): l is Listing => !!l?.slug)
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const cards = items.length
+    ? items.map((l) => {
+        const price = (Number(l.price_cents) / 100).toFixed(2);
+        return `<div class="card"><div class="t">${escHtml(l.title)} <span class="price">$${price}</span></div><div class="m">${l.paid_calls ?? 0} paid calls · ${escHtml(l.mime)} · seller <code>${escHtml(l.merchant_wallet.slice(0, 6))}…${escHtml(l.merchant_wallet.slice(-4))}</code></div><div class="m"><a href="${origin}/r/${l.slug}">${origin}/r/${l.slug}</a></div></div>`;
+      }).join('')
+    : '<div class="card"><i>No public listings yet — <a href="/">publish the first one</a>.</i></div>';
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marketplace — NanoTab Pay paywall links for agents</title>
+<meta name="description" content="Browse pay-per-view links agents buy with USDC on Base. Publish your own in a few clicks.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}.wrap{max-width:760px;margin:0 auto;padding:0 20px 56px}a{color:#3ecf8e}.topbar{border-bottom:1px solid #232b36}.topbar-in{max-width:760px;margin:0 auto;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}nav{font-size:14px}nav a{margin-left:18px;color:#9fb0c0;text-decoration:none}nav a:hover{color:#f2f5f7}h1{font-size:32px;letter-spacing:-.02em;margin:36px 0 8px}.sub{color:#9fb0c0;margin:0 0 24px}.card{background:#12161c;border:1px solid #232b36;border-radius:12px;padding:18px;margin:12px 0}.t{font-weight:600;font-size:16px}.price{color:#3ecf8e}.m{color:#9fb0c0;font-size:14px;margin-top:3px;word-break:break-all}code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:12.5px;font-family:"IBM Plex Mono",monospace}.cta{background:#12161c;border:1px solid #232b36;border-radius:12px;padding:20px;text-align:center;margin-top:24px}</style></head><body>
+<div class="topbar"><div class="topbar-in"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><nav><a href="/">Create</a><a href="/marketplace">Marketplace</a><a href="/stats">Stats</a></nav></div></div>
+<div class="wrap"><h1>Marketplace (${items.length})</h1><p class="sub">Every link is pay-per-view in USDC on Base (x402). Open one in a browser for human terms, or fetch with <code>Accept: application/json</code> for the machine 402 your agent pays. <a href="/v1/marketplace.json">JSON for machines</a></p>${cards}<div class="cta"><b>Selling something agents need?</b><br><span style="color:#9fb0c0">Paste it, price it, share the link.</span><br><a href="/" style="display:inline-block;margin-top:10px;background:#3ecf8e;color:#06281a;font-weight:600;padding:10px 20px;border-radius:10px;text-decoration:none">Create a paywall link</a></div></div></body></html>`;
+  return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=60' } });
+}
 async function handleMarketplace(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
   const origin = new URL(req.url).origin;
@@ -578,21 +656,27 @@ async function handleOwnerDelete(req: Request, env: Env, slug: string): Promise<
   return Response.json({ ok: true, slug });
 }
 
-// --- GET /publish (static paste form; posts to /v1/publish, shows permalink + test-402 curl) ---
+// --- GET /publish (API-key paste form; the email flow on / is the primary path) ---
 function handlePublishPage(): Response {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NanoTab — publish a paywalled listing</title></head><body>
-<h1>Publish a paywalled listing</h1>
-<form id="f">
-<label>title <input name="title" maxlength="200" required></label><br>
-<label>price (USD) <input name="price" type="number" min="0.01" max="100" step="0.01" required></label><br>
-<label>USDC wallet <input name="wallet" pattern="0x[0-9a-fA-F]{40}" required></label><br>
-<label>mime <select name="mime"><option>text/markdown</option><option>text/plain</option><option>text/html</option><option>application/json</option></select></label><br>
-<label>content <textarea name="body" rows="12" cols="60" required></textarea></label><br>
-<label>secret <input name="secret" type="password" required></label><br>
+<title>Publish via API key — NanoTab Pay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif}.wrap{max-width:640px;margin:0 auto;padding:40px 20px 56px}a{color:#3ecf8e}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}h1{font-size:28px;letter-spacing:-.02em;margin:28px 0 8px}.sub{color:#9fb0c0}.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:24px;margin-top:20px}label{display:block;margin:14px 0 5px;color:#9fb0c0;font-size:14px;font-weight:500}input,textarea,select{width:100%;background:#0e1218;border:1px solid #232b36;border-radius:9px;color:#f2f5f7;padding:11px 13px;font-size:15px;font-family:inherit}textarea{font-family:"IBM Plex Mono",monospace;min-height:140px}button{background:#3ecf8e;border:1px solid #3ecf8e;border-radius:10px;color:#06281a;font-weight:600;font-size:15.5px;padding:11px 22px;cursor:pointer;margin-top:16px}pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;white-space:pre-wrap;word-break:break-all;font-size:13px;font-family:"IBM Plex Mono",monospace}</style></head><body>
+<div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a>
+<h1>Publish via API key</h1>
+<p class="sub">Most people should use the <a href="/">email sign-in flow</a> — no key to manage. This page is for automation with the shared <code>X-Nanotab-Key</code> secret. It posts to <code>/v1/publish</code> and shows the test curl commands.</p>
+<div class="card"><form id="f">
+<label>title <input name="title" maxlength="200" required></label>
+<label>price (USD) <input name="price" type="number" min="0.01" max="100" step="0.01" required></label>
+<label>USDC wallet <input name="wallet" pattern="0x[0-9a-fA-F]{40}" required></label>
+<label>mime <select name="mime"><option>text/markdown</option><option>text/plain</option><option>text/html</option><option>application/json</option></select></label>
+<label>content <textarea name="body" rows="12" cols="60" required></textarea></label>
+<label>secret <input name="secret" type="password" required></label>
 <button>publish</button></form>
-<pre id="out"></pre>
+<pre id="out">Your paywall link and test commands appear here. Unpaid: curl the link for a 402. Paid: retry with an X-Payment proof for 200.</pre></div>
+<p class="sub">New here? <a href="/">Create a link with email instead</a> — you keep 98% hosted, agents pay in USDC on Base.</p></div>
 <script>
 const f=document.getElementById('f'),out=document.getElementById('out');
 f.onsubmit=async(e)=>{e.preventDefault();const d=new FormData(f);
@@ -678,6 +762,9 @@ export default {
       }
       if (req.method === 'GET' && pathname === '/.well-known/x402') {
         return handleWellKnown(req, env);
+      }
+      if (req.method === 'GET' && pathname === '/marketplace') {
+        return handleMarketplacePage(req, env);
       }
       if (req.method === 'GET' && pathname === '/v1/marketplace.json') {
         return handleMarketplace(req, env);

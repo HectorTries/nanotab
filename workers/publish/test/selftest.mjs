@@ -52,9 +52,10 @@ const good = () => ({
   check('publish: missing auth → 401', r.status === 401);
   r = await worker.fetch(post(good(), 'wrong'), env, {});
   check('publish: wrong secret → 401', r.status === 401);
-  // Fail closed when no secret configured.
+  // Magic-link session is the primary auth; with no session and no key it
+  // still fails closed with 401 (PUBLISH_KEY unset is not a misconfig).
   r = await worker.fetch(post(good()), { ...env, PUBLISH_KEY: undefined }, {});
-  check('publish: no secret configured → 500 (fail closed)', r.status === 500);
+  check('publish: no key + no session → 401 (fail closed)', r.status === 401);
 }
 
 // --- POST /v1/publish: validation → 400 ---
@@ -163,6 +164,25 @@ let slug, url;
     JSON.stringify(j).slice(0, 160));
 }
 
+// --- Content negotiation: browsers get HTML, agents get JSON ---
+{
+  const htmlRes = await worker.fetch(req(`/r/${slug}`, { headers: { accept: 'text/html,application/xhtml+xml' } }), env, {});
+  const htmlBody = await htmlRes.text();
+  check('get: browser Accept → 402 HTML paywall',
+    htmlRes.status === 402 && (htmlRes.headers.get('content-type') || '').includes('text/html') &&
+    htmlBody.includes('USDC') && htmlBody.includes('402'));
+  const jsonRes = await worker.fetch(req(`/r/${slug}`, { headers: { accept: 'application/json' } }), env, {});
+  check('get: JSON Accept → 402 JSON', jsonRes.status === 402 && (jsonRes.headers.get('content-type') || '').includes('json'));
+  const starRes = await worker.fetch(req(`/r/${slug}`), env, {});
+  check('get: no Accept → 402 JSON (agent default)', starRes.status === 402);
+  const mktPage = await worker.fetch(req('/marketplace'), env, {});
+  const mktHtml = await mktPage.text();
+  check('page: /marketplace → 200 HTML', mktPage.status === 200 && mktHtml.includes('Marketplace') && mktHtml.includes(slug));
+  const home = await worker.fetch(req('/'), env, {});
+  const homeHtml = await home.text();
+  check('page: / → 200 landing with paywall headline', home.status === 200 && homeHtml.includes('Paywall anything'));
+}
+
 // --- GET /publish + 404 ---
 {
   const r = await worker.fetch(req('/publish'), env, {});
@@ -170,7 +190,7 @@ let slug, url;
   check('page: /publish → 200 HTML form',
     r.status === 200 && (r.headers.get('content-type') || '').includes('text/html') &&
     html.includes('<form') && html.includes('price') && html.includes('wallet') &&
-    html.includes('secret') && html.includes('textarea') && html.includes('/v1/publish') &&
+    html.includes('textarea') && html.includes('/v1/publish') &&
     html.includes('curl'));
   const r2not = await worker.fetch(req('/nope'), env, {});
   check('404: unknown route → 404 JSON', r2not.status === 404 && typeof (await r2not.json()).error === 'string');
