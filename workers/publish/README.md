@@ -1,10 +1,17 @@
 # nanotab-publish
 
-NanoTab hosted one-click agent paywalls (MVP step 2). Paste content in,
-get a public `https://pay.nanotab.dev/r/<slug>` URL that returns a 402
+NanoTab hosted one-click agent paywalls (MVP step 2). Upload a document
+(PDF, .md, .txt) or paste content in, get a public
+`https://pay.nanotab.dev/r/<slug>` URL that returns a 402
 challenge to agents/browsers and serves the bytes after a valid x402
 payment (USDC on Base, 2% protocol fee). No arbitrary URL proxying —
 R2-hosted bytes only, so SSRF is structurally impossible.
+
+Storage model: EVERYTHING is converted to markdown and ONLY the markdown
+is kept. Uploads are extracted server-side (`POST /v1/ingest`); the
+original file is discarded in-memory and never persisted or served
+(stated in `/privacy`). The markdown body is the canonical record and
+the only thing served to readers/agents.
 
 Payment verification is shared with the gateway via
 `packages/x402-verify/` (env-agnostic pure helpers + on-chain checks);
@@ -14,21 +21,25 @@ the only semantic delta is per-listing merchant wallet + price from KV.
 
 Pages (Paywall Any Link is the leading product):
 
-- `GET /` — hero “Paywall Any Link in seconds” + step-flow: paste the
-  link → paste/upload the content → set the price → payout wallet →
+- `GET /` — hero “Paywall Any Link in seconds” + step-flow: upload the
+  document (drop zone + browse, or paste with live markdown preview,
+  word/character counts, title auto-fill, free-preview box) → title +
+  Advanced “I already host this” link → set the price → payout wallet →
   **Publish link**. No account, email or sign-in is required: step 4
   takes a USDC-on-Base payout address or generates one in one click
   (**Generate instant wallet**: standard EVM keypair created in the
   browser, address auto-filled, private key shown once with save /
   don't-save choices; the key never leaves the browser). Human links
-  are live instantly; publish success surfaces the `/r/<slug>` HTTP 402
-  agent paywall link plus a copyable `curl -i` test request.
+  are live instantly; publish success surfaces the `/p/<slug>` human
+  page, the `/r/<slug>` HTTP 402 agent paywall link, a copyable `curl`
+  test request, and the free abstract as previewed publicly.
   Keep your link — bookmark it; there is no account to find it in later.
 - `GET /developers` — demoted developer path (self-host, SDKs,
   gateway, machine discovery, agentic submissions).
 - `GET /agent-auth?key=…` — daily review queue: the owner (ADMIN_KEY
   secret, key in URL, no cookies) approves/rejects agent links.
-- `GET /marketplace`, `GET /publish` (plain API form, no credentials).
+- `GET /marketplace`, `GET /publish` (document publish flow: upload /
+  paste → price → wallet, no credentials, sandboxed page).
 - `GET /terms`, `/privacy`, `/refunds` (+ `/refund-policy` alias),
   `/contact`, `/about` — plain-English trust pages, linked in every
   footer. Contact: support@nanotab.dev.
@@ -48,12 +59,22 @@ Pages (Paywall Any Link is the leading product):
 
 APIs:
 
+- `POST /v1/ingest` — multipart `file` (PDF, .md/.markdown/.txt,
+  ≤10MB). Extracts canonical markdown server-side (PDF text layer via
+  unpdf/pdfjs, `.md`/`.txt` sanitised + normalised) and returns
+  `{markdown, title, chars, words, filename, pages?}`. NOTHING is
+  persisted — the original bytes are discarded in-memory. Refuses
+  politely: >200,000 extracted chars, executables/archives (magic-byte
+  sniffed), scanned PDFs (“This PDF has no selectable text — paste the
+  text instead.”). Rate limited per IP (3/min, 10/hour → 429).
 - `POST /v1/publish` — accountless: no credentials needed, works with
   zero cookies. Body `{title, mime,
   price_cents (int 1–10000), merchant_wallet (0x…), body_b64 (≤1MB
   decoded), source_url?}`. Mime allowlist: `text/plain`,
   `text/markdown`, `text/html`, `application/json`, `application/pdf`,
-  `image/png`, `image/jpeg`. → `201 {url, slug, x402: {accepts}}`.
+  `image/png`, `image/jpeg`. Text mimes are capped at 200,000 chars;
+  `text/markdown` is sanitised before storage (byte-identical no-op on
+  benign input). → `201 {url, page_url, slug, abstract, x402: {accepts}}`.
 - `POST /v1/agent/submit` — agent submissions, auth `X-Agent-Key` =
   `AGENT_KEY` secret (unset = disabled, fail closed). Same body plus
   `agent_name?`. Every submission is auto-reviewed by TypeSafe Jev
@@ -94,10 +115,11 @@ APIs:
 - `GET /stats`, `GET /.well-known/x402` — free, gateway parity.
 
 Storage: KV `NANOTAB_LISTINGS` (`r:<slug>` metadata, `listing:<slug>`
-paid counters) + R2 `nanotab-content` (`r/<slug>` bytes). Missing
+paid counters) + R2 `nanotab-content` (`r/<slug>` bytes, markdown only —
+see storage model above; typical listing 5–20 KB). Missing
 bindings → 500 with a clear message; there is no in-memory fallback.
 
-## Dev / test (local only — do NOT deploy, no real resources yet)
+## Dev / test
 
 Needs `wrangler` (via `npx -y wrangler@3` or on PATH). Local dev
 emulates KV/R2 automatically:
@@ -105,7 +127,9 @@ emulates KV/R2 automatically:
 ```sh
 cd workers/publish
 npx -y wrangler@3 dev --var ADMIN_KEY:dev-admin --var AGENT_KEY:dev-agent   # :8788
-node test/selftest.mjs   # offline suite (no server needed)
+node test/selftest.mjs       # offline suite (no server needed)
+node test/selftest-jev.mjs   # Jev auto-review suite (mocked fetch)
+node test/ingest.test.mjs    # ingest route + helpers + page contract
 ```
 
 Secrets (Cloudflare, never in repo):

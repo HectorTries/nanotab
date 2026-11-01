@@ -38,7 +38,7 @@ import {
   verifyPayment,
   type PaymentProof,
 } from '../../../packages/x402-verify/src/index.ts';
-import { landingHtml, developersHtml, agentAuthHtml, termsHtml, privacyHtml, refundsHtml, contactHtml, aboutHtml, walletGuideHtml, demoHtml } from './landing.ts';
+import { landingHtml, developersHtml, agentAuthHtml, termsHtml, privacyHtml, refundsHtml, contactHtml, aboutHtml, walletGuideHtml, demoHtml, publishHtml } from './landing.ts';
 import { isBlockedDomain } from './blocklist.ts';
 import {
   IngestError,
@@ -1269,43 +1269,12 @@ async function listRKeys(kv: KVNamespace): Promise<string[]> {
 // Publishers keep their /r/<slug> + /p/<slug> links — bookmark them.
 // There is no per-account dashboard to recover a lost link from.)
 
-// --- GET /publish (API paste form; the accountless flow on / is the primary path) ---
+// --- GET /publish (content ingestion: upload a document, mint a paywall) ---
 function handlePublishPage(): Response {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Publish via API key — NanoTab Pay</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif}.wrap{max-width:640px;margin:0 auto;padding:40px 20px 56px}a{color:#3ecf8e}.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}h1{font-size:28px;letter-spacing:-.02em;margin:28px 0 8px}.sub{color:#9fb0c0}.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:24px;margin-top:20px}label{display:block;margin:14px 0 5px;color:#9fb0c0;font-size:14px;font-weight:500}input,textarea,select{width:100%;background:#0e1218;border:1px solid #232b36;border-radius:9px;color:#f2f5f7;padding:11px 13px;font-size:15px;font-family:inherit}textarea{font-family:"IBM Plex Mono",monospace;min-height:140px}button{background:#3ecf8e;border:1px solid #3ecf8e;border-radius:10px;color:#06281a;font-weight:600;font-size:15.5px;padding:11px 22px;cursor:pointer;margin-top:16px}pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;white-space:pre-wrap;word-break:break-all;font-size:13px;font-family:"IBM Plex Mono",monospace}</style></head><body>
-<div class="wrap"><a class="logo" href="/"><span>N</span>NanoTab Pay</a>
-<h1>Publish via API</h1>
-<p class="sub">Most people should use the <a href="/">accountless create flow</a> — no account, no email, no key. This page is for automation: it posts to <code>/v1/publish</code> (no credentials needed) and shows the test curl commands. Keep your link — bookmark it after you publish.</p>
-<div class="card"><form id="f">
-<label>title <input name="title" maxlength="200" required></label>
-<label>price (USD) <input name="price" type="number" min="0.01" max="100" step="0.01" required></label>
-<label>USDC wallet <input name="wallet" pattern="0x[0-9a-fA-F]{40}" required></label>
-<label>mime <select name="mime"><option>text/markdown</option><option>text/plain</option><option>text/html</option><option>application/json</option></select></label>
-<label>content <textarea name="body" rows="12" cols="60" required></textarea></label>
-<button>publish</button></form>
-<pre id="out">Your agent paywall link (HTTP 402) and test commands appear here. Unpaid: curl the link for a 402 with the price. Paid: retry with an X-Payment proof for 200.</pre></div>
-<p class="sub">New here? <a href="/">Create a link with no account</a> — you keep 98% hosted (NanoTab keeps 2%), agents pay in USDC on Base. No wallet yet? Generate one in the browser on the create page, or read the <a href="/wallet-guide">plain-English wallet guide</a>.</p><p class="sub" style="text-align:center;font-size:13px"><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
-<script>
-const f=document.getElementById('f'),out=document.getElementById('out');
-f.onsubmit=async(e)=>{e.preventDefault();const d=new FormData(f);
-const price_cents=Math.round(parseFloat(d.get('price'))*100);
-const body={title:d.get('title'),mime:d.get('mime'),price_cents,
-merchant_wallet:d.get('wallet'),body_b64:btoa(unescape(encodeURIComponent(d.get('body'))))};
-const hdrs={'content-type':'application/json'};
-const r=await fetch('/v1/publish',{method:'POST',headers:hdrs,body:JSON.stringify(body)});
-const j=await r.json();
-if(!r.ok){out.textContent='error '+r.status+': '+j.error;return;}
-const curl='curl -i '+j.url;
-out.textContent='agent paywall link (HTTP 402): '+j.url+'\\nexample agent request: '+curl+'  # unpaid -> 402 + price in JSON; pay USDC on Base, retry with X-Payment for 200';};
-</script></body></html>`;
-  return new Response(html, {
+  return new Response(publishHtml(), {
     headers: {
       'content-type': 'text/html; charset=utf-8',
-      'content-security-policy': "sandbox allow-scripts",
+      'content-security-policy': 'sandbox allow-scripts allow-modals',
       'x-content-type-options': 'nosniff',
     },
   });

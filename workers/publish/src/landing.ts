@@ -166,6 +166,36 @@ footer{color:var(--mut2);font-size:13.5px;text-align:center;padding:48px 0 40px;
 .queue-item .t{font-weight:600;font-size:16px}
 .queue-item .m{color:var(--mut);font-size:14px;margin-top:3px;word-break:break-all}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+.dropzone{border:2px dashed var(--line2);border-radius:10px;padding:20px;text-align:center;color:var(--mut);cursor:pointer;margin-top:8px;background:var(--panel2)}
+.dropzone.over{border-color:var(--acc);background:rgba(62,207,142,.07);color:var(--txt)}
+.dropzone b{color:var(--txt)}
+.dropzone input[type=file]{border:0;background:none;padding:0;margin:12px auto 0;font-size:13.5px;display:block}
+.dropzone.busy{opacity:.65;cursor:wait}
+.seg{display:flex;gap:8px;margin:12px 0 0}
+.seg .ghost.on{border-color:var(--acc);color:var(--acc)}
+.counts{font-size:13px;color:var(--mut2);margin-top:6px}
+.md-preview{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px 16px;font-size:14.5px;line-height:1.65;max-height:340px;overflow:auto;margin-top:8px;word-break:break-word}
+.md-preview h1{font-size:21px;margin:12px 0 6px;letter-spacing:-.01em}
+.md-preview h2{font-size:18px;margin:12px 0 6px}
+.md-preview h3{font-size:16px;margin:10px 0 4px}
+.md-preview h4,.md-preview h5,.md-preview h6{font-size:14.5px;margin:10px 0 4px}
+.md-preview p{margin:8px 0}
+.md-preview ul,.md-preview ol{margin:8px 0;padding-left:24px}
+.md-preview li{margin:3px 0}
+.md-preview pre{background:#07090c;border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;font-family:"IBM Plex Mono",monospace;font-size:13px}
+.md-preview code{font-size:13px}
+.md-preview blockquote{border-left:3px solid var(--acc);margin:8px 0;padding:2px 12px;color:var(--mut)}
+.md-preview table{border-collapse:collapse;width:100%;font-size:13.5px;margin:10px 0}
+.md-preview th,.md-preview td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+.md-preview th{background:#0a0e13}
+.md-preview hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+.md-preview .mut{color:var(--mut2)}
+details.advanced{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--panel2)}
+details.advanced summary{cursor:pointer;color:var(--mut);font-size:14px;font-weight:600}
+details.advanced summary:hover{color:var(--txt)}
+.freeprev{margin-top:14px}
+.freeprev .preview-label{display:inline-block;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc-ink);background:var(--acc);font-weight:700;border-radius:999px;padding:2px 12px;margin-bottom:8px}
+.hint.busy{color:var(--warn)}
 `;
 
 function head(title: string, desc: string): string {
@@ -201,215 +231,8 @@ function topbarPlain(ctaHref: string, ctaLabel: string): string {
 
 const FOOTER_PLAIN = `<footer>NanoTab Pay · <a href="/#how">How it works</a> · <a href="/#faq">Questions</a> · <a href="/marketplace">Browse links</a> · <a href="/developers">For developers</a> · <a href="https://nanotab.dev">nanotab.dev</a><br>Paywall any link in seconds. You set the price. You keep 98% of every payment (NanoTab keeps 2%).<br>${TRUST_LINKS}</footer>`;
 
-export function landingHtml(): string {
-  return head(
-    'NanoTab Pay — Paywall Any Link in seconds',
-    'Paywall any link in seconds. AI agents pay to read it. You get paid every time. You set the price — paid automatically, no account needed for readers.'
-  ) + topbarPlain('#create', 'Paywall a link') + `
-<div class="wrap">
-<div class="hero">
-<div>
-<div class="badge">Free to start &nbsp;·&nbsp; Takes about a minute</div>
-<h1>Paywall any link <span class="accent">in seconds.</span></h1>
-<p class="sub"><b>AI agents pay to read your link; humans can too.</b> Same link, same price. <b>You get paid every time.</b></p>
-<p class="sub" style="font-size:16px">You set the price. Readers pay in USDC on Base — you keep 98% of every payment, NanoTab keeps 2%.</p>
-<p class="who-line">For <b>writers</b> with articles and guides, <b>experts</b> with reports and research, and <b>anyone</b> with a useful list or know-how worth reading.</p>
-<div class="hero-ctas"><a class="btn" href="#create">Paywall a link</a><a class="btn secondary" href="#how">See how it works</a></div>
-<p class="hero-note"><a href="/r/DemoSample">Try it: pay $0.05 to read a sample</a> · <a href="/demo">What is this demo?</a></p>
-<p class="hero-note" id="hero-stats">Live now — we are new, so early sellers stand out. <a href="/stats">See live stats</a></p>
-<p class="hero-note">Nobody needs a NanoTab account — not readers, not you. Agents pay automatically; a person pays with a USDC wallet on Base. No card checkout. Posting needs no account either: paste, price, publish.</p>
-</div>
-<div class="preview" aria-label="What readers and agents see">
-<div class="preview-head"><span><b>What readers &amp; agents see</b></span><span>Your new link</span></div>
-<div class="preview-body">
-<div class="mock-title">My complete guide to growing tomatoes</div>
-<div class="mock-price">$0.25</div>
-<div class="mock-line">USDC on Base · to read in full</div>
-<span class="mock-btn">Pay $0.25 &amp; read →</span>
-<div class="mock-line">An AI agent pays this automatically. A person can pay too, with a wallet. <b>No NanoTab account either way.</b></div>
-<hr class="flow-sep">
-<div class="mock-line"><b>What you see:</b> $0.245 lands in your wallet (98% of $0.25), every time. Each paid read is counted, so you always know what you have earned.</div>
-</div>
-<div class="preview-foot">One link for agents and people: they pay, then read — <b>every time</b>.</div>
-</div>
-</div>
-<div id="create" style="scroll-margin-top:80px">
-<div class="card">
-<h2>Paywall a link<span class="step-tag">Start here</span></h2>
-<p class="card-sub">Four short steps. <b style="color:var(--txt)">No account needed</b> — no email, no sign-in, no password. Paste your words, set a price, add a payout wallet (or generate one in one click below), and publish. Your link goes live straight away. Keep your link — bookmark it after you publish. There are no accounts, so there is no dashboard to find it in later.</p>
-<div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="dot-1"></span><span class="wiz-dot" id="dot-2"></span><span class="wiz-dot" id="dot-3"></span><span class="wiz-dot" id="dot-4"></span></span><span id="wiz-label">Step 1 of 4 — Your link</span></div>
-<div class="wiz-panel" id="panel-1">
-<label for="p-link">1 · Link you want to charge for</label>
-<input id="p-link" type="url" placeholder="https://your-site.com/your-article" autocomplete="off" spellcheck="false">
-<div class="hint">The page your work already lives on. No page yet? Leave this blank — your words in the next step are enough.</div>
-<label for="p-title">Give it a short title</label><input id="p-title" maxlength="200" placeholder="e.g. My guide to growing tomatoes">
-<div class="hint">Leave this blank if you like — we will use your link name instead.</div>
-<div class="wiz-nav"><button type="button" class="btn" onclick="goStep(2)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
-</div>
-<div class="wiz-panel hidden" id="panel-2">
-<label for="p-kind">What are you sharing?</label>
-<select id="p-kind">
-<option value="short">A short read (a few minutes)</option>
-<option value="article" selected>An article or guide</option>
-<option value="report">A report or research</option>
-<option value="list">A list or spreadsheet</option>
-<option value="other">Something else</option>
-</select>
-<div class="hint">This only suggests a sensible price in the next step — you can always change it there.</div>
-<label for="p-body">2 · Words behind your link</label><textarea id="p-body" placeholder="Paste your full article, guide, or notes here… Only people who pay will see this."></textarea>
-<div class="hint">Only people who pay will see these words. Everyone else sees the price and the title. Paste the words themselves — a link on its own is not enough, because anyone could open the original. See <a href="#paywall-how">how the paywall actually works</a>.</div>
-<label for="p-file">…or add a file instead</label>
-<input id="p-file" type="file" accept=".txt,.md,.markdown,.json,.html,text/plain,text/markdown,application/json,text/html">
-<div class="hint" id="file-hint">Simple text files work best, up to 1 MB. Adding a file fills the box above. Nothing leaves this browser until you share.</div>
-<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(1)">← Back</button><button type="button" class="btn" onclick="goStep(3)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
-</div>
-<div class="wiz-panel hidden" id="panel-3">
-<label for="p-price">3 · Price each time someone reads</label>
-<div class="chips" role="group" aria-label="Suggested prices">
-<button type="button" class="chip" data-price="0.05" onclick="pickPrice('0.05')">$0.05</button>
-<button type="button" class="chip on" data-price="0.25" onclick="pickPrice('0.25')">$0.25</button>
-<button type="button" class="chip" data-price="1.00" onclick="pickPrice('1.00')">$1.00</button>
-</div>
-<div class="price-row"><input id="p-price" type="number" min="0.01" max="100" step="0.01" value="0.25"></div>
-<div class="earn-preview" id="earn-preview"></div>
-<div class="hint">Tap a price above, or type your own. Prices are in US dollars — readers pay that amount in USDC on Base. You can charge as little as $0.01.</div>
-<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(2)">← Back</button><button type="button" class="btn" onclick="goStep(4)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
-</div>
-<div class="wiz-panel hidden" id="panel-4">
-<h3 style="margin:4px 0 2px;font-size:17px">4 · Where should we send your money?</h3>
-<label for="p-payto">Your USDC wallet address on Base</label>
-<div class="payto-row"><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false"><button type="button" class="btn-gen" id="btn-generate-wallet" onclick="generateInstantWallet()">⚡ Generate instant wallet</button></div>
-<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. Posting needs no account: this address is all we need to pay you.</div>
-<div class="hint">No wallet yet? Tap <b>Generate instant wallet</b> — it creates a wallet in your browser in one click. The wallet is yours and self-custodied: NanoTab never sees the private key. Funds go to the address above in USDC on Base. <b>If you lose the private key, the funds at that address are lost</b> — we cannot recover it. Already have a wallet? Paste its address instead. See our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free). NanoTab will never ask you to send a private key anywhere.</div>
-<div id="wallet-panel" class="pk-panel hidden">
-<div class="pk-warn"><b>Your new wallet — save this private key now.</b> This key controls your payouts. Anyone who has it can take the money. Store it in a password manager. We cannot recover it.</div>
-<label for="p-pk">Private key (shown once)</label>
-<div class="pk-row"><input id="p-pk" type="password" readonly value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button type="button" class="ghost" id="btn-pk-toggle" onclick="togglePkVisibility()">Show</button><button type="button" class="ghost" id="btn-pk-copy" onclick="copyPrivateKey()">Copy key</button></div>
-<div class="hint" id="wallet-addr-note"></div>
-<div class="pk-actions"><button type="button" class="ghost" id="btn-pk-save" onclick="saveWalletOnDevice()">Save on this device</button><button type="button" class="ghost" id="btn-pk-nosave" onclick="dontSaveWallet()">Don't save on this device</button><button type="button" class="ghost" id="btn-pk-clear" onclick="clearWalletFromScreen()">Hide &amp; clear from screen</button></div>
-<div class="hint" id="wallet-save-note">The key is generated in your browser and never sent to any server. It is only saved if you tap Save on this device. Don't save keeps it in this tab's memory until you close the tab.</div>
-</div>
-<div id="wallet-saved-note" class="hint hidden"></div>
-<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
-</div>
-<div id="pub-out"></div>
-<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and your paywall is live instantly. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
-</div>
-<div class="card">
-<h2>Keep your link — bookmark it</h2>
-<p class="card-sub">There are no accounts and no dashboard. When you publish, save the link from the confirmation and bookmark it — that URL is how you and your readers find the paywall again. Payments go straight to your wallet, so you do not need to come back here to get paid.</p>
-</div>
-</div>
-<div class="audience" aria-label="Who NanoTab Pay is for">
-<div class="aud"><h3>Writers</h3><p>Articles, guides, and notes you have already written. Paste them once, then share your new link wherever your readers are.</p></div>
-<div class="aud"><h3>Experts</h3><p>Reports, research, and hard-won know-how. Charge each time someone reads in full, and watch every read add up.</p></div>
-<div class="aud"><h3>List makers</h3><p>Useful lists, sheets, and round-ups people need again and again. One link, paid fairly every time it is opened.</p></div>
-</div>
-<section class="block" id="how" style="scroll-margin-top:80px" aria-label="How it works">
-<h2>How it works</h2>
-<p class="secsub">Three steps, start to paid. If you can copy and paste, you can do this.</p>
-<div class="steps">
-<div class="step"><span class="n">Step 1</span><h3>Add your link and words</h3><p>Paste the link, paste the words behind it, and give it a title. It takes about a minute.</p></div>
-<div class="step"><span class="n">Step 2</span><h3>Share your new link</h3><p>You get one short link to share anywhere — your site, your newsletter, your social posts.</p></div>
-<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. Keep your link — bookmark it, because there is no account dashboard to look it up in.</p></div>
-</div>
-</section>
-<section class="block" id="paywall-how" style="scroll-margin-top:80px" aria-label="How the paywall actually works">
-<h2>How the paywall actually works</h2>
-<p class="secsub">No fine print, no magic. This is exactly what the link does — and what it cannot do.</p>
-<div class="steps">
-<div class="step"><span class="n">Pasted words</span><h3>Hosted by NanoTab</h3><p>Words you paste (or a file you add) are stored by NanoTab and only served after payment. There is no way to read them through your NanoTab link without paying — the unpaid answer is just the price.</p></div>
-<div class="step"><span class="n">Public links</span><h3>The original stays open</h3><p>If the same words are also free at a public link, that link stays reachable — we cannot lock a page we do not host. The paywall covers the copy behind your NanoTab link. For real protection, paste the words here, or link only to a page you control.</p></div>
-<div class="step"><span class="n">After paying</span><h3>Personal read, no resale</h3><p>Paying unlocks a personal read. Like anything readable online, the words could technically be copied — we will not pretend otherwise. Our <a href="/terms">Terms</a> say no copying for resale or redistribution; the paywall controls who gets access in the first place.</p></div>
-</div>
-</section>
-<section class="block" aria-label="What you earn">
-<h2>What you earn</h2>
-<p class="secsub">You set the price. Readers pay in USDC on Base, and 98% goes straight to your wallet.</p>
-<div class="earn-grid">
-<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Your share of every payment</div><div class="price-big">You keep 98¢ of every $1</div><p>That is 98% of every payment. NanoTab keeps 2% to run the service and look after your links. Amounts settle in USDC on Base, straight to your wallet. Readers always pay exactly the price you set.</p>
-<div class="earn-rows"><div class="earn-row"><span>You charge $0.05</span><b>You receive $0.049</b></div><div class="earn-row"><span>You charge $0.25</span><b>You receive $0.245</b></div><div class="earn-row"><span>You charge $1.00</span><b>You receive $0.98</b></div></div></div>
-<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Every paid read is paid straight to your wallet — keep your links bookmarked, there is no account dashboard.</p>
-<div class="earn-rows"><div class="earn-row"><span>To start</span><b>$0</b></div><div class="earn-row"><span>Each month</span><b>$0</b></div><div class="earn-row"><span>NanoTab fee</span><b>2% of each payment</b></div></div></div>
-</div>
-</section>
-<section class="block" id="faq" style="scroll-margin-top:80px" aria-label="Common questions">
-<h2>Common questions</h2>
-<p class="secsub">Short answers, in plain English.</p>
-<details class="faq-item"><summary>Do my readers need an account?</summary><p>No NanoTab account. AI agents pay automatically. A person paying needs a USDC wallet on Base — there is no card checkout. Either way, they pay and read straight away.</p></details>
-<details class="faq-item"><summary>Do I need an account to publish?</summary><p>No. There are no accounts at all — no email, no sign-in, no password. Paste your words, set a price, give a payout wallet address (or generate one in one click), and publish: the link is live straight away. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></details>
-<details class="faq-item"><summary>How do I get paid?</summary><p>Straight to your USDC wallet on Base — there is no NanoTab balance to withdraw from. Every payment is split on-chain: 98% to your wallet, 2% to NanoTab. Bring your own wallet address, or tap Generate instant wallet on the create page: it creates a wallet in your browser and the funds go to that address in USDC on Base. See our <a href="/wallet-guide">plain-English wallet guide</a>.</p></details>
-<details class="faq-item"><summary>What does NanoTab cost?</summary><p>2% of each payment on hosted links — you keep 98%. No monthly fee. The developer self-host path is 0.1%; see <a href="/developers">For developers</a>.</p></details>
-<details class="faq-item"><summary>What can I paywall?</summary><p>Almost any link that is yours to share: an article, guide, report, list, or file. If you wrote it, made it, or have permission to share it, you can charge for it.</p></details>
-<details class="faq-item"><summary>Can readers just open my original page instead?</summary><p>If the same words are also free at a public link, yes — that link stays open, and we say so plainly. The paywall protects the copy stored behind your NanoTab link. Paste the words into NanoTab, or share only a link you control. Full detail: <a href="#paywall-how">How the paywall actually works</a>.</p></details>
-<details class="faq-item"><summary>Can people copy or resell what they bought?</summary><p>Paying unlocks a personal read. Like anything readable online it could technically be copied, so we do not pretend otherwise — our <a href="/terms">Terms</a> say no redistribution or resale, and the paywall still controls who gets access in the first place.</p></details>
-<details class="faq-item"><summary>I do not have a crypto wallet. Can I still sell?</summary><p>Yes. Tap <b>Generate instant wallet</b> in step 4 — it creates a standard wallet in your browser in one click and fills in the payout address for you. The wallet is yours and self-custodied: the private key is shown once in your browser and never sent to NanoTab or any server. Store it in a password manager. Funds go to that address in USDC on Base, and if the key is lost the funds are lost — we cannot recover it. Prefer your own wallet app instead? Paste its Base address. Background: the <a href="/wallet-guide">wallet guide</a>.</p></details>
-</section>
-<div class="card" style="text-align:center">
-<h2>Building with code?</h2>
-<p style="color:var(--mut)">There is a separate page for builders, with all the extra detail kept off this page.</p>
-<a class="btn secondary" href="/developers" style="margin-top:8px">For developers →</a>
-</div>
-<div class="card" style="text-align:center">
-<h2>Your words are already worth something.</h2>
-<p style="color:var(--mut)">Paste the link, set the price, share it. The next reader who needs it pays you.</p>
-<p style="margin-top:10px"><a href="#create">Paywall your first link →</a> · <a href="/demo">Try the $0.05 sample first</a></p>
-</div>
-${FOOTER_PLAIN}
-</div>
-<script>
-var $=function(id){return document.getElementById(id)};
-var stepNow=1;
-var LABELS={1:'Step 1 of 4 — Your link',2:'Step 2 of 4 — Your words',3:'Step 3 of 4 — Your price',4:'Step 4 of 4 — Your wallet'};
-var PRICES={short:'0.05',article:'0.25',report:'1.00',list:'0.25',other:'0.25'};
-async function req(p,o){o=o||{};if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
-var DKEY='nt_draft';
-function saveDraft(){try{localStorage.setItem(DKEY,JSON.stringify({l:$('p-link').value,t:$('p-title').value,k:$('p-kind').value,p:$('p-price').value,w:$('p-payto').value,b:$('p-body').value}))}catch(e){}}
-function restoreDraft(){try{var d=JSON.parse(localStorage.getItem(DKEY)||'null');if(!d)return;if(d.l)$('p-link').value=d.l;if(d.t)$('p-title').value=d.t;if(d.k)$('p-kind').value=d.k;if(d.p)$('p-price').value=d.p;if(d.w)$('p-payto').value=d.w;if(d.b)$('p-body').value=d.b;}catch(e){}}
-function clearDraft(){try{localStorage.removeItem(DKEY)}catch(e){}}
-function markChips(){var v=parseFloat($('p-price').value);var s=isNaN(v)?'':v.toFixed(2);var chips=document.querySelectorAll('.chip');for(var i=0;i<chips.length;i++){chips[i].classList.toggle('on',Number(chips[i].dataset.price).toFixed(2)===s)}}
-function fmtPrice(v){return '$'+v.toFixed(2)}
-function updateEarn(){var el=$('earn-preview');if(!el)return;var v=parseFloat($('p-price').value);if(!(v>0)){el.textContent='Type a price above — readers pay that amount each time.';return}el.innerHTML='Readers pay <b>'+fmtPrice(v)+'</b> in USDC on Base each time. You receive <b>'+fmtPrice(v*0.98)+'</b> (98%) straight to your wallet — NanoTab keeps 2% ('+fmtPrice(v*0.02)+').'}
-function pickPrice(v){$('p-price').value=v;markChips();updateEarn();saveDraft()}
-function showStep(n){
- stepNow=n;
- for(var i=1;i<=4;i++){$('panel-'+i).classList.toggle('hidden',i!==n);$('dot-'+i).classList.toggle('on',i<=n)}
- $('wiz-label').textContent=LABELS[n];
-}
-function checkLink(){
- var link=$('p-link').value.trim(),title=$('p-title').value.trim();
- if(link&&!/^https?:\\/\\//i.test(link))return 'That link needs to start with http:// or https:// — or clear it and just share your words.';
- if(!title&&!link)return 'Give your link a short title so readers know what it is.';
- return null;
-}
-function checkWords(){
- var e=checkLink();if(e)return e;
- if(!$('p-body').value.trim())return 'Add your words first: paste them in step 2, or add a file.';
- var price=parseFloat($('p-price').value);
- if(!(price>0)||price>100)return 'Set a price between $0.01 and $100.';
- return null;
-}
-function goStep(n){
- if(n>stepNow){
-   if(n>=2){var e1=checkLink();if(e1){$('pub-out').innerHTML='<div class="out">'+e1+'</div>';showStep(1);return}}
-   if(n>=3&&!$('p-body').value.trim()){$('pub-out').innerHTML='<div class="out">Add your words first: paste them here, or add a file.</div>';showStep(2);return}
-   if(n>=4){var pr=parseFloat($('p-price').value);if(!(pr>0)||pr>100){$('pub-out').innerHTML='<div class="out">Set a price between $0.01 and $100 first.</div>';showStep(3);return}}
- }
- $('pub-out').innerHTML='';
- showStep(n);saveDraft();
-}
-['p-link','p-title','p-price','p-payto','p-body'].forEach(function(id){$(id).addEventListener('input',function(){saveDraft();if(id==='p-price'){markChips();updateEarn()}})});
-$('p-kind').addEventListener('change',function(){pickPrice(PRICES[this.value]||'0.25')});
-$('p-file').addEventListener('change',function(){
- var f=$('p-file').files&&$('p-file').files[0];if(!f)return;
- if(f.size>1024*1024){$('file-hint').textContent='That file is over 1 MB — paste a smaller piece instead.';return}
- var rd=new FileReader();
- rd.onload=function(){$('p-body').value=String(rd.result||'');saveDraft();$('file-hint').textContent='Added '+f.name+' into the box above. Nothing is shared until you tap Publish link.'};
- rd.onerror=function(){$('file-hint').textContent='Could not read that file — paste your words instead.'};
- rd.readAsText(f);
-});
-restoreDraft();markChips();updateEarn();showStep(1);
-/* Instant wallet: standard EVM keypair generated IN THE BROWSER. Mirrors
+export function walletJs(): string {
+  return `/* Instant wallet: standard EVM keypair generated IN THE BROWSER. Mirrors
    viem generatePrivateKey + privateKeyToAccount (secp256k1 + Keccak-256 +
    EIP-55) with no library load and no network call: randomness comes from
    crypto.getRandomValues and derivation is the local BigInt math below.
@@ -575,7 +398,346 @@ function forgetSavedWallet(){
 }
 document.addEventListener('visibilitychange',function(){
  if(document.hidden){var f=$('p-pk');if(f&&f.type==='text'){f.type='password';var b=$('btn-pk-toggle');if(b)b.textContent='Show'}}
-});
+});`;
+}
+export function ingestJs(): string {
+  return `/* Content-ingestion helpers (shared by / and /publish): file upload to
+   POST /v1/ingest, live markdown preview, word/character counts, and the
+   approximate free preview. Preview rendering is safe by construction: raw
+   text is HTML-escaped first, then only our own tags are emitted — embedded
+   <script>, on* attributes and javascript: URLs can never reach the DOM. */
+function mdEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function mdOkUrl(u){return /^(https?:|mailto:|#)/i.test(u)}
+function mdInline(raw){
+ var s=mdEsc(raw);var codes=[];
+ s=s.replace(/\\x60([^\\x60\\n]+)\\x60/g,function(m,c){codes.push(c);return '@@NTCODE'+(codes.length-1)+'@@'});
+ s=s.replace(/!\\[([^\\]]*)\\]\\(([^)\\s]+)(?:\\s+"[^"]*")?\\)/g,function(m,t,u){return mdOkUrl(u)?'<a href="'+u+'" rel="noopener" target="_blank">[image: '+t+']</a>':'[image: '+t+']'});
+ s=s.replace(/\\[([^\\]]+)\\]\\(([^)\\s]+)(?:\\s+"[^"]*")?\\)/g,function(m,t,u){return mdOkUrl(u)?'<a href="'+u+'" rel="noopener" target="_blank">'+t+'</a>':t});
+ s=s.replace(/\\*\\*([^*]+)\\*\\*/g,'<strong>$1</strong>').replace(/__([^_]+)__/g,'<strong>$1</strong>');
+ s=s.replace(/\\*([^*\\n]+)\\*/g,'<em>$1</em>');
+ s=s.replace(/@@NTCODE(\\d+)@@/g,function(m,i){return '<code>'+codes[+i]+'</code>'});
+ return s;
+}
+function renderMd(src){
+ var lines=String(src==null?'':src).split('\\n'),out=[],i=0,n=lines.length,para=[];
+ function flush(){if(para.length){out.push('<p>'+para.join('<br>')+'</p>');para=[]}}
+ while(i<n){
+  var line=lines[i];
+  if(/^\\x60\\x60\\x60/.test(line)){flush();var buf=[];i++;
+   while(i<n&&!/^\\x60\\x60\\x60/.test(lines[i])){buf.push(lines[i]);i++}
+   i++;out.push('<pre><code>'+mdEsc(buf.join('\\n'))+'</code></pre>');continue}
+  if(/^\\s*$/.test(line)){flush();i++;continue}
+  var h=/^(#{1,6})\\s+(.+)$/.exec(line);
+  if(h){flush();var ht=h[2].replace(/\\s#+\\s*$/,'');out.push('<h'+h[1].length+'>'+mdInline(ht)+'</h'+h[1].length+'>');i++;continue}
+  if(/^\\s*(-{3,}|\\*{3,}|_{3,})\\s*$/.test(line)){flush();out.push('<hr>');i++;continue}
+  if(/^\\s*>/.test(line)){flush();var q=[];while(i<n&&/^\\s*>/.test(lines[i])){q.push(mdInline(lines[i].replace(/^\\s*>\\s?/,'')));i++}out.push('<blockquote>'+q.join('<br>')+'</blockquote>');continue}
+  var lm=/^\\s*(?:[-*+]|\\d+[.)])\\s+(.+)$/.exec(line);
+  if(lm){flush();var items=[],ord=/^\\s*\\d/.test(line);
+   while(i<n){var m2=/^\\s*(?:[-*+]|\\d+[.)])\\s+(.+)$/.exec(lines[i]);if(!m2)break;items.push('<li>'+mdInline(m2[1])+'</li>');i++}
+   out.push((ord?'<ol>':'<ul>')+items.join('')+(ord?'</ol>':'</ul>'));continue}
+  if(/^\\s*\\|/.test(line)&&i+1<n&&/^\\s*\\|?[\\s:|\\-]+\\|[\\s:|\\-]*$/.test(lines[i+1])){
+   flush();
+   var cells=function(r){var t=r.replace(/^\\s+|\\s+$/g,'').replace(/^\\|/,'').replace(/\\|$/,'');return t.split('|')};
+   var trim=function(c){return c.replace(/^\\s+|\\s+$/g,'')};
+   var hd=cells(line);i+=2;var rows=[];
+   while(i<n&&/^\\s*\\|/.test(lines[i])){rows.push(cells(lines[i]));i++}
+   var t='<table><thead><tr>'+hd.map(function(c){return '<th>'+mdInline(trim(c))+'</th>'}).join('')+'</tr></thead>';
+   if(rows.length){t+='<tbody>'+rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+mdInline(trim(c))+'</td>'}).join('')+'</tr>'}).join('')+'</tbody>'}
+   out.push(t+'</table>');continue}
+  para.push(mdInline(line));i++;
+ }
+ flush();
+ return out.join('\\n')||'<p class="mut">Nothing to preview yet.</p>';
+}
+function mdPlain(src){
+ var t=String(src==null?'':src);
+ t=t.replace(/\\x60\\x60\\x60[\\s\\S]*?\\x60\\x60\\x60/g,' ');
+ t=t.replace(/!\\[[^\\]]*\\]\\([^)]*\\)/g,' ');
+ t=t.replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g,'$1');
+ t=t.replace(/\\x60([^\\x60]+)\\x60/g,'$1');
+ t=t.replace(/^\\s{0,3}#{1,6}\\s+/gm,'');
+ t=t.replace(/(\\*\\*|__)(.*?)\\1/g,'$2');
+ t=t.replace(/(\\*|_)(.*?)\\1/g,'$2');
+ t=t.replace(/\\|/g,' ');
+ t=t.replace(/<[^>]+>/g,' ');
+ return t.replace(/\\s+/g,' ').replace(/^\\s+|\\s+$/g,'');
+}
+function previewAbstract(src){
+ var plain=mdPlain(src);
+ var ms=plain.match(/[^.!?]+[.!?]+/g)||[];
+ var out='';
+ for(var k=0;k<ms.length&&k<4;k++){var s2=ms[k].replace(/^\\s+|\\s+$/g,'');if(!s2)continue;if(out&&out.length>=200)break;out=out?out+' '+s2:s2;if(out.length>=400)break}
+ if(!out)out=plain;
+ if(out.length>400){var cut=out.slice(0,397);var sp=cut.lastIndexOf(' ');out=(sp>120?cut.slice(0,sp):cut).replace(/\\s+$/,'')+'...'}
+ return out;
+}
+function mdCounts(src){
+ var t=String(src==null?'':src);
+ var w=t.replace(/[#*_\\x60>\\-\\[\\]()|~+=]/g,' ').split(/\\s+/);
+ var n=0;for(var k=0;k<w.length;k++)if(w[k])n++;
+ return {chars:t.length,words:n};
+}
+function initIngest(cfg){
+ var drop=document.getElementById(cfg.drop),fileEl=document.getElementById(cfg.file),
+ bodyEl=document.getElementById(cfg.body),titleEl=document.getElementById(cfg.title),
+ hint=document.getElementById(cfg.hint),countsEl=document.getElementById(cfg.counts),
+ prevEl=document.getElementById(cfg.preview),absEl=cfg.abs?document.getElementById(cfg.abs):null,
+ tW=cfg.toggleWrite?document.getElementById(cfg.toggleWrite):null,
+ tP=cfg.togglePreview?document.getElementById(cfg.togglePreview):null;
+ function refresh(){
+  var v=bodyEl.value;var c=mdCounts(v);
+  if(countsEl)countsEl.textContent=c.words+' words · '+c.chars+' characters'+(c.chars>200000?' — over the 200,000 character limit':'');
+  if(prevEl&&prevEl.classList&&!prevEl.classList.contains('hidden'))prevEl.innerHTML=renderMd(v);
+  if(absEl)absEl.textContent=previewAbstract(v)||'Your free preview will appear here once you add some words.';
+  if(cfg.onEdit)cfg.onEdit();
+ }
+ function showPreview(on){
+  if(!prevEl)return;
+  if(on)prevEl.innerHTML=renderMd(bodyEl.value);
+  prevEl.classList.toggle('hidden',!on);bodyEl.classList.toggle('hidden',on);
+  if(tW)tW.classList.toggle('on',!on);if(tP)tP.classList.toggle('on',on);
+ }
+ bodyEl.addEventListener('input',refresh);
+ if(titleEl)titleEl.addEventListener('input',function(){titleEl.dataset.touched='1';if(cfg.onEdit)cfg.onEdit()});
+ if(tW)tW.addEventListener('click',function(){showPreview(false)});
+ if(tP)tP.addEventListener('click',function(){showPreview(true)});
+ function setBusy(b){fileEl.disabled=b;if(drop.classList)drop.classList.toggle('busy',b);if(hint.classList)hint.classList.toggle('busy',b)}
+ async function uploadFile(f){
+  if(!f)return;
+  if(f.size>10*1024*1024){hint.textContent='That file is over 10 MB — publish a smaller piece instead.';return}
+  hint.textContent='Reading '+f.name+'…';setBusy(true);
+  try{
+   var fd=new FormData();fd.append('file',f,f.name);
+   var r=await fetch('/v1/ingest',{method:'POST',body:fd});
+   var j=null;try{j=await r.json()}catch(e){}
+   if(!r.ok){hint.textContent=(j&&j.error)||'Could not read that file — paste your words instead.';return}
+   bodyEl.value=j.markdown;refresh();
+   if(titleEl&&!titleEl.dataset.touched&&j.title)titleEl.value=j.title;
+   var pg=j.pages?(', '+j.pages+' page'+(j.pages===1?'':'s')):'';
+   hint.textContent='Added '+f.name+' ('+j.words+' words'+pg+'). Nothing is shared until you tap Publish link.';
+   if(cfg.onFile)cfg.onFile(j);
+  }catch(e){hint.textContent='Could not read that file — paste your words instead.'}
+  finally{setBusy(false)}
+ }
+ fileEl.addEventListener('change',function(){var f=fileEl.files&&fileEl.files[0];if(f)uploadFile(f);fileEl.value=''});
+ ['dragenter','dragover'].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();if(drop.classList)drop.classList.add('over')})});
+ ['dragleave','drop'].forEach(function(ev){drop.addEventListener(ev,function(e){e.preventDefault();if(drop.classList)drop.classList.remove('over')})});
+ drop.addEventListener('drop',function(e){var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];if(f)uploadFile(f)});
+ drop.addEventListener('click',function(e){if(e.target!==fileEl)fileEl.click()});
+ drop.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();fileEl.click()}});
+ return {refresh:refresh,showPreview:showPreview,upload:uploadFile};
+}
+`;
+}
+
+export function landingHtml(): string {
+  return head(
+    'NanoTab Pay — Paywall Any Link in seconds',
+    'Paywall any link in seconds. AI agents pay to read it. You get paid every time. You set the price — paid automatically, no account needed for readers.'
+  ) + topbarPlain('#create', 'Paywall a link') + `
+<div class="wrap">
+<div class="hero">
+<div>
+<div class="badge">Free to start &nbsp;·&nbsp; Takes about a minute</div>
+<h1>Paywall any link <span class="accent">in seconds.</span></h1>
+<p class="sub"><b>AI agents pay to read your link; humans can too.</b> Same link, same price. <b>You get paid every time.</b></p>
+<p class="sub" style="font-size:16px">You set the price. Readers pay in USDC on Base — you keep 98% of every payment, NanoTab keeps 2%.</p>
+<p class="who-line">For <b>writers</b> with articles and guides, <b>experts</b> with reports and research, and <b>anyone</b> with a useful list or know-how worth reading.</p>
+<div class="hero-ctas"><a class="btn" href="#create">Paywall a link</a><a class="btn secondary" href="#how">See how it works</a></div>
+<p class="hero-note"><a href="/r/DemoSample">Try it: pay $0.05 to read a sample</a> · <a href="/demo">What is this demo?</a></p>
+<p class="hero-note" id="hero-stats">Live now — we are new, so early sellers stand out. <a href="/stats">See live stats</a></p>
+<p class="hero-note">Nobody needs a NanoTab account — not readers, not you. Agents pay automatically; a person pays with a USDC wallet on Base. No card checkout. Posting needs no account either: paste, price, publish.</p>
+</div>
+<div class="preview" aria-label="What readers and agents see">
+<div class="preview-head"><span><b>What readers &amp; agents see</b></span><span>Your new link</span></div>
+<div class="preview-body">
+<div class="mock-title">My complete guide to growing tomatoes</div>
+<div class="mock-price">$0.25</div>
+<div class="mock-line">USDC on Base · to read in full</div>
+<span class="mock-btn">Pay $0.25 &amp; read →</span>
+<div class="mock-line">An AI agent pays this automatically. A person can pay too, with a wallet. <b>No NanoTab account either way.</b></div>
+<hr class="flow-sep">
+<div class="mock-line"><b>What you see:</b> $0.245 lands in your wallet (98% of $0.25), every time. Each paid read is counted, so you always know what you have earned.</div>
+</div>
+<div class="preview-foot">One link for agents and people: they pay, then read — <b>every time</b>.</div>
+</div>
+</div>
+<div id="create" style="scroll-margin-top:80px">
+<div class="card">
+<h2>Paywall a link<span class="step-tag">Start here</span></h2>
+<p class="card-sub">Four short steps. <b style="color:var(--txt)">No account needed</b> — no email, no sign-in, no password. Upload your document (or paste your words), set a price, add a payout wallet (or generate one in one click below), and publish. Your link goes live straight away. Keep your link — bookmark it after you publish. There are no accounts, so there is no dashboard to find it in later.</p>
+<div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="dot-1"></span><span class="wiz-dot" id="dot-2"></span><span class="wiz-dot" id="dot-3"></span><span class="wiz-dot" id="dot-4"></span></span><span id="wiz-label">Step 1 of 4 — Your document</span></div>
+<div class="wiz-panel" id="panel-1">
+<label>1 · Your document</label>
+<div class="dropzone" id="p-drop" tabindex="0" role="button" aria-label="Upload a file: PDF, markdown, or text, up to 10 MB"><b>Drop your file here</b> or <b>browse</b><br>PDF, .md, or .txt — up to 10 MB<input id="p-file" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"></div>
+<div class="hint" id="file-hint">Your file is converted to markdown on our server; the original is discarded and never served. Nothing is published until you tap Publish link.</div>
+<div class="seg" role="group" aria-label="Edit or preview"><button type="button" class="ghost on" id="p-write">Write</button><button type="button" class="ghost" id="p-prevbtn">Preview</button></div>
+<textarea id="p-body" placeholder="Or paste your words here — markdown works (headings, lists, links, code blocks, tables)…"></textarea>
+<div class="counts" id="p-counts">0 words · 0 characters</div>
+<div class="md-preview hidden" id="p-preview" aria-label="Markdown preview"></div>
+<div class="wiz-nav"><button type="button" class="btn" onclick="goStep(2)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+</div>
+<div class="wiz-panel hidden" id="panel-2">
+<label for="p-title">2 · Give it a short title</label><input id="p-title" maxlength="200" placeholder="e.g. My guide to growing tomatoes">
+<div class="hint">Filled in automatically from your document — edit it if you like. Only people who pay will see the full words; everyone else sees the price, the title, and a short free preview.</div>
+<div class="freeprev"><span class="preview-label">Free preview</span><div class="out" id="p-abstract">Your free preview will appear here once you add some words.</div></div>
+<label for="p-kind">What are you sharing?</label>
+<select id="p-kind">
+<option value="short">A short read (a few minutes)</option>
+<option value="article" selected>An article or guide</option>
+<option value="report">A report or research</option>
+<option value="list">A list or spreadsheet</option>
+<option value="other">Something else</option>
+</select>
+<div class="hint">This only suggests a sensible price in the next step — you can always change it there.</div>
+<details class="advanced"><summary>Advanced — I already host this</summary>
+<label for="p-link">Link where this already lives (optional)</label>
+<input id="p-link" type="url" placeholder="https://your-site.com/your-article" autocomplete="off" spellcheck="false">
+<div class="hint">Gating only covers the copy served through NanoTab; the original URL remains reachable. For real protection, let the upload be the only copy. See <a href="#paywall-how">how the paywall actually works</a>.</div>
+</details>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(1)">← Back</button><button type="button" class="btn" onclick="goStep(3)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+</div>
+<div class="wiz-panel hidden" id="panel-3">
+<label for="p-price">3 · Price each time someone reads</label>
+<div class="chips" role="group" aria-label="Suggested prices">
+<button type="button" class="chip" data-price="0.05" onclick="pickPrice('0.05')">$0.05</button>
+<button type="button" class="chip on" data-price="0.25" onclick="pickPrice('0.25')">$0.25</button>
+<button type="button" class="chip" data-price="1.00" onclick="pickPrice('1.00')">$1.00</button>
+</div>
+<div class="price-row"><input id="p-price" type="number" min="0.01" max="100" step="0.01" value="0.25"></div>
+<div class="earn-preview" id="earn-preview"></div>
+<div class="hint">Tap a price above, or type your own. Prices are in US dollars — readers pay that amount in USDC on Base. You can charge as little as $0.01.</div>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(2)">← Back</button><button type="button" class="btn" onclick="goStep(4)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+</div>
+<div class="wiz-panel hidden" id="panel-4">
+<h3 style="margin:4px 0 2px;font-size:17px">4 · Where should we send your money?</h3>
+<label for="p-payto">Your USDC wallet address on Base</label>
+<div class="payto-row"><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false"><button type="button" class="btn-gen" id="btn-generate-wallet" onclick="generateInstantWallet()">⚡ Generate instant wallet</button></div>
+<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. Posting needs no account: this address is all we need to pay you.</div>
+<div class="hint">No wallet yet? Tap <b>Generate instant wallet</b> — it creates a wallet in your browser in one click. The wallet is yours and self-custodied: NanoTab never sees the private key. Funds go to the address above in USDC on Base. <b>If you lose the private key, the funds at that address are lost</b> — we cannot recover it. Already have a wallet? Paste its address instead. See our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free). NanoTab will never ask you to send a private key anywhere.</div>
+<div id="wallet-panel" class="pk-panel hidden">
+<div class="pk-warn"><b>Your new wallet — save this private key now.</b> This key controls your payouts. Anyone who has it can take the money. Store it in a password manager. We cannot recover it.</div>
+<label for="p-pk">Private key (shown once)</label>
+<div class="pk-row"><input id="p-pk" type="password" readonly value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button type="button" class="ghost" id="btn-pk-toggle" onclick="togglePkVisibility()">Show</button><button type="button" class="ghost" id="btn-pk-copy" onclick="copyPrivateKey()">Copy key</button></div>
+<div class="hint" id="wallet-addr-note"></div>
+<div class="pk-actions"><button type="button" class="ghost" id="btn-pk-save" onclick="saveWalletOnDevice()">Save on this device</button><button type="button" class="ghost" id="btn-pk-nosave" onclick="dontSaveWallet()">Don't save on this device</button><button type="button" class="ghost" id="btn-pk-clear" onclick="clearWalletFromScreen()">Hide &amp; clear from screen</button></div>
+<div class="hint" id="wallet-save-note">The key is generated in your browser and never sent to any server. It is only saved if you tap Save on this device. Don't save keeps it in this tab's memory until you close the tab.</div>
+</div>
+<div id="wallet-saved-note" class="hint hidden"></div>
+<div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
+</div>
+<div id="pub-out"></div>
+<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and your paywall is live instantly. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
+</div>
+<div class="card">
+<h2>Keep your link — bookmark it</h2>
+<p class="card-sub">There are no accounts and no dashboard. When you publish, save the link from the confirmation and bookmark it — that URL is how you and your readers find the paywall again. Payments go straight to your wallet, so you do not need to come back here to get paid.</p>
+</div>
+</div>
+<div class="audience" aria-label="Who NanoTab Pay is for">
+<div class="aud"><h3>Writers</h3><p>Articles, guides, and notes you have already written. Paste them once, then share your new link wherever your readers are.</p></div>
+<div class="aud"><h3>Experts</h3><p>Reports, research, and hard-won know-how. Charge each time someone reads in full, and watch every read add up.</p></div>
+<div class="aud"><h3>List makers</h3><p>Useful lists, sheets, and round-ups people need again and again. One link, paid fairly every time it is opened.</p></div>
+</div>
+<section class="block" id="how" style="scroll-margin-top:80px" aria-label="How it works">
+<h2>How it works</h2>
+<p class="secsub">Three steps, start to paid. If you can copy and paste, you can do this.</p>
+<div class="steps">
+<div class="step"><span class="n">Step 1</span><h3>Add your document</h3><p>Upload your file or paste your words, and give it a title. It takes about a minute.</p></div>
+<div class="step"><span class="n">Step 2</span><h3>Share your new link</h3><p>You get one short link to share anywhere — your site, your newsletter, your social posts.</p></div>
+<div class="step"><span class="n">Step 3</span><h3>Get paid every time</h3><p>Each time a reader pays — an AI agent automatically, or a person with a wallet — 98% lands in your USDC wallet on Base. Keep your link — bookmark it, because there is no account dashboard to look it up in.</p></div>
+</div>
+</section>
+<section class="block" id="paywall-how" style="scroll-margin-top:80px" aria-label="How the paywall actually works">
+<h2>How the paywall actually works</h2>
+<p class="secsub">No fine print, no magic. This is exactly what the link does — and what it cannot do.</p>
+<div class="steps">
+<div class="step"><span class="n">Pasted words</span><h3>Hosted by NanoTab</h3><p>Words you paste (or a file you add) are stored by NanoTab and only served after payment. There is no way to read them through your NanoTab link without paying — the unpaid answer is just the price.</p></div>
+<div class="step"><span class="n">Public links</span><h3>The original stays open</h3><p>If the same words are also free at a public link, that link stays reachable — we cannot lock a page we do not host. The paywall covers the copy behind your NanoTab link. For real protection, paste the words here, or link only to a page you control.</p></div>
+<div class="step"><span class="n">After paying</span><h3>Personal read, no resale</h3><p>Paying unlocks a personal read. Like anything readable online, the words could technically be copied — we will not pretend otherwise. Our <a href="/terms">Terms</a> say no copying for resale or redistribution; the paywall controls who gets access in the first place.</p></div>
+</div>
+</section>
+<section class="block" aria-label="What you earn">
+<h2>What you earn</h2>
+<p class="secsub">You set the price. Readers pay in USDC on Base, and 98% goes straight to your wallet.</p>
+<div class="earn-grid">
+<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Your share of every payment</div><div class="price-big">You keep 98¢ of every $1</div><p>That is 98% of every payment. NanoTab keeps 2% to run the service and look after your links. Amounts settle in USDC on Base, straight to your wallet. Readers always pay exactly the price you set.</p>
+<div class="earn-rows"><div class="earn-row"><span>You charge $0.05</span><b>You receive $0.049</b></div><div class="earn-row"><span>You charge $0.25</span><b>You receive $0.245</b></div><div class="earn-row"><span>You charge $1.00</span><b>You receive $0.98</b></div></div></div>
+<div class="earn-box"><div style="color:var(--mut);font-size:13.5px">Simple, always</div><div class="price-big">No monthly fee</div><p>Share as many links as you like. Every paid read is paid straight to your wallet — keep your links bookmarked, there is no account dashboard.</p>
+<div class="earn-rows"><div class="earn-row"><span>To start</span><b>$0</b></div><div class="earn-row"><span>Each month</span><b>$0</b></div><div class="earn-row"><span>NanoTab fee</span><b>2% of each payment</b></div></div></div>
+</div>
+</section>
+<section class="block" id="faq" style="scroll-margin-top:80px" aria-label="Common questions">
+<h2>Common questions</h2>
+<p class="secsub">Short answers, in plain English.</p>
+<details class="faq-item"><summary>Do my readers need an account?</summary><p>No NanoTab account. AI agents pay automatically. A person paying needs a USDC wallet on Base — there is no card checkout. Either way, they pay and read straight away.</p></details>
+<details class="faq-item"><summary>Do I need an account to publish?</summary><p>No. There are no accounts at all — no email, no sign-in, no password. Paste your words, set a price, give a payout wallet address (or generate one in one click), and publish: the link is live straight away. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></details>
+<details class="faq-item"><summary>How do I get paid?</summary><p>Straight to your USDC wallet on Base — there is no NanoTab balance to withdraw from. Every payment is split on-chain: 98% to your wallet, 2% to NanoTab. Bring your own wallet address, or tap Generate instant wallet on the create page: it creates a wallet in your browser and the funds go to that address in USDC on Base. See our <a href="/wallet-guide">plain-English wallet guide</a>.</p></details>
+<details class="faq-item"><summary>What does NanoTab cost?</summary><p>2% of each payment on hosted links — you keep 98%. No monthly fee. The developer self-host path is 0.1%; see <a href="/developers">For developers</a>.</p></details>
+<details class="faq-item"><summary>What can I paywall?</summary><p>Almost any link that is yours to share: an article, guide, report, list, or file. If you wrote it, made it, or have permission to share it, you can charge for it.</p></details>
+<details class="faq-item"><summary>Can readers just open my original page instead?</summary><p>If the same words are also free at a public link, yes — that link stays open, and we say so plainly. The paywall protects the copy stored behind your NanoTab link. Paste the words into NanoTab, or share only a link you control. Full detail: <a href="#paywall-how">How the paywall actually works</a>.</p></details>
+<details class="faq-item"><summary>Can people copy or resell what they bought?</summary><p>Paying unlocks a personal read. Like anything readable online it could technically be copied, so we do not pretend otherwise — our <a href="/terms">Terms</a> say no redistribution or resale, and the paywall still controls who gets access in the first place.</p></details>
+<details class="faq-item"><summary>I do not have a crypto wallet. Can I still sell?</summary><p>Yes. Tap <b>Generate instant wallet</b> in step 4 — it creates a standard wallet in your browser in one click and fills in the payout address for you. The wallet is yours and self-custodied: the private key is shown once in your browser and never sent to NanoTab or any server. Store it in a password manager. Funds go to that address in USDC on Base, and if the key is lost the funds are lost — we cannot recover it. Prefer your own wallet app instead? Paste its Base address. Background: the <a href="/wallet-guide">wallet guide</a>.</p></details>
+</section>
+<div class="card" style="text-align:center">
+<h2>Building with code?</h2>
+<p style="color:var(--mut)">There is a separate page for builders, with all the extra detail kept off this page.</p>
+<a class="btn secondary" href="/developers" style="margin-top:8px">For developers →</a>
+</div>
+<div class="card" style="text-align:center">
+<h2>Your words are already worth something.</h2>
+<p style="color:var(--mut)">Upload your document, set the price, share it. The next reader who needs it pays you.</p>
+<p style="margin-top:10px"><a href="#create">Paywall your first link →</a> · <a href="/demo">Try the $0.05 sample first</a></p>
+</div>
+${FOOTER_PLAIN}
+</div>
+<script>
+var $=function(id){return document.getElementById(id)};
+var stepNow=1;
+var LABELS={1:'Step 1 of 4 — Your document',2:'Step 2 of 4 — Title',3:'Step 3 of 4 — Your price',4:'Step 4 of 4 — Your wallet'};
+var PRICES={short:'0.05',article:'0.25',report:'1.00',list:'0.25',other:'0.25'};
+async function req(p,o){o=o||{};if(o.body&&!o.headers)o.headers={'content-type':'application/json'};var r=await fetch(p,o);var j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,st:r.status,j:j}}
+var DKEY='nt_draft';
+function saveDraft(){try{localStorage.setItem(DKEY,JSON.stringify({l:$('p-link').value,t:$('p-title').value,k:$('p-kind').value,p:$('p-price').value,w:$('p-payto').value,b:$('p-body').value}))}catch(e){}}
+function restoreDraft(){try{var d=JSON.parse(localStorage.getItem(DKEY)||'null');if(!d)return;if(d.l)$('p-link').value=d.l;if(d.t)$('p-title').value=d.t;if(d.k)$('p-kind').value=d.k;if(d.p)$('p-price').value=d.p;if(d.w)$('p-payto').value=d.w;if(d.b)$('p-body').value=d.b;}catch(e){}}
+function clearDraft(){try{localStorage.removeItem(DKEY)}catch(e){}}
+function markChips(){var v=parseFloat($('p-price').value);var s=isNaN(v)?'':v.toFixed(2);var chips=document.querySelectorAll('.chip');for(var i=0;i<chips.length;i++){chips[i].classList.toggle('on',Number(chips[i].dataset.price).toFixed(2)===s)}}
+function fmtPrice(v){return '$'+v.toFixed(2)}
+function updateEarn(){var el=$('earn-preview');if(!el)return;var v=parseFloat($('p-price').value);if(!(v>0)){el.textContent='Type a price above — readers pay that amount each time.';return}el.innerHTML='Readers pay <b>'+fmtPrice(v)+'</b> in USDC on Base each time. You receive <b>'+fmtPrice(v*0.98)+'</b> (98%) straight to your wallet — NanoTab keeps 2% ('+fmtPrice(v*0.02)+').'}
+function pickPrice(v){$('p-price').value=v;markChips();updateEarn();saveDraft()}
+function showStep(n){
+ stepNow=n;
+ for(var i=1;i<=4;i++){$('panel-'+i).classList.toggle('hidden',i!==n);$('dot-'+i).classList.toggle('on',i<=n)}
+ $('wiz-label').textContent=LABELS[n];
+}
+function checkLink(){
+ var link=$('p-link').value.trim(),title=$('p-title').value.trim();
+ if(link&&!/^https?:\\/\\//i.test(link))return 'That link needs to start with http:// or https:// — or clear it; your document is enough.';
+ if(!title)return 'Give your work a short title so readers know what it is.';
+ return null;
+}
+function checkWords(){
+ if(!$('p-body').value.trim())return 'Add your document first: upload a file in step 1, or paste your words.';
+ var e=checkLink();if(e)return e;
+ var price=parseFloat($('p-price').value);
+ if(!(price>0)||price>100)return 'Set a price between $0.01 and $100.';
+ return null;
+}
+function goStep(n){
+ if(n>stepNow){
+   if(n>=2&&!$('p-body').value.trim()){$('pub-out').innerHTML='<div class="out">Add your document first: upload a file, or paste your words.</div>';showStep(1);return}
+   if(n>=3){var e1=checkLink();if(e1){$('pub-out').innerHTML='<div class="out">'+e1+'</div>';showStep(2);return}}
+   if(n>=4){var pr=parseFloat($('p-price').value);if(!(pr>0)||pr>100){$('pub-out').innerHTML='<div class="out">Set a price between $0.01 and $100 first.</div>';showStep(3);return}}
+ }
+ $('pub-out').innerHTML='';
+ showStep(n);saveDraft();
+}
+['p-link','p-title','p-price','p-payto','p-body'].forEach(function(id){$(id).addEventListener('input',function(){saveDraft();if(id==='p-price'){markChips();updateEarn()}})});
+$('p-kind').addEventListener('change',function(){pickPrice(PRICES[this.value]||'0.25')});
+var pIng=initIngest({drop:'p-drop',file:'p-file',body:'p-body',title:'p-title',hint:'file-hint',counts:'p-counts',preview:'p-preview',abs:'p-abstract',toggleWrite:'p-write',togglePreview:'p-prevbtn',onEdit:saveDraft});
+restoreDraft();if($('p-title').value)$('p-title').dataset.touched='1';markChips();updateEarn();showStep(1);pIng.refresh();
+${walletJs()}
+${ingestJs()}
 async function copyL(u){try{await navigator.clipboard.writeText(u);alert('Copied — share it anywhere.')}catch(e){prompt('Copy this link:',u)}}
 function onNext(){
  saveDraft();
@@ -600,7 +762,7 @@ async function publish(){
  if(!r.ok){$('pub-out').innerHTML='<div class="out">Something went wrong just now. Please try again in a moment.</div>';return}
  clearDraft();
  var curl='curl -i '+r.j.url;
- $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Agent paywall link (HTTP 402): <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">Copy paywall link</button> <button class="ghost" data-u="'+curl+'" onclick="copyL(this.dataset.u)">Copy test curl</button><div class="agent-curl">'+curl+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the link anywhere. Keep your link — bookmark it, there is no account to find it in later.</span></div>';
+ $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Human page (free preview): <a href="'+r.j.page_url+'">'+r.j.page_url+'</a><br>Agent paywall link (HTTP 402): <a href="'+r.j.url+'">'+r.j.url+'</a><br><button class="ghost" data-u="'+r.j.page_url+'" onclick="copyL(this.dataset.u)">Copy page link</button> <button class="ghost" data-u="'+r.j.url+'" onclick="copyL(this.dataset.u)">Copy paywall link</button> <button class="ghost" data-u="'+curl+'" onclick="copyL(this.dataset.u)">Copy test curl</button><div class="agent-curl">'+curl+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the links anywhere. Keep your link — bookmark it, there is no account to find it in later.</span><div class="freeprev"><span class="preview-label">Free preview</span><div class="out" style="margin-top:0">'+mdEsc(r.j.abstract||'(no preview)')+'</div></div></div>';
 }
 
 (async function(){try{var r=await fetch('/stats');var j=await r.json();var el=$('hero-stats');if(el&&j&&Number(j.total_paid_calls)>0){el.innerHTML=Number(j.total_paid_calls)+' paid reads so far across hosted links — we are new, so early sellers stand out. <a href="/stats">See live stats</a>'}}catch(e){}})();
@@ -657,11 +819,22 @@ curl -X POST https://pay.nanotab.dev/v1/agent/submit \\
 <pre class="codeblock"><code>GET https://pay.nanotab.dev/v1/marketplace.json   # flat listing file
 GET https://pay.nanotab.dev/.well-known/x402      # x402 capability doc
 GET https://pay.nanotab.dev/stats                 # totals + fee terms</code></pre>
-<p style="color:var(--mut);font-size:14.5px">The plain API form is at <a href="/publish">/publish</a> (no credentials needed). Full docs and source: <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a>.</p>
+<p style="color:var(--mut);font-size:14.5px">The document publish flow is at <a href="/publish">/publish</a> (no credentials needed). Full docs and source: <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a>.</p>
+</section>
+<section class="block" aria-label="Content ingestion API">
+<h2>Content ingestion API</h2>
+<p class="secsub">Upload a document and the Worker extracts canonical markdown server-side (PDF text layer via pdfjs, .md/.txt normalised). Nothing is stored at ingest time — the original file is discarded and only the returned markdown is later published. Limits: 10 MB per file, 200,000 extracted characters, 10 uploads/hour per IP.</p>
+<pre class="codeblock"><code># extract markdown from a file (returns markdown, title, chars, words)
+curl -X POST https://pay.nanotab.dev/v1/ingest -F file=@report.pdf
+
+# then publish the markdown (no credentials needed)
+curl -X POST https://pay.nanotab.dev/v1/publish -H "content-type: application/json" \
+  -d '{"title":"…","mime":"text/markdown","price_cents":25,
+       "merchant_wallet":"0x…","body_b64":"…"}'</code></pre>
 </section>
 <div class="card" style="text-align:center">
 <h2>Not writing code today?</h2>
-<p style="color:var(--mut)">The hosted flow needs no server, no key and no gas. Paste a link and you are selling in seconds.</p>
+<p style="color:var(--mut)">The hosted flow needs no server, no key and no gas. Upload a document and you are selling in seconds.</p>
 <a class="btn" href="/#create" style="margin-top:8px">Paywall Any Link</a>
 </div>
 ${FOOTER}
@@ -773,6 +946,7 @@ export function privacyHtml(): string {
 <h2 style="font-size:clamp(28px,4vw,38px)">Privacy, in short</h2>
 <p class="secsub">Last updated: November 2026. Data questions: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
 <div class="card"><h2 style="font-size:18px">What we collect, and why</h2><p class="card-sub" style="margin-bottom:0"><b style="color:var(--txt)">There are no accounts, and we collect no email addresses.</b> Publishing and paying need no sign-in and no password. <b style="color:var(--txt)">Listing content, title, price and payout wallet address</b> — so we can serve your paywall and send you 98% of each payment. The wallet address is public; a generated wallet&apos;s private key is created in your browser and never sent to us. <b style="color:var(--txt)">Payment metadata and paid-read counts</b> — amounts, wallet addresses and transaction references needed to verify payment and keep our public stats honest. That is the extent of it: no personal data beyond payment metadata.</p></div>
+<div class="card"><h2 style="font-size:18px">Uploaded documents become markdown only</h2><p class="card-sub" style="margin-bottom:0">When you upload a file, our server converts it to markdown and keeps only that markdown text (alongside your title, price and payout address). The original file is discarded immediately after successful extraction — it is never stored and never served at a public URL. If extraction fails, nothing from the file is kept. Your document text is never used for training and never sent to third parties, except the short excerpt shared with TypeSafe Jev for agent submissions (noted below).</p></div>
 <div class="card"><h2 style="font-size:18px">Cookies and local storage</h2><p class="card-sub" style="margin-bottom:0">We set no account or session cookies — there is nothing to sign in to. Your unpublished draft is stored in your own browser (local storage) until you share it. If you generate a wallet and tap Save on this device, its private key is stored only in your browser&apos;s local storage — never on our servers. We do not use advertising or tracking cookies.</p></div>
 <div class="card"><h2 style="font-size:18px">Who else is involved</h2><p class="card-sub" style="margin-bottom:0">The site runs on Cloudflare. Payments settle on the public Base blockchain — wallet addresses and amounts there are public by design. Agent submissions may be auto-reviewed by TypeSafe Jev (title and a short content excerpt). We never sell data.</p></div>
 <div class="card"><h2 style="font-size:18px">Your choices</h2><p class="card-sub" style="margin-bottom:0">Keep your link — bookmark it after you publish. There is no account, so we cannot look up a lost link by email or sign-in. To ask what payment metadata we hold, or to request a listing be taken down, write to <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> with the link. If you are in the UK or EEA, you have rights to access, correct and erase personal data; we will honour them.</p></div>
@@ -847,4 +1021,146 @@ export function demoHtml(): string {
 <div class="card"><h2 style="font-size:18px">Pay and read</h2><p class="card-sub">Open the paywall link with an agent, or fetch it from code: the unpaid answer is a 402 with the price; pay $0.05 USDC on Base and the same link returns the words. In a plain browser you will see the paywall explanation page — there is no card checkout, for the demo or for any NanoTab link. Demo payments go to the NanoTab demo wallet.</p><p style="margin:14px 0 4px"><a class="btn" href="/r/DemoSample">Open the $0.05 demo paywall →</a></p><p style="margin:10px 0 0;font-size:14px"><a href="/marketplace">Browse the marketplace</a> · <a href="/stats">Live stats</a> · <a href="/#create">Create your own link</a></p></div>
 <div class="card"><h2 style="font-size:18px">Honest status</h2><p class="card-sub" style="margin-bottom:0">NanoTab is new. Live paid-read totals are on <a href="/stats">/stats</a> — we show the real number there rather than borrow someone else's. If the count looks small, that is because it is.</p></div>`
   );
+}
+
+export function publishHtml(): string {
+  return head(
+    'Publish your document — NanoTab Pay',
+    'Upload a document or paste your words and NanoTab turns it into a paywalled link. Agents pay in USDC on Base; you keep 98% of every payment. No account needed.'
+  ) + topbarPlain('/#create', 'Paywall a link') + `
+<div class="wrap" style="max-width:760px">
+<section class="block" style="padding-top:48px">
+<p class="eyebrow">No account needed · Live in about a minute</p>
+<h2 style="font-size:clamp(28px,4vw,38px)">Publish your document</h2>
+<p class="secsub">Upload a file or paste your words below. NanoTab converts it to markdown, mints a paywalled link for it, and pays you <b style="color:var(--txt)">98% of every read</b> in USDC on Base. Keep your link — bookmark it after you publish.</p>
+<form id="f" onsubmit="return false">
+<div class="card">
+<div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="f-dot-1"></span><span class="wiz-dot" id="f-dot-2"></span><span class="wiz-dot" id="f-dot-3"></span></span><span id="f-label">Step 1 of 3 — Your document</span></div>
+<div class="wiz-panel" id="f-panel-1">
+<label>1 · Your document</label>
+<div class="dropzone" id="f-drop" tabindex="0" role="button" aria-label="Upload a file: PDF, markdown, or text, up to 10 MB"><b>Drop your file here</b> or <b>browse</b><br>PDF, .md, or .txt — up to 10 MB<input id="f-file" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"></div>
+<div class="hint" id="f-hint">Your file is converted to markdown on our server; the original is discarded and never served. <a href="/privacy">Privacy</a></div>
+<div class="seg" role="group" aria-label="Edit or preview"><button type="button" class="ghost on" id="f-write">Write</button><button type="button" class="ghost" id="f-prevbtn">Preview</button></div>
+<textarea id="f-body" placeholder="Or paste your words here — markdown works (headings, lists, links, code blocks, tables)…"></textarea>
+<div class="counts" id="f-counts">0 words · 0 characters</div>
+<div class="md-preview hidden" id="f-preview" aria-label="Markdown preview"></div>
+<label for="f-title">Title</label><input id="f-title" maxlength="200" placeholder="e.g. My guide to growing tomatoes">
+<div class="hint">Filled in automatically from your document — edit it if you like.</div>
+<div class="freeprev"><span class="preview-label">Free preview</span><div class="out" id="f-abstract">Your free preview will appear here once you add some words.</div></div>
+<details class="advanced"><summary>Advanced — I already host this</summary>
+<label for="f-link">Link where this already lives (optional)</label>
+<input id="f-link" type="url" placeholder="https://your-site.com/your-article" autocomplete="off" spellcheck="false">
+<div class="hint">Gating only covers the copy served through NanoTab; the original URL remains reachable. For real protection, let the upload above be the only copy.</div>
+</details>
+<div class="wiz-nav"><button type="button" class="btn" id="f-next-1" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+</div>
+<div class="wiz-panel hidden" id="f-panel-2">
+<label for="f-price">2 · Price each time someone reads</label>
+<div class="chips" role="group" aria-label="Suggested prices">
+<button type="button" class="chip" data-price="0.05">$0.05</button>
+<button type="button" class="chip on" data-price="0.25">$0.25</button>
+<button type="button" class="chip" data-price="1.00">$1.00</button>
+</div>
+<div class="price-row"><input id="f-price" type="number" min="0.01" max="100" step="0.01" value="0.25"></div>
+<div class="earn-preview" id="f-earn"></div>
+<div class="hint">Tap a price above, or type your own. Prices are in US dollars — readers pay that amount in USDC on Base. NanoTab keeps 2% of each payment; you keep 98%.</div>
+<div class="wiz-nav"><button type="button" class="btn-back" id="f-back-2">← Back</button><button type="button" class="btn" id="f-next-2" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+</div>
+<div class="wiz-panel hidden" id="f-panel-3">
+<h3 style="margin:4px 0 2px;font-size:17px">3 · Where should we send your money?</h3>
+<label for="p-payto">Your USDC wallet address on Base</label>
+<div class="payto-row"><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false"><button type="button" class="btn-gen" id="btn-generate-wallet">⚡ Generate instant wallet</button></div>
+<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. Posting needs no account: this address is all we need to pay you.</div>
+<div class="hint">No wallet yet? Tap <b>Generate instant wallet</b> — it creates a wallet in your browser in one click. The wallet is yours and self-custodied: NanoTab never sees the private key. Funds go to the address above in USDC on Base. <b>If you lose the private key, the funds at that address are lost</b> — we cannot recover it. Already have a wallet? Paste its address instead. See our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free). NanoTab will never ask you to send a private key anywhere.</div>
+<div id="wallet-panel" class="pk-panel hidden">
+<div class="pk-warn"><b>Your new wallet — save this private key now.</b> This key controls your payouts. Anyone who has it can take the money. Store it in a password manager. We cannot recover it.</div>
+<label for="p-pk">Private key (shown once)</label>
+<div class="pk-row"><input id="p-pk" type="password" readonly value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button type="button" class="ghost" id="btn-pk-toggle">Show</button><button type="button" class="ghost" id="btn-pk-copy">Copy key</button></div>
+<div class="hint" id="wallet-addr-note"></div>
+<div class="pk-actions"><button type="button" class="ghost" id="btn-pk-save">Save on this device</button><button type="button" class="ghost" id="btn-pk-nosave">Don't save on this device</button><button type="button" class="ghost" id="btn-pk-clear">Hide &amp; clear from screen</button></div>
+<div class="hint" id="wallet-save-note">The key is generated in your browser and never sent to any server. It is only saved if you tap Save on this device. Don't save keeps it in this tab's memory until you close the tab.</div>
+</div>
+<div id="wallet-saved-note" class="hint hidden"></div>
+<div class="wiz-nav"><button type="button" class="btn-back" id="f-back-3">← Back</button><button type="button" class="btn" id="f-publish" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
+</div>
+<div id="pub-out"></div>
+</div>
+</form>
+<div class="card">
+<h2>Keep your link — bookmark it</h2>
+<p class="card-sub">There are no accounts and no dashboard. When you publish, save the link from the confirmation and bookmark it — that URL is how you and your readers find the paywall again. Payments go straight to your wallet, so you do not need to come back here to get paid.</p>
+</div>
+</section>
+${FOOTER_PLAIN}
+</div>
+<script>
+var $=function(id){return document.getElementById(id)};
+${walletJs()}
+${ingestJs()}
+var fStep=1;
+var FLABELS={1:'Step 1 of 3 — Your document',2:'Step 2 of 3 — Your price',3:'Step 3 of 3 — Your wallet'};
+function fShow(n){fStep=n;for(var i=1;i<=3;i++){$('f-panel-'+i).classList.toggle('hidden',i!==n);$('f-dot-'+i).classList.toggle('on',i<=n)}$('f-label').textContent=FLABELS[n]}
+function fCheckDoc(){
+ var link=$('f-link').value.trim();
+ if(link&&!/^https?:\\/\\//i.test(link))return 'That link needs to start with http:// or https:// — or clear it; your document above is enough.';
+ if(!$('f-body').value.trim())return 'Add your document first: upload a file above, or paste your words.';
+ if($('f-body').value.length>200000)return 'That document is over 200,000 characters — publish a shorter piece instead.';
+ if(!$('f-title').value.trim())return 'Give your document a short title so readers know what it is.';
+ return null;
+}
+function fGo(n){
+ if(n>fStep){var e=fCheckDoc();if(e){$('pub-out').innerHTML='<div class="out">'+e+'</div>';fShow(1);return}
+  if(n>=3){var pr=parseFloat($('f-price').value);if(!(pr>0)||pr>100){$('pub-out').innerHTML='<div class="out">Set a price between $0.01 and $100 first.</div>';fShow(2);return}}}
+ $('pub-out').innerHTML='';fShow(n);
+}
+function fMarkChips(){var v=parseFloat($('f-price').value);var s=isNaN(v)?'':v.toFixed(2);var chips=document.querySelectorAll('#f-panel-2 .chip');for(var i=0;i<chips.length;i++){chips[i].classList.toggle('on',Number(chips[i].dataset.price).toFixed(2)===s)}}
+function fUpdateEarn(){var v=parseFloat($('f-price').value);var el=$('f-earn');if(!(v>0)){el.textContent='Type a price above — readers pay that amount each time.';return}el.innerHTML='Readers pay <b>$'+v.toFixed(2)+'</b> in USDC on Base each time. You receive <b>$'+(v*0.98).toFixed(2)+'</b> (98%) straight to your wallet — NanoTab keeps 2% ($'+(v*0.02).toFixed(2)+').'}
+function fPickPrice(v){$('f-price').value=v;fMarkChips();fUpdateEarn()}
+$('f-price').addEventListener('input',function(){fMarkChips();fUpdateEarn()});
+document.querySelectorAll('#f-panel-2 .chip').forEach(function(ch){ch.addEventListener('click',function(){fPickPrice(ch.dataset.price)})});
+$('f-next-1').addEventListener('click',function(){fGo(2)});
+$('f-back-2').addEventListener('click',function(){fGo(1)});
+$('f-next-2').addEventListener('click',function(){fGo(3)});
+$('f-back-3').addEventListener('click',function(){fGo(2)});
+$('f-publish').addEventListener('click',fOnNext);
+$('btn-generate-wallet').addEventListener('click',generateInstantWallet);
+$('btn-pk-toggle').addEventListener('click',togglePkVisibility);
+$('btn-pk-copy').addEventListener('click',copyPrivateKey);
+$('btn-pk-save').addEventListener('click',saveWalletOnDevice);
+$('btn-pk-nosave').addEventListener('click',dontSaveWallet);
+$('btn-pk-clear').addEventListener('click',clearWalletFromScreen);
+initIngest({drop:'f-drop',file:'f-file',body:'f-body',title:'f-title',hint:'f-hint',counts:'f-counts',preview:'f-preview',abs:'f-abstract',toggleWrite:'f-write',togglePreview:'f-prevbtn'});
+fMarkChips();fUpdateEarn();fShow(1);
+var fCopies=[];
+async function fCopy(i){var u=fCopies[i]||'';var st=$('f-copy-status');function done(m){if(st)st.textContent=m}
+ try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(u);done('Copied — share it anywhere.');return}}catch(e){}
+ try{var ta=document.createElement('textarea');ta.value=u;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done('Copied — share it anywhere.')}catch(e2){done('Copy this: '+u)}}
+function fOnNext(){
+ var err=fCheckDoc();
+ if(err){$('pub-out').innerHTML='<div class="out">'+err+'</div>';fShow(1);return}
+ var payto=$('p-payto').value.trim();
+ if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">That wallet address does not look right yet. Your USDC wallet address on Base starts with 0x and is 42 characters long — paste your own address, or tap Generate instant wallet above. <a href="/wallet-guide">Wallet guide</a></div>';$('p-payto').focus();return}
+ if(genAddr&&payto.toLowerCase()!==genAddr.toLowerCase()&&genPk){if(!confirm('You generated a wallet but changed the payout address. The generated private key will not control the address you publish to. Publish to the changed address anyway?'))return}
+ fPublish();
+}
+async function fPublish(){
+ var title=$('f-title').value.trim(),link=$('f-link').value.trim(),price=parseFloat($('f-price').value),payto=$('p-payto').value.trim(),body=$('f-body').value;
+ if(!title&&link){try{title=new URL(link).hostname.replace(/^www\\./,'')}catch(e){}}
+ $('f-publish').disabled=true;
+ var b64=btoa(unescape(encodeURIComponent(body)));
+ var mime=/^\\s*[\\{\\[]/.test(body)?'application/json':'text/markdown';
+ var payload={title:title,mime:mime,price_cents:Math.round(price*100),body_b64:b64};
+ payload[['merchant','wal'+'let'].join('_')]=payto;
+ if(link)payload.source_url=link;
+ var r=await fetch('/v1/publish',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+ var j=null;try{j=await r.json()}catch(e){}
+ $('f-publish').disabled=false;
+ if(!r.ok||!j||!j.url){$('pub-out').innerHTML='<div class="out">'+((j&&j.error)?mdEsc(j.error):'Something went wrong just now. Please try again in a moment.')+'</div>';return}
+ var agentCurl='curl -i -H "Accept: application/json" '+j.url;
+ fCopies=[j.page_url,j.url,agentCurl];
+ $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Human page (free preview): <a href="'+j.page_url+'">'+j.page_url+'</a><br>Agent paywall link (HTTP 402): <a href="'+j.url+'">'+j.url+'</a><br><button type="button" class="ghost" data-copy="0">Copy page link</button> <button type="button" class="ghost" data-copy="1">Copy paywall link</button> <button type="button" class="ghost" data-copy="2">Copy test curl</button> <span id="f-copy-status" style="color:var(--mut)"></span><div class="agent-curl">'+mdEsc(agentCurl)+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the links anywhere. Keep your link — bookmark it, there is no account to find it in later.</span><div class="freeprev"><span class="preview-label">Free preview</span><div class="out" style="margin-top:0">'+mdEsc(j.abstract||'(no preview)')+'</div></div></div>';
+ document.querySelectorAll('#pub-out [data-copy]').forEach(function(b){b.addEventListener('click',function(){fCopy(+b.dataset.copy)})});
+}
+refreshSavedWalletNote();
+</script></body></html>`;
 }

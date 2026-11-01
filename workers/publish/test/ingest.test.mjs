@@ -171,4 +171,40 @@ const pdfFile = (s) => new File([Buffer.from(s, 'latin1')], 'doc.pdf', { type: '
     r.status === 201 && !stored.includes('<script') && stored.includes('# ok'), `status=${r.status}`);
 }
 
+// --- ingest UI: /publish is the document-first path, / wizard matches ---
+{
+  const get = (path) => worker.fetch(new Request(`https://pay.nanotab.dev${path}`), env, {});
+  let r = await get('/publish');
+  let html = await r.text();
+  check('page: /publish → 200 ingest-first flow',
+    r.status === 200 && html.includes('Publish your document') && html.includes('id="f-drop"') &&
+    html.includes('id="f-file"') && html.includes('/v1/ingest') && html.includes('<form') &&
+    html.includes('textarea') && html.includes('/v1/publish') && html.includes('curl'));
+  check('page: /publish → paste + preview + counts + title + free preview',
+    html.includes('id="f-body"') && html.includes('id="f-preview"') && html.includes('id="f-counts"') &&
+    html.includes('id="f-title"') && html.includes('Free preview') && html.includes('id="f-abstract"'));
+  check('page: /publish → demoted URL, price presets, wallet, result panel',
+    html.includes('Advanced — I already host this') && html.includes('Gating only covers the copy served through NanoTab') &&
+    html.includes('data-price="0.05"') && html.includes('Generate instant wallet') && html.includes('id="p-pk" type="password"') &&
+    html.includes('Agent paywall link (HTTP 402)') && html.includes('Copy test curl') && html.includes('Human page (free preview)'));
+  check('page: /publish → sandboxed (scripts + modals only)',
+    (r.headers.get('content-security-policy') || '').includes('sandbox'));
+  r = await get('/');
+  html = await r.text();
+  check('page: / → content-first wizard with dropzone + preview + demoted URL',
+    r.status === 200 && html.includes('id="p-drop"') && html.includes('id="p-preview"') &&
+    html.includes('id="p-counts"') && html.includes('/v1/ingest') &&
+    html.includes('Advanced — I already host this') && html.includes('Human page (free preview)') &&
+    html.includes('id="p-link"') && html.includes('id="p-body"') && html.includes('id="p-file"'));
+  r = await get('/privacy');
+  html = await r.text();
+  check('page: /privacy → markdown-only storage stated honestly',
+    r.status === 200 && html.includes('discarded immediately after successful extraction') &&
+    html.includes('never stored and never served') && html.includes('never used for training'));
+  r = await get('/developers');
+  html = await r.text();
+  check('page: /developers → documents POST /v1/ingest',
+    r.status === 200 && html.includes('/v1/ingest') && html.includes('nanotab protect'));
+}
+
 process.exit(fail ? 1 : 0);
