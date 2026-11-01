@@ -201,9 +201,10 @@ let slug, url;
 {
   const htmlRes = await worker.fetch(req(`/r/${slug}`, { headers: { accept: 'text/html,application/xhtml+xml' } }), env, {});
   const htmlBody = await htmlRes.text();
-  check('get: browser Accept → 402 HTML paywall',
-    htmlRes.status === 402 && (htmlRes.headers.get('content-type') || '').includes('text/html') &&
-    htmlBody.includes('USDC') && htmlBody.includes('402'));
+  check('get: browser Accept → 200 teaser (Free preview + JSON-LD paywall markup)',
+    htmlRes.status === 200 && (htmlRes.headers.get('content-type') || '').includes('text/html') &&
+    htmlBody.includes('Free preview') && htmlBody.includes('isAccessibleForFree') &&
+    htmlBody.includes(`href="https://pay.nanotab.dev/p/${slug}"`) && htmlBody.includes('USDC'));
   const jsonRes = await worker.fetch(req(`/r/${slug}`, { headers: { accept: 'application/json' } }), env, {});
   check('get: JSON Accept → 402 JSON', jsonRes.status === 402 && (jsonRes.headers.get('content-type') || '').includes('json'));
   const starRes = await worker.fetch(req(`/r/${slug}`), env, {});
@@ -249,6 +250,98 @@ let slug, url;
   check('page: /agent-auth → 200 daily review queue shell',
     queue.status === 200 && queueHtml.includes('Agent authorization queue') && queueHtml.includes('/v1/agent/pending') &&
     queueHtml.includes('/v1/agent/review'));
+}
+
+// --- SEO + AI discovery: free abstract, /p/ page, intent routing ---
+{
+  const PAID_MARKER = 'PAIDBODYMARKER7f3a';
+  const seoBody = [
+    'NanoTab Pay lets writers charge per read without accounts or subscriptions. A seller pastes the words once, sets a price in cents, and shares a single link anywhere. Readers discover the post through its free abstract before deciding to pay.',
+    'The preview shows only the opening sentences so search engines can quote it. Everything after that opening stays locked until an agent pays in USDC on Base.',
+    `${PAID_MARKER} The detailed checklist begins with verifying the payout wallet on Base. After that, confirm the fee split and the per-listing price before signing anything.`,
+    'A final paid paragraph covers refunds, receipts, and how to republish an updated edition without breaking the original link.',
+  ].join('\n\n');
+  const r = await worker.fetch(post({
+    title: 'SEO sample: charge per read', mime: 'text/plain', price_cents: 25,
+    merchant_wallet: WALLET, body_b64: Buffer.from(seoBody).toString('base64'),
+  }), env, {});
+  const j = await r.json();
+  const seoSlug = j.slug;
+  check('seo: publish → 201 with abstract + page_url',
+    r.status === 201 && j.page_url === `https://pay.nanotab.dev/p/${seoSlug}` &&
+    typeof j.abstract === 'string', JSON.stringify(j).slice(0, 160));
+  const abs = j.abstract || '';
+  check('seo: abstract is 2-4 sentences, ~200-400 chars',
+    abs.length >= 150 && abs.length <= 403 && (abs.match(/[.!?]/g) || []).length >= 2 &&
+    (abs.match(/[.!?]/g) || []).length <= 4, `len=${abs.length} abs=${abs.slice(0, 90)}`);
+  check('seo: abstract has opening sentences, never the paid body',
+    abs.includes('NanoTab Pay lets writers charge per read') && !abs.includes(PAID_MARKER) &&
+    !abs.includes('verifying the payout wallet'));
+  const rec = JSON.parse(await kv.get(`r:${seoSlug}`));
+  check('seo: abstract stored on the KV listing', rec.abstract === abs);
+
+  const GBOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+  let res = await worker.fetch(req(`/p/${seoSlug}`, { headers: { 'user-agent': GBOT, accept: 'text/html' } }), env, {});
+  let html = await res.text();
+  check('seo: Googlebot /p/ → 200 + abstract + JSON-LD isAccessibleForFree:false + .paywall',
+    res.status === 200 && html.includes('Free preview') && html.includes(abs.slice(0, 60)) &&
+    html.includes('"isAccessibleForFree":false') && html.includes('"cssSelector":".paywall"') &&
+    html.includes(`<link rel="canonical" href="https://pay.nanotab.dev/p/${seoSlug}">`));
+  check('seo: crawler page has NO paid body (no cloaking leak)',
+    !html.includes(PAID_MARKER) && !html.includes('verifying the payout wallet') &&
+    !html.includes('final paid paragraph'));
+  for (const ua of ['OAI-SearchBot/1.0', 'PerplexityBot', 'ClaudeBot', 'Mozilla/5.0 (compatible; bingbot/2.0)']) {
+    res = await worker.fetch(req(`/p/${seoSlug}`, { headers: { 'user-agent': ua } }), env, {});
+    html = await res.text();
+    check(`seo: ${ua.split('/')[0]} /p/ → 200 + abstract`, res.status === 200 && html.includes('Free preview') && !html.includes(PAID_MARKER));
+  }
+  res = await worker.fetch(req(`/p/${seoSlug}`, { headers: { 'user-agent': 'GPTBot/1.2', accept: 'application/json' } }), env, {});
+  check('seo: GPTBot + JSON Accept → still 200 teaser (never 402 a discovery crawler)', res.status === 200);
+
+  res = await worker.fetch(req(`/r/${seoSlug}`, { headers: { accept: 'application/json' } }), env, {});
+  const quote = await res.json().catch(() => ({}));
+  check('seo: /r/ JSON Accept unpaid → 402 with price', res.status === 402 && quote.accepts?.[0]?.payTo === WALLET && quote.accepts?.[0]?.amount === '250000');
+  res = await worker.fetch(req(`/r/${seoSlug}`, { headers: { 'user-agent': 'curl/8.5.0' } }), env, {});
+  check('seo: /r/ curl UA unpaid → 402', res.status === 402 && (res.headers.get('content-type') || '').includes('json'));
+  res = await worker.fetch(req(`/r/${seoSlug}`, { headers: { accept: 'text/html' } }), env, {});
+  html = await res.text();
+  check('seo: /r/ browser Accept → 200 teaser, no paid body', res.status === 200 && html.includes('Free preview') && !html.includes(PAID_MARKER));
+  res = await worker.fetch(req(`/p/${seoSlug}`, { headers: { accept: 'application/json' } }), env, {});
+  check('seo: /p/ JSON Accept unpaid → 402 (agent intent)', res.status === 402);
+  res = await worker.fetch(req(`/p/${seoSlug}`, { headers: { 'X-Payment': 'AAAA' } }), env, {});
+  check('seo: /p/ with payment header → payment path (402 on bad proof, not teaser)', res.status === 402 && !(await res.clone().text()).includes('Free preview'));
+  res = await worker.fetch(req('/p/doesnotexist'), env, {});
+  check('seo: /p/ unknown slug → 404', res.status === 404);
+
+  // Lazy backfill: strip the stored abstract, the next public read re-derives + persists it.
+  const legacy = JSON.parse(await kv.get(`r:${seoSlug}`));
+  delete legacy.abstract;
+  await kv.put(`r:${seoSlug}`, JSON.stringify(legacy));
+  res = await worker.fetch(req(`/p/${seoSlug}`, { headers: { accept: 'text/html' } }), env, {});
+  html = await res.text();
+  const backfilled = JSON.parse(await kv.get(`r:${seoSlug}`));
+  check('seo: legacy listing backfills abstract on first public read',
+    res.status === 200 && html.includes('Free preview') && typeof backfilled.abstract === 'string' && backfilled.abstract.length >= 150);
+
+  res = await worker.fetch(req('/robots.txt'), env, {});
+  const robots = await res.text();
+  check('seo: robots.txt allows search + AI crawlers, references sitemap',
+    res.status === 200 && ['Googlebot', 'Bingbot', 'OAI-SearchBot', 'GPTBot', 'PerplexityBot', 'ClaudeBot', 'Google-Extended'].every((n) => robots.includes(`User-agent: ${n}`)) &&
+    robots.includes('Sitemap: https://pay.nanotab.dev/sitemap.xml'));
+  res = await worker.fetch(req('/sitemap.xml'), env, {});
+  const smap = await res.text();
+  check('seo: sitemap lists /p/ pages only (no /r/, no /v1/)',
+    res.status === 200 && smap.includes(`/p/${seoSlug}`) && smap.includes('/p/DemoSample') &&
+    !smap.includes('/r/') && !smap.includes('/v1/'));
+  res = await worker.fetch(req('/llms.txt'), env, {});
+  const llms = await res.text();
+  check('seo: llms.txt maps abstracts + 402 USDC-on-Base payment',
+    res.status === 200 && llms.includes('Free preview') && llms.includes('USDC on Base') &&
+    llms.includes('402') && llms.includes('/p/<slug>') && llms.includes('/r/<slug>'));
+  const mkt = await (await worker.fetch(req('/v1/marketplace.json'), env, {})).json();
+  const hit = mkt.find((e) => e.url.endsWith(`/r/${seoSlug}`));
+  check('seo: marketplace.json carries page_url + abstract',
+    !!hit && hit.page_url === `https://pay.nanotab.dev/p/${seoSlug}` && typeof hit.abstract === 'string' && hit.abstract.length >= 150);
 }
 
 // --- GET /publish + 404 ---
@@ -331,7 +424,7 @@ let slug, url;
   r = await worker.fetch(req(`/r/${aslug}`), env, {});
   check('agent: approved fetch → 402 paywall', r.status === 402);
   r = await worker.fetch(req(`/r/${aslug}`, { headers: { accept: 'text/html' } }), env, {});
-  check('agent: approved paywall shows Created by agent badge', r.status === 402 && (await r.text()).includes('Created by agent'));
+  check('agent: approved teaser shows Created by agent badge', r.status === 200 && (await r.text()).includes('Created by agent'));
   mkt = await (await worker.fetch(req('/v1/marketplace.json'), env, {})).json();
   const hit = mkt.find((e) => e.url.endsWith(`/r/${aslug}`));
   check('agent: marketplace lists approved with badge flag', !!hit && hit.created_by_agent === true);
