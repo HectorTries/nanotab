@@ -551,7 +551,7 @@ export function landingHtml(): string {
 <div class="preview" aria-label="What readers and agents see">
 <div class="preview-head"><span><b>What readers &amp; agents see</b></span><span>Your new link</span></div>
 <div class="preview-body">
-<div class="mock-title">My complete guide to growing tomatoes</div>
+<div class="mock-title">My complete guide to reading your payslip</div>
 <div class="mock-price">$0.25</div>
 <div class="mock-line">USDC on Base · to read in full</div>
 <span class="mock-btn">Pay $0.25 &amp; read →</span>
@@ -578,7 +578,7 @@ export function landingHtml(): string {
 <div class="wiz-nav"><button type="button" class="btn" onclick="goStep(2)" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
 </div>
 <div class="wiz-panel hidden" id="panel-2">
-<label for="p-title">2 · Give it a short title</label><input id="p-title" maxlength="200" placeholder="e.g. My guide to growing tomatoes">
+<label for="p-title">2 · Give it a short title</label><input id="p-title" maxlength="200" placeholder="e.g. My guide to reading your payslip">
 <div class="hint">Filled in automatically from your document — edit it if you like. Only people who pay will see the full words; everyone else sees the price, the title, and a short free preview.</div>
 <div class="freeprev"><span class="preview-label">Free preview</span><div class="out" id="p-abstract">Your free preview will appear here once you add some words.</div></div>
 <label for="p-kind">What are you sharing?</label>
@@ -627,7 +627,7 @@ export function landingHtml(): string {
 <div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
 </div>
 <div id="pub-out"></div>
-<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and your paywall is live instantly. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
+<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and it goes to review. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
 </div>
 <div class="card">
 <h2>Keep your link — bookmark it</h2>
@@ -932,7 +932,7 @@ export function termsHtml(): string {
 <div class="card"><h2 style="font-size:18px">What NanoTab Pay is</h2><p class="card-sub" style="margin-bottom:0">NanoTab Pay lets you put words, files and links behind a pay-per-read link. AI agents pay to read your link; humans can too — same link, same price. Payments are made in USDC on the Base network. We do not hold your money: each payment is split on-chain, 98% to the wallet address you give us and 2% to NanoTab. There are no accounts: publishing and paying need no email, no sign-in and no password. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></div>
 <div class="card"><h2 style="font-size:18px">Fees and settlement</h2><p class="card-sub" style="margin-bottom:0">Hosted links: NanoTab keeps 2% of every payment; you keep 98%. There is no monthly fee. Prices are set by you in US dollars and paid in USDC. Settled payments go straight to your wallet — there is no NanoTab balance and nothing to withdraw. The developer self-host path carries a 0.1% fee instead; see <a href="/developers">For developers</a>.</p></div>
 <div class="card"><h2 style="font-size:18px">You keep your copyright</h2><p class="card-sub" style="margin-bottom:0">Your content stays yours. You keep all copyright and ownership of everything you upload. You give NanoTab a non-exclusive, worldwide licence to store your content, convert it to markdown, and serve it to buyers through your paywall link. That is the only licence you grant us, and it ends when the listing is removed. Nothing transfers to NanoTab.</p></div>
-<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">By publishing, you confirm that you created the content, or that you have the rights and permission to sell access to it. You are responsible for it being lawful and as described, and you agree to indemnify NanoTab against claims arising from content you publish without the necessary rights. Agent-submitted links may be held for owner review before they go live. We may remove links that break the law or these terms.</p></div>
+<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">By publishing, you confirm that you created the content, or that you have the rights and permission to sell access to it. You are responsible for it being lawful and as described, and you agree to indemnify NanoTab against claims arising from content you publish without the necessary rights. Every link is reviewed before it goes live. We may remove links that break the law or these terms.</p></div>
 <div class="card"><h2 style="font-size:18px">What paying buys</h2><p class="card-sub" style="margin-bottom:0">One payment buys one personal read of that link's content, for the person or agent that paid. It does not buy ownership, and it gives no right to copy, resell, redistribute, republish or share the paid text. Paid content may not be used to train machine-learning models unless the seller has explicitly opted in. Sellers: the paywall controls access to the copy NanoTab serves; it cannot stop someone re-typing what they have read, and we do not claim otherwise.</p></div>
 <div class="card"><h2 style="font-size:18px">Availability and liability</h2><p class="card-sub" style="margin-bottom:0">We run NanoTab Pay as a small, new service and aim to keep it available, but we do not guarantee uninterrupted service. To the extent the law allows, our liability is limited to the fees we took on the affected payments. Nothing here removes your statutory rights. Refunds and disputes are covered at <a href="/refunds">Refunds &amp; disputes</a>.</p></div>
 <p style="color:var(--mut);font-size:14.5px">See also: <a href="/privacy">Privacy</a> · <a href="/about">About NanoTab</a> · <a href="/contact">Contact</a></p>`
@@ -1018,7 +1018,7 @@ export function demoHtml(): string {
     `<p class="eyebrow">Live demo · Real paywall</p>
 <h2 style="font-size:clamp(28px,4vw,38px)">Try a real paywall: $0.05</h2>
 <p class="secsub">This is not a mock-up. The link below is a live NanoTab paywall holding a short sample text. It costs $0.05 in USDC on Base — the same flow your readers and agents would use.</p>
-<div class="card"><h2 style="font-size:18px">The sample (preview)</h2><p class="card-sub">Title: <b style="color:var(--txt)">Sample: How to keep tomatoes happy in a small garden</b></p><p class="card-sub" style="margin-bottom:0">Free preview — first lines only: <i>“Tomatoes want sun, steady water, and more room than you think. The five rules that actually matter…”</i> The full text (five short rules) unlocks on payment.</p></div>
+<div class="card"><h2 style="font-size:18px">The sample (preview)</h2><p class="card-sub">Title: <b style="color:var(--txt)">Sample: How to read your payslip without missing money</b></p><p class="card-sub" style="margin-bottom:0">Free preview — first lines only: <i>“Most payslips hide more than they show. These five checks catch the errors that quietly cost people money…”</i> The full text (five short rules) unlocks on payment.</p></div>
 <div class="card"><h2 style="font-size:18px">Pay and read</h2><p class="card-sub">Open the paywall link with an agent, or fetch it from code: the unpaid answer is a 402 with the price; pay $0.05 USDC on Base and the same link returns the words. In a plain browser you will see the paywall explanation page — there is no card checkout, for the demo or for any NanoTab link. Demo payments go to the NanoTab demo wallet.</p><p style="margin:14px 0 4px"><a class="btn" href="/r/DemoSample">Open the $0.05 demo paywall →</a></p><p style="margin:10px 0 0;font-size:14px"><a href="/marketplace">Browse the marketplace</a> · <a href="/stats">Live stats</a> · <a href="/#create">Create your own link</a></p></div>
 <div class="card"><h2 style="font-size:18px">Honest status</h2><p class="card-sub" style="margin-bottom:0">NanoTab is new. Live paid-read totals are on <a href="/stats">/stats</a> — we show the real number there rather than borrow someone else's. If the count looks small, that is because it is.</p></div>`
   );
@@ -1155,7 +1155,7 @@ export function publishHtml(): string {
 <div id="pub-out" aria-live="polite"></div>
 </div>
 </form>
-<p class="pub-below">Bookmark your link after publishing — there's no account to find it in.</p>
+<p class="pub-below">Every link is reviewed before it goes live. Bookmark your page after publishing — there's no account to find it in.</p>
 ${FOOTER_PLAIN}
 </div>
 <script>
@@ -1226,6 +1226,7 @@ async function fPublish(){
  $('f-publish').disabled=false;
  $('f-publish').textContent='Publish link';
  if(!r.ok||!j||!j.url){$('pub-out').innerHTML='<div class="out">'+((j&&j.error)?mdEsc(j.error):'Something went wrong. Try again.')+'</div>';return}
+ if(j.status==='pending'){$('pub-out').innerHTML='<div class="out"><div class="pub-done-t">Submitted for review</div><div class="pub-done-l">Your page</div><a href="'+j.page_url+'">'+j.page_url+'</a><p class="pub-done-note">It returns 403 until approved. Approved links appear in the marketplace. Bookmark this page — there is no account to find it later.</p></div>';return}
  var agentCurl='curl -i -H "Accept: application/json" '+j.url;
  fCopies=[j.page_url,j.url,agentCurl];
  $('pub-out').innerHTML='<div class="out"><div class="pub-done-t">✓ Your link is live</div><div class="pub-done-l">Preview page</div><a href="'+j.page_url+'">'+j.page_url+'</a><div class="pub-done-l">Paywall link for agents</div><a href="'+j.url+'">'+j.url+'</a><div class="pub-done-btns"><button type="button" class="ghost" data-copy="0">Copy page link</button><button type="button" class="ghost" data-copy="1">Copy paywall link</button><button type="button" class="ghost" data-copy="2">Copy test curl</button></div><span id="f-copy-status" class="hint" style="display:block"></span><div class="agent-curl">'+mdEsc(agentCurl)+'</div><p class="pub-done-note">Bookmark these links — there is no account to find them later. Unpaid requests get a 402 at $'+price.toFixed(2)+'; you keep 98% ($'+(price*0.98).toFixed(2)+') per read, paid to '+payto+' in USDC on Base.</p><div class="freeprev"><span class="pub-prevlabel">Free preview</span><div class="out">'+mdEsc(j.abstract||'(no preview)')+'</div></div></div>';

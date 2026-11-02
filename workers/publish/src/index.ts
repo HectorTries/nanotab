@@ -425,7 +425,7 @@ function requireAdmin(req: Request, env: Env): string {
 // Shared body validation for human publishes and agent submissions.
 function parsePublishBody(body: any, maxPrice: number): {
   title: string; mime: string; price_cents: number; merchant_wallet: string;
-  bytes: Uint8Array; b64: string; source_url?: string; agent_name?: string;
+  bytes: Uint8Array; b64: string; source_url?: string; agent_name?: string; abstract?: string;
 } {
   const title = typeof body?.title === 'string' ? body.title.trim() : '';
   if (!title || title.length > 200) throw new HttpErr(400, 'invalid title (1–200 chars)');
@@ -481,7 +481,17 @@ function parsePublishBody(body: any, maxPrice: number): {
   if (typeof body?.agent_name === 'string' && body.agent_name.trim()) {
     agent_name = body.agent_name.trim().slice(0, 80);
   }
-  return { title, mime: body.mime, price_cents: body.price_cents, merchant_wallet: body.merchant_wallet, bytes, b64, source_url, agent_name };
+  // Optional publisher-supplied free preview. Gives the product a real selling
+  // pitch on the unpaid page instead of a truncated first line.
+  let abstract: string | undefined;
+  if (body?.abstract !== undefined && body?.abstract !== null && body?.abstract !== '') {
+    if (typeof body.abstract !== 'string') throw new HttpErr(400, 'invalid abstract');
+    const a = body.abstract.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim();
+    if (a.length < 20) throw new HttpErr(400, 'abstract too short (min 20 chars)');
+    if (a.length > 1200) throw new HttpErr(400, 'abstract too long (max 1200 chars)');
+    abstract = a;
+  }
+  return { title, mime: body.mime, price_cents: body.price_cents, merchant_wallet: body.merchant_wallet, bytes, b64, source_url, agent_name, abstract };
 }
 
 async function freshSlug(kv: KVNamespace): Promise<string> {
@@ -586,6 +596,24 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   const p = parsePublishBody(body, maxPrice);
   const slug = await freshSlug(kv);
 
+  // One publish path: every listing is queued for review. An optional agent
+  // key only adds identity + a Jev pre-review note for the owner; it never
+  // auto-publishes. Approval happens via /v1/agent/review (ADMIN_KEY).
+  const agentKey = req.headers.get('X-Agent-Key') ?? '';
+  const isAgent = !!env.AGENT_KEY && agentKey === env.AGENT_KEY;
+  const agentName = isAgent ? (p.agent_name ?? 'agent') : undefined;
+  let verdict = null;
+  if (isAgent) {
+    const hourBucket = new Date().toISOString().slice(0, 13);
+    const rateKey = `agentcount:${agentName}:${hourBucket}`;
+    const submitted = Number(((await kv.get(rateKey).catch(() => null)) as string | null) ?? 0);
+    if (submitted >= AGENT_SUBMIT_LIMIT_PER_HOUR) {
+      throw new HttpErr(429, `rate limited: over ${AGENT_SUBMIT_LIMIT_PER_HOUR} submissions/hour for this agent`);
+    }
+    await kv.put(rateKey, String(submitted + 1), { expirationTtl: 3600 }).catch(() => {});
+    verdict = await callJev(env, { title: p.title, price_cents: p.price_cents, bytes: p.bytes, source_url: p.source_url, agent_name: agentName! });
+  }
+
   const listing: Listing = {
     slug,
     title: p.title,
@@ -596,12 +624,14 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     merchant_wallet: p.merchant_wallet,
     created_at: new Date().toISOString(),
     paid_calls: 0,
-    source: 'paste',
-    status: 'live',
+    source: isAgent ? 'agent' : 'paste',
+    status: 'pending',
+    ...(p.abstract ? { abstract: p.abstract } : { abstract: deriveAbstract(p.bytes, p.mime, p.title) }),
+    ...(isAgent ? { created_by_agent: true, agent_name: agentName, agent_verified: true } : {}),
+    ...(verdict ? { jev: verdict } : {}),
     rights_confirmed: true,
     rights_confirmed_at: new Date().toISOString(),
     rights_confirmed_ip: (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0] ?? '').trim(),
-    abstract: deriveAbstract(p.bytes, p.mime, p.title),
     ...(p.source_url ? { source_url: p.source_url } : {}),
   };
   await putBytes(kv, r2, listing, p.bytes, p.b64);
@@ -612,10 +642,14 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   const page_url = `${origin}/p/${slug}`;
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
   const feeTo = feeRecipientFor(env.FEE_WALLET);
-  console.log(`[nanotab-publish] published ${slug} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c → ${listing.merchant_wallet})`);
+  console.log(`[nanotab-publish] queued for review ${slug} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c → ${listing.merchant_wallet}${isAgent ? ', agent=' + agentName : ''})`);
   return Response.json(
-    { url, page_url, slug, abstract: listing.abstract, x402: { accepts: listing402Body(url, listing, feeBps, feeTo).accepts } },
-    { status: 201 }
+    {
+      url, page_url, slug, status: 'pending', abstract: listing.abstract,
+      message: 'Submitted for review. The page returns 403 until it is approved; approved links appear in the marketplace.',
+      ...(verdict ? { jev: verdict } : {}),
+    },
+    { status: 202 }
   );
 }
 
@@ -865,21 +899,21 @@ async function handleAgentReview(req: Request, env: Env): Promise<Response> {
 }
 
 const DEMO_SLUG = 'DemoSample';
-const DEMO_BODY = `How to keep tomatoes happy in a small garden
+const DEMO_BODY = `How to read your payslip without missing money
 
-Preview: Tomatoes want sun, steady water, and more room than you think. The five rules that actually matter:
+Preview: Most payslips hide more than they show. These five checks catch the errors that quietly cost people money:
 
-1. Sun first. Six to eight hours of direct sun beats any feed. In a small garden, grow up a cane or string so leaves stay in the light and air.
-2. Water the soil, not the leaves. Deep watering twice a week grows deeper roots than a daily sprinkle, and dry leaves resist blight.
-3. Feed little and often. A weak tomato feed at every other watering from first flowers is steadier than one big dose.
-4. Pinch the side shoots. The small shoots between leaf and stem steal energy; removing them weekly keeps fruit coming.
-5. Mulch after planting. Straw or compost around the base keeps moisture even and soil splash off the leaves.
+1. Gross versus net. Your gross is what you earned; net is what landed. If the gap is bigger than tax, NI, pension and student loan can explain, ask payroll for the breakdown.
+2. Tax code. One wrong digit changes your whole year. Check the code against HMRC's app, not against last month's payslip.
+3. Pension contributions. Confirm the percentage is on gross pay, not net, and that your employer contribution appears separately.
+4. Student loan plan. Plan 1, 2, 4 or postgraduate — the thresholds differ, and the wrong plan overcharges quietly.
+5. Benefits and deductions. Season ticket loans, cycle schemes, childcare and salary sacrifice should each appear as a named line. Anything unnamed deserves a question.
 
-That is the whole guide. Everything else is refinement.
+That is the whole checklist. Everything else is detail.
 `;
 function demoListing(env: Env): Listing {
   const bytes = new TextEncoder().encode(DEMO_BODY);
-  const title = 'Sample: How to keep tomatoes happy in a small garden';
+  const title = 'Sample: How to read your payslip without missing money';
   return { slug: DEMO_SLUG, title, mime: 'text/plain', bytes: bytes.length, r2_key: `r/${DEMO_SLUG}`, price_cents: '5', merchant_wallet: feeRecipientFor(env.FEE_WALLET), created_at: '2026-11-01T00:00:00.000Z', paid_calls: 0, source: 'paste', status: 'live', abstract: deriveAbstract(bytes, 'text/plain', title) };
 }
 
@@ -1092,13 +1126,18 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
 // transactions (a plain wallet cannot batch ERC-20 transfers).
 async function verifyUsdcTransfer(rpcUrl: string | undefined, txHash: string, to: string, minUnits: bigint): Promise<void> {
   const rpc = rpcUrl || 'https://mainnet.base.org';
-  const res = await fetch(rpc, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: [txHash] }),
-  });
-  const j: any = await res.json();
-  const r = j?.result;
+  let r: any = null;
+  for (let i = 0; i < 10; i++) {
+    const res = await fetch(rpc, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: [txHash] }),
+    });
+    const j: any = await res.json();
+    r = j?.result;
+    if (r) break;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
   if (!r) throw new Error('transaction not found yet (wait for confirmation and retry)');
   if (r.status !== '0x1') throw new Error('transaction failed on-chain');
   const padded = '0x' + to.toLowerCase().replace(/^0x/, '').padStart(64, '0');
@@ -1314,8 +1353,18 @@ function publicListingHtml(origin: string, l: Listing, abstract: string, feeBps:
   const agentBadge = l.created_by_agent
     ? ' <span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;vertical-align:2px">Created by agent</span>'
     : '';
-  const metaHtml = `$${priceUsd} per view · USDC on Base${l.created_by_agent ? " · created by an agent" : ""}`;
-  const bodyHtml = `<div class="preview-wrap"><div class="article-body"><p>${escHtml(abstract)}</p></div><div class="fade"></div></div>
+  const metaHtml = `$${priceUsd} one payment · USDC on Base${l.created_by_agent ? " · created by an agent" : ""}`;
+  const previewParas = abstract.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean).slice(0, 4)
+    .map((x) => `<p>${escHtml(x)}</p>`).join('');
+  const bodyHtml = `<div class="preview-wrap"><div class="article-body"><div class="meta" style="margin:0 0 10px;color:#3ecf8e;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600">Free preview</div>${previewParas}</div><div class="fade"></div></div>
+<div class="whatget" style="border:1px solid #232b36;border-radius:12px;padding:16px 18px;margin:6px 0 18px;background:#0e1218">
+  <b style="font-size:15px">What you get</b>
+  <ul style="margin:8px 0 0;padding-left:20px;color:#9fb0c0;font-size:14.5px;line-height:1.6">
+    <li>The full report, unlocked instantly</li>
+    <li>Readable in your browser — no account, no card</li>
+    <li>Also fetchable by an AI agent over x402</li>
+  </ul>
+</div>
 <div class="paycard">
   <div class="payrow"><div><div class="price">$${priceUsd}</div><div class="mut">one payment · read the full article</div></div>
   <button type="button" class="btn" id="unlock-btn">Unlock the full article</button>
@@ -1748,7 +1797,8 @@ export default {
         return await handlePublish(req, env);
       }
       if (req.method === 'POST' && pathname === '/v1/agent/submit') {
-        return await handleAgentSubmit(req, env);
+        // Compatibility alias — there is one publish path, and it always reviews.
+        return await handlePublish(req, env);
       }
       if (req.method === 'GET' && pathname === '/v1/agent/pending') {
         return await handleAgentPending(req, env);
