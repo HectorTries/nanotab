@@ -1,4 +1,4 @@
-// pay.nanotab.dev pages. Leading product: Paywall Any Link.
+// nanotab.dev pages. Leading product: Paywall Any Link.
 // No accounts, no email, no sign-in anywhere.
 //   /            hero + step-flow (paste link → content → price → wallet → Publish)
 //   /developers  demoted developer path (SDK / self-host docs funnel)
@@ -779,7 +779,7 @@ export function developersHtml(): string {
 <section class="block" style="padding-top:48px">
 <p class="eyebrow">Secondary path · For developers</p>
 <h2 style="font-size:clamp(30px,4.4vw,44px)">Build with the SDK.<br>Everyone else: <a href="/">Paywall Any Link</a>.</h2>
-<p class="secsub">Hosted links on pay.nanotab.dev keep 98% and need zero code. This page is the developer path: self-host the same x402 paywall on your own server and keep 99.9% (0.1% fee), or give your agent a wallet that pays per call.</p>
+<p class="secsub">Hosted links on nanotab.dev keep 98% and need zero code. This page is the developer path: self-host the same x402 paywall on your own server and keep 99.9% (0.1% fee), or give your agent a wallet that pays per call.</p>
 </section>
 <section class="block" aria-label="Self-host">
 <h2>Self-host: paywall your server</h2>
@@ -801,14 +801,14 @@ export function developersHtml(): string {
 <h2>Agents creating paywalls</h2>
 <p class="secsub">Agents can submit links too. Every submission is auto-reviewed by TypeSafe Jev (spam, legality, price, quality): clean links from verified agents publish instantly, everything else waits in the owner's daily review queue (protected by the ADMIN_KEY secret) with its Jev scores shown. Unapproved links return <code>403</code> at fetch time (never 402 terms, never content), rejected links read as <code>404</code> and cannot be resubmitted, and published agent links carry a <b style="color:var(--txt)">Created by agent</b> badge. Human-created links still publish instantly.</p>
 <pre class="codeblock"><code># agent submits (queued as pending, returns 202)
-curl -X POST https://pay.nanotab.dev/v1/agent/submit \\
+curl -X POST https://nanotab.dev/v1/agent/submit \\
   -H "X-Agent-Key: $AGENT_KEY" -H "content-type: application/json" \\
   -d '{"title":"…","mime":"text/markdown","price_cents":25,
        "merchant_wallet":"0x…","body_b64":"…","agent_name":"my-agent",
        "source_url":"https://example.com/source"}'
 
 # owner reviews the daily queue (browser, admin key in URL)
-#   https://pay.nanotab.dev/agent-auth?key=$ADMIN_KEY
+#   https://nanotab.dev/agent-auth?key=$ADMIN_KEY
 # owner automation (admin key header):
 #   GET  /v1/agent/pending   -H "X-Admin-Key: $ADMIN_KEY"
 #   POST /v1/agent/review    -H "X-Admin-Key: $ADMIN_KEY" {"slug":"…","action":"approve"|"reject"}</code></pre>
@@ -816,19 +816,19 @@ curl -X POST https://pay.nanotab.dev/v1/agent/submit \\
 <section class="block" aria-label="Discovery">
 <h2>Discovery for machines</h2>
 <p class="secsub">Published links list themselves. Pending agent links never appear here.</p>
-<pre class="codeblock"><code>GET https://pay.nanotab.dev/v1/marketplace.json   # flat listing file
-GET https://pay.nanotab.dev/.well-known/x402      # x402 capability doc
-GET https://pay.nanotab.dev/stats                 # totals + fee terms</code></pre>
+<pre class="codeblock"><code>GET https://nanotab.dev/v1/marketplace.json   # flat listing file
+GET https://nanotab.dev/.well-known/x402      # x402 capability doc
+GET https://nanotab.dev/stats                 # totals + fee terms</code></pre>
 <p style="color:var(--mut);font-size:14.5px">The document publish flow is at <a href="/publish">/publish</a> (no credentials needed). Full docs and source: <a href="https://nanotab.dev">nanotab.dev</a> · <a href="https://github.com/HectorTries/nanotab">GitHub</a>.</p>
 </section>
 <section class="block" aria-label="Content ingestion API">
 <h2>Content ingestion API</h2>
 <p class="secsub">Upload a document and the Worker extracts canonical markdown server-side (PDF text layer via pdfjs, .md/.txt normalised). Nothing is stored at ingest time — the original file is discarded and only the returned markdown is later published. Limits: 10 MB per file, 200,000 extracted characters, 10 uploads/hour per IP.</p>
 <pre class="codeblock"><code># extract markdown from a file (returns markdown, title, chars, words)
-curl -X POST https://pay.nanotab.dev/v1/ingest -F file=@report.pdf
+curl -X POST https://nanotab.dev/v1/ingest -F file=@report.pdf
 
 # then publish the markdown (no credentials needed)
-curl -X POST https://pay.nanotab.dev/v1/publish -H "content-type: application/json" \
+curl -X POST https://nanotab.dev/v1/publish -H "content-type: application/json" \
   -d '{"title":"…","mime":"text/markdown","price_cents":25,
        "merchant_wallet":"0x…","body_b64":"…"}'</code></pre>
 </section>
@@ -977,7 +977,7 @@ export function contactHtml(): string {
 <h2 style="font-size:clamp(28px,4vw,38px)">Contact us</h2>
 <p class="secsub">One inbox for everything — help, payment disputes, privacy requests.</p>
 <div class="card"><h2 style="font-size:18px">Email</h2><p class="card-sub" style="margin-bottom:0"><a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a> — we aim to reply within two working days. There are no accounts, so include your paywall link in your message; we cannot look anything up by sign-in.</p></div>
-<div class="card"><h2 style="font-size:18px">For a payment problem, include</h2><p class="card-sub" style="margin-bottom:0">The paywall link (pay.nanotab.dev/r/…), the amount, roughly when you paid, and the transaction hash if you have it. See <a href="/refunds">Refunds &amp; disputes</a> for how we handle it. Never send a private key or recovery phrase — we will never ask for one.</p></div>
+<div class="card"><h2 style="font-size:18px">For a payment problem, include</h2><p class="card-sub" style="margin-bottom:0">The paywall link (nanotab.dev/r/…), the amount, roughly when you paid, and the transaction hash if you have it. See <a href="/refunds">Refunds &amp; disputes</a> for how we handle it. Never send a private key or recovery phrase — we will never ask for one.</p></div>
 <div class="card"><h2 style="font-size:18px">Who we are</h2><p class="card-sub" style="margin-bottom:0">NanoTab is a small independent project. The code is open source: <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a>. More on <a href="/about">About NanoTab</a>.</p></div>`
   );
 }

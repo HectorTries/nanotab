@@ -160,6 +160,7 @@ const MAX_B64_CHARS = Math.ceil(MAX_BODY_BYTES / 3) * 4;
 const RESERVED_SLUGS = new Set(['api', 'stats', 'admin', 'v1', 'r', 'publish', 'marketplace', 'developers', 'agent-auth', 'app']);
 const WALLET_RE = /^0x[0-9a-fA-F]{40}$/;
 const SLUG_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const CANONICAL_ORIGIN = 'https://nanotab.dev';
 
 class HttpErr extends Error {
   status: number;
@@ -594,7 +595,7 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   await putBytes(kv, r2, listing, p.bytes, p.b64);
   await putListing(kv, listing);
 
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const url = `${origin}/r/${slug}`;
   const page_url = `${origin}/p/${slug}`;
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
@@ -774,7 +775,7 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
   };
   await putBytes(kv, r2, listing, p.bytes, p.b64);
   await putListing(kv, listing);
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const url = `${origin}/r/${slug}`;
   const page_url = `${origin}/p/${slug}`;
   if (auto) {
@@ -794,7 +795,7 @@ async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
 async function handleAgentPending(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
   requireAdmin(req, env);
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const keys = await listRKeys(kv);
   const items = (
     await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
@@ -925,7 +926,7 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
   const feeTo = feeRecipientFor(env.FEE_WALLET);
   const header = req.headers.get('X-Payment');
   if (!header) {
-    const origin = new URL(req.url).origin;
+    const origin = CANONICAL_ORIGIN;
     if (classifyUnpaid(req) === 'teaser') {
       const abstract = await ensureAbstract(kv, r2, listing);
       return new Response(publicListingHtml(origin, listing, abstract, feeBps, feeTo), {
@@ -1171,7 +1172,7 @@ GET same URL + X-Payment proof  →  200 full content</pre>
 // Human marketplace page (GET /marketplace); machines keep /v1/marketplace.json.
 async function handleMarketplacePage(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const keys = await listRKeys(kv);
   const items = (
     await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
@@ -1199,7 +1200,7 @@ async function handleMarketplacePage(req: Request, env: Env): Promise<Response> 
 }
 async function handleMarketplace(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const keys = await listRKeys(kv);
   const items = (
     await Promise.all(
@@ -1282,7 +1283,7 @@ function handlePublishPage(): Response {
 
 // --- GET /.well-known/x402 (generic spec; per-listing terms live in /r/:slug 402s) ---
 function handleWellKnown(req: Request, env: Env): Response {
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
   const feeTo = feeRecipientFor(env.FEE_WALLET);
   const inputBody = {
@@ -1330,7 +1331,7 @@ function handleWellKnown(req: Request, env: Env): Response {
 
 // --- Discovery: robots.txt / llms.txt / sitemap.xml ---
 function handleRobots(req: Request): Response {
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const body = `# NanoTab Pay — paywall any link; agents pay USDC on Base (x402).
 # Every post has a free abstract at /p/<slug> for discovery and citation.
 # The full paid body is only served after payment — it is never in the teaser.
@@ -1367,7 +1368,7 @@ Sitemap: ${origin}/sitemap.xml
 }
 
 function handleLlms(req: Request): Response {
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const body = `# NanoTab Pay
 
 > NanoTab Pay lets anyone paywall a link in seconds. Paste content, set a price, and share one link: AI agents pay automatically in USDC on Base (x402 / HTTP 402), and humans can pay the same way. No account is needed to publish or to pay. Sellers keep 98% of every payment; NanoTab keeps 2%.
@@ -1411,7 +1412,7 @@ Quote the free abstract from ${origin}/p/<slug> and link that canonical page. To
 
 async function handleSitemap(req: Request, env: Env): Promise<Response> {
   const kv = needKv(env);
-  const origin = new URL(req.url).origin;
+  const origin = CANONICAL_ORIGIN;
   const keys = await listRKeys(kv);
   const listings = (
     await Promise.all(keys.map(async (k) => (await kv.get(k, 'json').catch(() => null)) as Listing | null))
@@ -1445,7 +1446,19 @@ async function handleSitemap(req: Request, env: Env): Promise<Response> {
 export default {
   async fetch(req: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     try {
-      const pathname = new URL(req.url).pathname;
+      const reqUrl = new URL(req.url);
+      const pathname = reqUrl.pathname;
+      // Legacy host: redirect page traffic to the canonical apex. Keep /r/ pay
+      // endpoints, /v1 API and /.well-known working on the old host for agents.
+      if (
+        reqUrl.hostname === 'pay.nanotab.dev' &&
+        (req.method === 'GET' || req.method === 'HEAD') &&
+        !pathname.startsWith('/r/') &&
+        !pathname.startsWith('/v1/') &&
+        !pathname.startsWith('/.well-known/')
+      ) {
+        return Response.redirect(CANONICAL_ORIGIN + pathname + reqUrl.search, 301);
+      }
 
       if (req.method === 'GET' && (pathname === '/' || pathname === '/app')) {
         return new Response(landingHtml(), {

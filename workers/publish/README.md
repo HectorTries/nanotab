@@ -2,7 +2,7 @@
 
 NanoTab hosted one-click agent paywalls (MVP step 2). Upload a document
 (PDF, .md, .txt) or paste content in, get a public
-`https://pay.nanotab.dev/r/<slug>` URL that returns a 402
+`https://nanotab.dev/r/<slug>` URL that returns a 402
 challenge to agents/browsers and serves the bytes after a valid x402
 payment (USDC on Base, 2% protocol fee). No arbitrary URL proxying —
 R2-hosted bytes only, so SSRF is structurally impossible.
