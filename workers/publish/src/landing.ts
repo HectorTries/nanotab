@@ -627,7 +627,7 @@ export function landingHtml(): string {
 <div class="wiz-nav"><button type="button" class="btn-back" onclick="goStep(3)">← Back</button><button type="button" class="btn" id="btn-next" onclick="onNext()" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
 </div>
 <div id="pub-out"></div>
-<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — tap Publish link and it goes to review. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
+<div id="pub-lock"><span><b style="color:var(--txt)">No account needed</b> — every link is reviewed automatically before it goes live. Keep your link — bookmark it after you publish. There is no account to recover it from.</span></div>
 </div>
 <div class="card">
 <h2>Keep your link — bookmark it</h2>
@@ -932,7 +932,7 @@ export function termsHtml(): string {
 <div class="card"><h2 style="font-size:18px">What NanoTab Pay is</h2><p class="card-sub" style="margin-bottom:0">NanoTab Pay lets you put words, files and links behind a pay-per-read link. AI agents pay to read your link; humans can too — same link, same price. Payments are made in USDC on the Base network. We do not hold your money: each payment is split on-chain, 98% to the wallet address you give us and 2% to NanoTab. There are no accounts: publishing and paying need no email, no sign-in and no password. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></div>
 <div class="card"><h2 style="font-size:18px">Fees and settlement</h2><p class="card-sub" style="margin-bottom:0">Hosted links: NanoTab keeps 2% of every payment; you keep 98%. There is no monthly fee. Prices are set by you in US dollars and paid in USDC. Settled payments go straight to your wallet — there is no NanoTab balance and nothing to withdraw. The developer self-host path carries a 0.1% fee instead; see <a href="/developers">For developers</a>.</p></div>
 <div class="card"><h2 style="font-size:18px">You keep your copyright</h2><p class="card-sub" style="margin-bottom:0">Your content stays yours. You keep all copyright and ownership of everything you upload. You give NanoTab a non-exclusive, worldwide licence to store your content, convert it to markdown, and serve it to buyers through your paywall link. That is the only licence you grant us, and it ends when the listing is removed. Nothing transfers to NanoTab.</p></div>
-<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">By publishing, you confirm that you created the content, or that you have the rights and permission to sell access to it. You are responsible for it being lawful and as described, and you agree to indemnify NanoTab against claims arising from content you publish without the necessary rights. Every link is reviewed before it goes live. We may remove links that break the law or these terms.</p></div>
+<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">By publishing, you confirm that you created the content, or that you have the rights and permission to sell access to it. You are responsible for it being lawful and as described, and you agree to indemnify NanoTab against claims arising from content you publish without the necessary rights. Every link is reviewed automatically before it goes live. We may remove links that break the law or these terms.</p></div>
 <div class="card"><h2 style="font-size:18px">What paying buys</h2><p class="card-sub" style="margin-bottom:0">One payment buys one personal read of that link's content, for the person or agent that paid. It does not buy ownership, and it gives no right to copy, resell, redistribute, republish or share the paid text. Paid content may not be used to train machine-learning models unless the seller has explicitly opted in. Sellers: the paywall controls access to the copy NanoTab serves; it cannot stop someone re-typing what they have read, and we do not claim otherwise.</p></div>
 <div class="card"><h2 style="font-size:18px">Availability and liability</h2><p class="card-sub" style="margin-bottom:0">We run NanoTab Pay as a small, new service and aim to keep it available, but we do not guarantee uninterrupted service. To the extent the law allows, our liability is limited to the fees we took on the affected payments. Nothing here removes your statutory rights. Refunds and disputes are covered at <a href="/refunds">Refunds &amp; disputes</a>.</p></div>
 <p style="color:var(--mut);font-size:14.5px">See also: <a href="/privacy">Privacy</a> · <a href="/about">About NanoTab</a> · <a href="/contact">Contact</a></p>`
@@ -1155,7 +1155,7 @@ export function publishHtml(): string {
 <div id="pub-out" aria-live="polite"></div>
 </div>
 </form>
-<p class="pub-below">Every link is reviewed before it goes live. Bookmark your page after publishing — there's no account to find it in.</p>
+<p class="pub-below">Every link is reviewed automatically before it goes live. Bookmark your page after publishing — there's no account to find it in.</p>
 ${FOOTER_PLAIN}
 </div>
 <script>

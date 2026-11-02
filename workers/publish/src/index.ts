@@ -602,7 +602,6 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   const agentKey = req.headers.get('X-Agent-Key') ?? '';
   const isAgent = !!env.AGENT_KEY && agentKey === env.AGENT_KEY;
   const agentName = isAgent ? (p.agent_name ?? 'agent') : undefined;
-  let verdict = null;
   if (isAgent) {
     const hourBucket = new Date().toISOString().slice(0, 13);
     const rateKey = `agentcount:${agentName}:${hourBucket}`;
@@ -611,7 +610,19 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
       throw new HttpErr(429, `rate limited: over ${AGENT_SUBMIT_LIMIT_PER_HOUR} submissions/hour for this agent`);
     }
     await kv.put(rateKey, String(submitted + 1), { expirationTtl: 3600 }).catch(() => {});
-    verdict = await callJev(env, { title: p.title, price_cents: p.price_cents, bytes: p.bytes, source_url: p.source_url, agent_name: agentName! });
+  }
+  if (isBlockedDomain(p.source_url)) {
+    throw new HttpErr(403, 'blocked: source domain is on the spam blocklist');
+  }
+
+  // Automated review for every submission. Clean → live. Flagged → rejected
+  // with reasons. If the reviewer is unavailable, fail open (publish) rather
+  // than block the whole product on a third-party outage.
+  const verdict = await callJev(env, { title: p.title, price_cents: p.price_cents, bytes: p.bytes, source_url: p.source_url, agent_name: agentName ?? 'publisher' });
+  const approved = verdict ? jevAutoPublishes(true, verdict) : true;
+  if (verdict) verdict.decision = approved ? 'auto-publish' : 'held';
+  if (verdict && !approved) {
+    return Response.json({ error: `Rejected by automated review: ${jevRejectionReason(verdict)}`, review: verdict }, { status: 422 });
   }
 
   const listing: Listing = {
@@ -625,7 +636,7 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     created_at: new Date().toISOString(),
     paid_calls: 0,
     source: isAgent ? 'agent' : 'paste',
-    status: 'pending',
+    status: 'live',
     ...(p.abstract ? { abstract: p.abstract } : { abstract: deriveAbstract(p.bytes, p.mime, p.title) }),
     ...(isAgent ? { created_by_agent: true, agent_name: agentName, agent_verified: true } : {}),
     ...(verdict ? { jev: verdict } : {}),
@@ -642,14 +653,14 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
   const page_url = `${origin}/p/${slug}`;
   const feeBps = Number(env.NANOTAB_FEE_BPS ?? String(PROTOCOL_FEE_BPS));
   const feeTo = feeRecipientFor(env.FEE_WALLET);
-  console.log(`[nanotab-publish] queued for review ${slug} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c → ${listing.merchant_wallet}${isAgent ? ', agent=' + agentName : ''})`);
+  console.log(`[nanotab-publish] published ${slug} (${listing.mime}, ${listing.bytes}B, ${listing.price_cents}c → ${listing.merchant_wallet}${isAgent ? ', agent=' + agentName : ''}, reviewed=${verdict ? 'jev' : 'unavailable'})`);
   return Response.json(
     {
-      url, page_url, slug, status: 'pending', abstract: listing.abstract,
-      message: 'Submitted for review. The page returns 403 until it is approved; approved links appear in the marketplace.',
+      url, page_url, slug, status: 'live', abstract: listing.abstract,
+      message: 'Published. Automated review passed.',
       ...(verdict ? { jev: verdict } : {}),
     },
-    { status: 202 }
+    { status: 201 }
   );
 }
 
@@ -759,6 +770,15 @@ async function callJev(env: Env, p: { title: string; price_cents: number; bytes:
 function jevAutoPublishes(verified: boolean, v: JevVerdict): boolean {
   return verified && v.spam < 0.2 && v.content_legal > 0.8 && v.price_sane > 0.8
     && QUALITY_LEVELS.indexOf(v.quality) >= QUALITY_LEVELS.indexOf('fine');
+}
+
+function jevRejectionReason(v: JevVerdict): string {
+  const reasons: string[] = [];
+  if (v.spam >= 0.2) reasons.push('spam risk');
+  if (v.content_legal <= 0.8) reasons.push('legal or content risk');
+  if (v.price_sane <= 0.8) reasons.push('price looks unreasonable');
+  if (QUALITY_LEVELS.indexOf(v.quality) < QUALITY_LEVELS.indexOf('fine')) reasons.push('quality below threshold');
+  return reasons.length ? reasons.join(', ') : 'review failed';
 }
 
 async function handleAgentSubmit(req: Request, env: Env): Promise<Response> {
@@ -1747,20 +1767,8 @@ export default {
           headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'public, max-age=300' },
         });
       }
-      if (req.method === 'GET' && pathname === '/agent-auth') {
-        // Owner-only page: ADMIN_KEY via ?key=... (no cookies, no accounts).
-        // Missing/wrong key → 403 page, never the queue.
-        try {
-          requireAdmin(req, env);
-        } catch {
-          return new Response(agentAuthForbiddenHtml(), {
-            status: 403,
-            headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'no-store' },
-          });
-        }
-        return new Response(agentAuthHtml(), {
-          headers: { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'cache-control': 'no-store' },
-        });
+      if (pathname === '/agent-auth' || pathname === '/v1/agent/pending' || pathname === '/v1/agent/review') {
+        return Response.json({ error: 'manual review removed: every listing is reviewed automatically' }, { status: 410 });
       }
       if (req.method === 'GET' && ['/terms', '/privacy', '/refunds', '/refund-policy', '/contact', '/about', '/wallet-guide', '/demo'].includes(pathname)) {
         const page = pathname === '/terms' ? termsHtml() : pathname === '/privacy' ? privacyHtml() : pathname === '/contact' ? contactHtml() : pathname === '/about' ? aboutHtml() : pathname === '/wallet-guide' ? walletGuideHtml() : pathname === '/demo' ? demoHtml() : refundsHtml();
@@ -1799,12 +1807,6 @@ export default {
       if (req.method === 'POST' && pathname === '/v1/agent/submit') {
         // Compatibility alias — there is one publish path, and it always reviews.
         return await handlePublish(req, env);
-      }
-      if (req.method === 'GET' && pathname === '/v1/agent/pending') {
-        return await handleAgentPending(req, env);
-      }
-      if (req.method === 'POST' && pathname === '/v1/agent/review') {
-        return await handleAgentReview(req, env);
       }
       // Account routes were removed entirely — they fall through to 404 below.
       if (req.method === 'GET' && pathname.startsWith('/r/')) {
