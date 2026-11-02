@@ -36,7 +36,7 @@ nav{max-width:1180px;margin:0 auto;padding:22px 28px;display:flex;align-items:ce
 .logo i{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:15px;color:#04160e;font-weight:700;box-shadow:0 0 24px rgba(93,242,184,.5)}
 .navlinks{display:flex;gap:26px;align-items:center;font-size:14.5px;color:var(--mut)}
 .navlinks a{color:var(--mut);text-decoration:none;transition:color .2s}.navlinks a:hover{color:var(--fg)}
-.navcta{background:var(--fg);color:#0a0d14;font-weight:700;padding:9px 20px;border-radius:99px;text-decoration:none;font-size:14px;transition:transform .2s,box-shadow .2s}
+.navcta{background:var(--fg);color:#0a0d14;font-weight:700;padding:9px 20px;border-radius:99px;text-decoration:none;font-size:14px;white-space:nowrap;display:inline-block;transition:transform .2s,box-shadow .2s}
 .navcta:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(255,255,255,.18)}
 /* hero */
 .hero{max-width:1180px;margin:0 auto;padding:52px 28px 14px;text-align:center;position:relative}
@@ -137,8 +137,8 @@ pre code{color:#c9f5e2}
 .final{max-width:1180px;margin:80px auto 0;padding:70px 28px;text-align:center;border-top:1px solid var(--line)}
 footer{max-width:1180px;margin:0 auto;padding:26px 28px 44px;display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;flex-wrap:wrap;gap:10px}
 footer a{color:var(--acc);text-decoration:none}
-@media(max-width:760px){.navlinks a:not(.navcta){display:none}.hero{padding:40px 20px 10px}section{padding:40px 20px 0}.herobtns .btn{font-size:17px;padding:17px 32px;width:100%}.eco{font-size:12px}}
-.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
+@media(max-width:760px){.navlinks a:not(.navcta):not(.navmob){display:none}.navlinks a.navmob{display:inline;margin-right:14px;font-size:14px}.hero{padding:40px 20px 10px}section{padding:40px 20px 0}.herobtns .btn{font-size:17px;padding:17px 32px;width:100%}.eco{font-size:12px}}
+.reveal{opacity:1;transform:none;transition:opacity .5s ease,transform .5s ease}
 .reveal.on{opacity:1;transform:none}
 </style>
 </head>
@@ -147,7 +147,7 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="eco" style="text-align:center;font-size:13.5px;color:var(--mut);padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.05);letter-spacing:.02em">⚡ THE <b style="color:var(--acc)">x402 ECONOMY</b> IS LIVE — <b style="color:var(--acc)">$24.2M</b> settled onchain (last 30 days) · <b style="color:var(--fg)">75M+</b> agent txs (last 30 days) · <b style="color:var(--gold)">4× more buyers than sellers</b> — <a href="#eco-stats" style="color:var(--acc);font-weight:700">see the numbers ↓</a> (as of <time datetime="2026-10">Oct 2026</time>)</div>
 <nav aria-label="Primary">
 <div class="logo"><i>◒</i> NanoTab</div>
-<div class="navlinks"><a href="/publish">Hosted links</a><a href="/agents.html">Agents</a><a href="/micropayments.html">Micropayments</a><a href="/wordpress.html">WordPress</a><a href="/stripe-alternative.html">vs Stripe</a><a href="/mcp.html">MCP</a><a href="/facilitator.html">Facilitator</a><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="/marketplace">Marketplace</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="/publish">Start collecting →</a></div>
+<div class="navlinks"><a href="#how">How it works</a><a href="/marketplace">Marketplace</a><a href="/developers">For developers</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="/publish">Start collecting →</a></div>
 </nav>
 <main>
 <header class="hero">
@@ -355,22 +355,9 @@ document.getElementById('tryLiveBtn').addEventListener('click', async function()
 });
 </script>
 </div>
-<section class="reveal" style="max-width:960px;margin:60px auto 0;padding:0 20px">
-<h2 style="text-align:center">NanoTab guides — pin it, read it, build it 📌</h2>
-<p style="text-align:center;opacity:.8">Follow <a href="https://www.pinterest.co.uk/GrowingMoneyTrees/" style="color:var(--acc)">@GrowingMoneyTrees on Pinterest</a> for the full visual guide series.</p>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-top:24px">
-<a href="/micropayments.html"><img src="/pins/micropayments.png" alt="Micropayments for APIs — charge per call at 0.1%" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/agents.html"><img src="/pins/agents.png" alt="AI agent payments — pay for any API in 1 call" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/wordpress.html"><img src="/pins/wordpress.png" alt="WordPress crypto paywall plugin" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/stripe-alternative.html"><img src="/pins/stripe.png" alt="Stripe alternative for micropayments — 0.1% fees" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/facilitator.html"><img src="/pins/facilitator.png" alt="Run an x402 facilitator in 5 minutes" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/receive-agentic-payments.html"><img src="/pins/receive.png" alt="Accept AI agent payments in 5 minutes" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/mcp.html"><img src="/pins/mcp.png" alt="x402 MCP server — give your agent a wallet" loading="lazy" style="width:100%;border-radius:12px"></a>
-<a href="/best-platforms-agentic-payments.html"><img src="/pins/platforms.png" alt="11 agentic payment platforms compared 2026" loading="lazy" style="width:100%;border-radius:12px"></a>
-</div>
-</section>
+
 </main>
-<footer><span>NanoTab — live on Base mainnet. <a href="https://x402-list.com/services/nanotab-gateway?utm_source=badge&utm_medium=referral&utm_campaign=embed"><img src="https://x402-list.com/badge/nanotab-gateway.svg" alt="Listed on x402-list" height="28" style="vertical-align:middle;margin-left:6px"></a></span><span><a href="https://github.com/HectorTries/nanotab">Docs</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a> · <a href="https://nanotab.dev/terms">Terms</a> · <a href="https://nanotab.dev/privacy">Privacy</a> · <a href="https://nanotab.dev/refunds">Refunds</a> · <a href="https://nanotab.dev/contact">Contact</a> · <a href="https://nanotab.dev/about">About</a></span></footer>
+<footer><span>NanoTab — live on Base mainnet. <a href="https://x402-list.com/services/nanotab-gateway?utm_source=badge&utm_medium=referral&utm_campaign=embed"><img src="https://x402-list.com/badge/nanotab-gateway.svg" alt="Listed on x402-list" height="28" style="vertical-align:middle;margin-left:6px"></a></span><span style="display:block;margin-bottom:6px"><a href="/agents.html">Agents</a> · <a href="/micropayments.html">Micropayments</a> · <a href="/wordpress.html">WordPress</a> · <a href="/stripe-alternative.html">vs Stripe</a> · <a href="/mcp.html">MCP</a> · <a href="/facilitator.html">Facilitator</a> · <a href="#generate">Generator</a></span><span><a href="https://github.com/HectorTries/nanotab">Docs</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a> · <a href="https://nanotab.dev/terms">Terms</a> · <a href="https://nanotab.dev/privacy">Privacy</a> · <a href="https://nanotab.dev/refunds">Refunds</a> · <a href="https://nanotab.dev/contact">Contact</a> · <a href="https://nanotab.dev/about">About</a></span></footer>
 <script>
 // duplicate ticker content for seamless loop
 (function(){var t=document.getElementById('tick')||{innerHTML:''};t.innerHTML+=t.innerHTML;})();
