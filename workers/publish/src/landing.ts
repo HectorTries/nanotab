@@ -754,7 +754,7 @@ async function publish(){
  $('btn-next').disabled=true;
  var b64=btoa(unescape(encodeURIComponent(body)));
  var mime=/^\\s*[\\{\\[]/.test(body)?'application/json':'text/markdown';
- var payload={title:title,mime:mime,price_cents:Math.round(price*100),body_b64:b64};
+ var payload={title:title,mime:mime,price_cents:Math.round(price*100),body_b64:b64,rights_confirmed:true};
  payload[['merchant','wal'+'let'].join('_')]=payto;
  if(link)payload.source_url=link;
  var r=await req('/v1/publish',{method:'POST',body:JSON.stringify(payload)});
@@ -804,7 +804,7 @@ export function developersHtml(): string {
 curl -X POST https://nanotab.dev/v1/agent/submit \\
   -H "X-Agent-Key: $AGENT_KEY" -H "content-type: application/json" \\
   -d '{"title":"…","mime":"text/markdown","price_cents":25,
-       "merchant_wallet":"0x…","body_b64":"…","agent_name":"my-agent",
+       "merchant_wallet":"0x…","body_b64":"…","rights_confirmed":true,"agent_name":"my-agent",
        "source_url":"https://example.com/source"}'
 
 # owner reviews the daily queue (browser, admin key in URL)
@@ -830,7 +830,7 @@ curl -X POST https://nanotab.dev/v1/ingest -F file=@report.pdf
 # then publish the markdown (no credentials needed)
 curl -X POST https://nanotab.dev/v1/publish -H "content-type: application/json" \
   -d '{"title":"…","mime":"text/markdown","price_cents":25,
-       "merchant_wallet":"0x…","body_b64":"…"}'</code></pre>
+       "merchant_wallet":"0x…","body_b64":"…","rights_confirmed":true}'</code></pre>
 </section>
 <div class="card" style="text-align:center">
 <h2>Not writing code today?</h2>
@@ -931,8 +931,9 @@ export function termsHtml(): string {
 <p class="secsub">Last updated: November 2026. Questions or disputes: <a href="mailto:${CONTACT_EMAIL}">${CONTACT_EMAIL}</a>.</p>
 <div class="card"><h2 style="font-size:18px">What NanoTab Pay is</h2><p class="card-sub" style="margin-bottom:0">NanoTab Pay lets you put words, files and links behind a pay-per-read link. AI agents pay to read your link; humans can too — same link, same price. Payments are made in USDC on the Base network. We do not hold your money: each payment is split on-chain, 98% to the wallet address you give us and 2% to NanoTab. There are no accounts: publishing and paying need no email, no sign-in and no password. Keep your link — bookmark it after you publish, because there is no account to recover it from.</p></div>
 <div class="card"><h2 style="font-size:18px">Fees and settlement</h2><p class="card-sub" style="margin-bottom:0">Hosted links: NanoTab keeps 2% of every payment; you keep 98%. There is no monthly fee. Prices are set by you in US dollars and paid in USDC. Settled payments go straight to your wallet — there is no NanoTab balance and nothing to withdraw. The developer self-host path carries a 0.1% fee instead; see <a href="/developers">For developers</a>.</p></div>
-<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">Only publish content you wrote, made, or have permission to sell. You are responsible for it being lawful and as described. Agent-submitted links may be held for owner review before they go live. We may remove links that break the law or these terms.</p></div>
-<div class="card"><h2 style="font-size:18px">What paying buys</h2><p class="card-sub" style="margin-bottom:0">Paying unlocks a personal read of that link's content. It does not buy ownership, and it does not allow copying for resale, redistribution, or republication. Sellers: the paywall controls access to the copy NanoTab serves; it cannot stop someone re-typing what they have read, and we do not claim otherwise.</p></div>
+<div class="card"><h2 style="font-size:18px">You keep your copyright</h2><p class="card-sub" style="margin-bottom:0">Your content stays yours. You keep all copyright and ownership of everything you upload. You give NanoTab a non-exclusive, worldwide licence to store your content, convert it to markdown, and serve it to buyers through your paywall link. That is the only licence you grant us, and it ends when the listing is removed. Nothing transfers to NanoTab.</p></div>
+<div class="card"><h2 style="font-size:18px">Your content, your responsibility</h2><p class="card-sub" style="margin-bottom:0">By publishing, you confirm that you created the content, or that you have the rights and permission to sell access to it. You are responsible for it being lawful and as described, and you agree to indemnify NanoTab against claims arising from content you publish without the necessary rights. Agent-submitted links may be held for owner review before they go live. We may remove links that break the law or these terms.</p></div>
+<div class="card"><h2 style="font-size:18px">What paying buys</h2><p class="card-sub" style="margin-bottom:0">One payment buys one personal read of that link's content, for the person or agent that paid. It does not buy ownership, and it gives no right to copy, resell, redistribute, republish or share the paid text. Paid content may not be used to train machine-learning models unless the seller has explicitly opted in. Sellers: the paywall controls access to the copy NanoTab serves; it cannot stop someone re-typing what they have read, and we do not claim otherwise.</p></div>
 <div class="card"><h2 style="font-size:18px">Availability and liability</h2><p class="card-sub" style="margin-bottom:0">We run NanoTab Pay as a small, new service and aim to keep it available, but we do not guarantee uninterrupted service. To the extent the law allows, our liability is limited to the fees we took on the affected payments. Nothing here removes your statutory rights. Refunds and disputes are covered at <a href="/refunds">Refunds &amp; disputes</a>.</p></div>
 <p style="color:var(--mut);font-size:14.5px">See also: <a href="/privacy">Privacy</a> · <a href="/about">About NanoTab</a> · <a href="/contact">Contact</a></p>`
   );
@@ -1081,6 +1082,7 @@ export function publishHtml(): string {
 <div class="hint" id="wallet-save-note">The key is generated in your browser and never sent to any server. It is only saved if you tap Save on this device. Don't save keeps it in this tab's memory until you close the tab.</div>
 </div>
 <div id="wallet-saved-note" class="hint hidden"></div>
+<label style="display:flex;gap:10px;align-items:flex-start;margin:20px 0 0;font-size:14.5px;color:var(--mut);line-height:1.5"><input type="checkbox" id="f-rights" style="margin-top:3px;width:18px;height:18px;accent-color:#3ecf8e;flex:none"> <span><b style="color:var(--txt)">I own this content, or I have permission to sell access to it.</b> I keep the copyright; NanoTab only hosts and serves it. <a href="/terms">Terms</a></span></label>
 <div class="wiz-nav"><button type="button" class="btn-back" id="f-back-3">← Back</button><button type="button" class="btn" id="f-publish" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
 </div>
 <div id="pub-out"></div>
@@ -1144,6 +1146,8 @@ function fOnNext(){
  fPublish();
 }
 async function fPublish(){
+ var rights=$('f-rights');
+ if(!rights||!rights.checked){$('pub-out').innerHTML='<div class="out">Please confirm that you own this content or have permission to sell access to it.</div>';if(rights)rights.focus();return}
  var title=$('f-title').value.trim(),link=$('f-link').value.trim(),price=parseFloat($('f-price').value),payto=$('p-payto').value.trim(),body=$('f-body').value;
  if(!title&&link){try{title=new URL(link).hostname.replace(/^www\\./,'')}catch(e){}}
  $('f-publish').disabled=true;

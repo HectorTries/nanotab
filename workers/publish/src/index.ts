@@ -121,6 +121,11 @@ interface Listing {
   // derived lazily from the stored bytes on first public-page read.
   abstract?: string;
   agent_verified?: boolean; // true when the submitting agent may auto-publish (see isVerifiedAgent)
+  // Uploader warranty: publisher asserted they own the content or have
+  // permission to sell access. Stored as evidence for disputes/takedowns.
+  rights_confirmed?: boolean;
+  rights_confirmed_at?: string;
+  rights_confirmed_ip?: string;
   jev?: JevVerdict; // TypeSafe Jev auto-review verdict; absent = Jev unavailable at submission (fail-open)
 }
 
@@ -574,6 +579,9 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     throw new HttpErr(400, 'invalid JSON body');
   }
   const maxPrice = Number(env.MAX_PRICE_CENTS ?? '10000');
+  if (body?.rights_confirmed !== true) {
+    throw new HttpErr(400, 'You must confirm that you own the content or have permission to sell access to it.');
+  }
   const p = parsePublishBody(body, maxPrice);
   const slug = await freshSlug(kv);
 
@@ -589,6 +597,9 @@ async function handlePublish(req: Request, env: Env): Promise<Response> {
     paid_calls: 0,
     source: 'paste',
     status: 'live',
+    rights_confirmed: true,
+    rights_confirmed_at: new Date().toISOString(),
+    rights_confirmed_ip: (req.headers.get('cf-connecting-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0] ?? '').trim(),
     abstract: deriveAbstract(p.bytes, p.mime, p.title),
     ...(p.source_url ? { source_url: p.source_url } : {}),
   };
