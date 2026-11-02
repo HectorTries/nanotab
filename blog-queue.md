@@ -8,7 +8,7 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-stripe-agent-toolkit (published 2026-10-23)
 - [x] nanotab-vs-nevermined (published 2026-10-26)
 - [x] nanotab-vs-circle-wallets (published 2026-10-28)
-- [ ] nanotab-vs-payman
+- [x] nanotab-vs-payman (published 2026-11-02)
 - [ ] nanotab-vs-request-network
 - [ ] nanotab-vs-biconomy
 - [ ] nanotab-vs-superfluid
