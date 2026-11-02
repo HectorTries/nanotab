@@ -39,33 +39,33 @@ nav{max-width:1180px;margin:0 auto;padding:22px 28px;display:flex;align-items:ce
 .navcta{background:var(--fg);color:#0a0d14;font-weight:700;padding:9px 20px;border-radius:99px;text-decoration:none;font-size:14px;transition:transform .2s,box-shadow .2s}
 .navcta:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(255,255,255,.18)}
 /* hero */
-.hero{max-width:1180px;margin:0 auto;padding:70px 28px 30px;text-align:center;position:relative}
+.hero{max-width:1180px;margin:0 auto;padding:52px 28px 14px;text-align:center;position:relative}
 .live{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--card);backdrop-filter:blur(8px);border-radius:99px;padding:7px 18px;font-size:13px;color:var(--acc);letter-spacing:.04em;font-weight:500}
 .live .dot{width:8px;height:8px;border-radius:50%;background:var(--acc);box-shadow:0 0 12px var(--acc);animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-h1{font-size:clamp(38px,7vw,84px);line-height:1.02;letter-spacing:-.045em;font-weight:700;margin:30px auto 0;max-width:940px}
+h1{font-size:clamp(34px,6vw,72px);line-height:1.03;letter-spacing:-.04em;font-weight:700;margin:24px auto 0;max-width:940px}
 h1 .grad{background:linear-gradient(100deg,var(--acc) 10%,#a5f3d0 35%,var(--acc2) 70%,#c4b5fd 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
-.sub{color:var(--mut);font-size:clamp(16px,2.2vw,20px);margin:24px auto 0;max-width:640px;line-height:1.65}
+.sub{color:var(--mut);font-size:clamp(16px,2.2vw,20px);margin:18px auto 0;max-width:640px;line-height:1.65}
 .sub b{color:var(--fg)}
-.herobtns{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:40px}.herobtns .btn{font-size:19px;padding:20px 46px;border-radius:16px}
+.herobtns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px}.herobtns .btn{font-size:19px;padding:20px 46px;border-radius:16px}
 /* ecosystem stat block — hero-adjacent, impossible to miss */
-.ecostats{max-width:1060px;margin:48px auto 0;padding:0 28px}
-.ecostats-inner{background:linear-gradient(180deg,rgba(93,242,184,.10),rgba(124,108,246,.09));border:1px solid rgba(93,242,184,.4);border-radius:24px;padding:clamp(28px,4.5vw,46px) clamp(20px,4vw,44px);box-shadow:0 0 70px rgba(93,242,184,.14),0 30px 90px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);position:relative;overflow:hidden}
+.ecostats{max-width:1060px;margin:24px auto 0;padding:0 28px}
+.ecostats-inner{background:linear-gradient(180deg,rgba(93,242,184,.10),rgba(124,108,246,.09));border:1px solid rgba(93,242,184,.4);border-radius:20px;padding:clamp(18px,3vw,26px) clamp(16px,3vw,28px);box-shadow:0 0 70px rgba(93,242,184,.14),0 30px 90px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1);position:relative;overflow:hidden}
 .ecostats-inner::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--acc),var(--gold),var(--acc2))}
 .ecostats-kicker{text-align:center;font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:var(--acc);font-weight:700}
 .ecostats-title{text-align:center;font-size:clamp(22px,3.4vw,32px);font-weight:700;letter-spacing:-.02em;margin:10px 0 4px}
 .ecostats-title .hl{color:var(--gold)}
-.ecostats-sub{text-align:center;color:var(--mut);font-size:15px;margin-bottom:30px}
-.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.ecostats-sub{text-align:center;color:var(--mut);font-size:14px;margin-bottom:16px}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 @media(max-width:860px){.statgrid{grid-template-columns:repeat(2,1fr)}}
-.stat{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px 14px;text-align:center;position:relative}
+.stat{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:14px 10px;text-align:center;position:relative}
 .stat.hot{border-color:rgba(255,212,121,.55);box-shadow:0 0 34px rgba(255,212,121,.16)}
-.stat .num{font-size:clamp(30px,4.6vw,46px);font-weight:700;letter-spacing:-.04em;line-height:1;background:linear-gradient(120deg,#fff 20%,var(--acc) 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .num{font-size:clamp(24px,3.4vw,34px);font-weight:700;letter-spacing:-.04em;line-height:1;background:linear-gradient(120deg,#fff 20%,var(--acc) 80%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat.hot .num{background:linear-gradient(120deg,#fff 10%,var(--gold) 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat .lbl{margin-top:8px;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.12em;font-weight:600}
 .stat .sub2{margin-top:4px;font-size:12.5px;color:var(--mut)}
 .stat .ratio{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#04160e;background:linear-gradient(135deg,var(--gold),#ffb84d);border-radius:99px;padding:4px 14px}
-.ecostats-cta{text-align:center;margin-top:26px;font-size:15px;color:var(--mut)}
+.ecostats-cta{text-align:center;margin-top:14px;font-size:14px;color:var(--mut)}
 .ecostats-cta a{color:var(--acc);font-weight:700;text-decoration:none;border-bottom:2px solid rgba(93,242,184,.4)}
 .ecostats-cta a:hover{border-color:var(--acc)}
 a.btn,button.btn{background:linear-gradient(135deg,var(--acc),#3ee89e);color:#04160e;font-weight:700;padding:15px 34px;border-radius:14px;text-decoration:none;border:none;font-size:16px;cursor:pointer;transition:transform .2s,box-shadow .2s;display:inline-block;box-shadow:0 4px 40px rgba(93,242,184,.28)}
@@ -79,7 +79,7 @@ a.btn.ghost:hover,button.btn.ghost:hover{border-color:rgba(255,255,255,.25);box-
 .ticker span b{color:var(--acc)}
 @keyframes scroll{to{transform:translateX(-50%)}}
 /* sections */
-section{max-width:1180px;margin:0 auto;padding:80px 28px 0}
+section{max-width:1180px;margin:0 auto;padding:56px 28px 0}
 .eyebrow{font-size:12.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--acc);font-weight:600;text-align:center}
 h2{font-size:clamp(28px,4.5vw,46px);letter-spacing:-.03em;text-align:center;margin:14px 0 8px;line-height:1.1}
 .secsub{color:var(--mut);text-align:center;max-width:560px;margin:0 auto 44px;font-size:17px}
@@ -137,7 +137,7 @@ pre code{color:#c9f5e2}
 .final{max-width:1180px;margin:80px auto 0;padding:70px 28px;text-align:center;border-top:1px solid var(--line)}
 footer{max-width:1180px;margin:0 auto;padding:26px 28px 44px;display:flex;justify-content:space-between;align-items:center;color:var(--mut);font-size:13px;flex-wrap:wrap;gap:10px}
 footer a{color:var(--acc);text-decoration:none}
-@media(max-width:760px){.navlinks a:not(.navcta){display:none}.hero{padding:50px 20px 24px}section{padding:56px 20px 0}.herobtns .btn{font-size:17px;padding:17px 32px;width:100%}.eco{font-size:12px}}
+@media(max-width:760px){.navlinks a:not(.navcta){display:none}.hero{padding:40px 20px 10px}section{padding:40px 20px 0}.herobtns .btn{font-size:17px;padding:17px 32px;width:100%}.eco{font-size:12px}}
 .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
 .reveal.on{opacity:1;transform:none}
 </style>
@@ -147,7 +147,7 @@ footer a{color:var(--acc);text-decoration:none}
 <div class="eco" style="text-align:center;font-size:13.5px;color:var(--mut);padding:11px 16px;border-bottom:1px solid var(--line);background:rgba(93,242,184,.05);letter-spacing:.02em">⚡ THE <b style="color:var(--acc)">x402 ECONOMY</b> IS LIVE — <b style="color:var(--acc)">$24.2M</b> settled onchain (last 30 days) · <b style="color:var(--fg)">75M+</b> agent txs (last 30 days) · <b style="color:var(--gold)">4× more buyers than sellers</b> — <a href="#eco-stats" style="color:var(--acc);font-weight:700">see the numbers ↓</a> (as of <time datetime="2026-10">Oct 2026</time>)</div>
 <nav aria-label="Primary">
 <div class="logo"><i>◒</i> NanoTab</div>
-<div class="navlinks"><a href="https://nanotab.dev">Hosted links</a><a href="/agents.html">Agents</a><a href="/micropayments.html">Micropayments</a><a href="/wordpress.html">WordPress</a><a href="/stripe-alternative.html">vs Stripe</a><a href="/mcp.html">MCP</a><a href="/facilitator.html">Facilitator</a><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="https://nanotab.dev">Start collecting →</a></div>
+<div class="navlinks"><a href="/publish">Hosted links</a><a href="/agents.html">Agents</a><a href="/micropayments.html">Micropayments</a><a href="/wordpress.html">WordPress</a><a href="/stripe-alternative.html">vs Stripe</a><a href="/mcp.html">MCP</a><a href="/facilitator.html">Facilitator</a><a href="#generate">Generator</a><a href="#sell">Sell</a><a href="#buy">Buy</a><a href="#proof">Proof</a><a href="/marketplace">Marketplace</a><a href="https://github.com/HectorTries/nanotab">GitHub</a><a class="navcta" href="/publish">Start collecting →</a></div>
 </nav>
 <main>
 <header class="hero">
@@ -157,14 +157,12 @@ footer a{color:var(--acc);text-decoration:none}
 <h1>Create a paywall link for agents<br><span class="grad">in seconds.</span></h1>
 <p class="sub">Upload your content, set a price — get one link AI agents pay per view in <b>USDC on Base</b>, straight to your wallet.</p>
 <div class="herobtns">
-<a class="btn" href="https://nanotab.dev">Create your paywall link →</a>
-<a class="btn ghost" href="https://nanotab.dev/developers">For developers →</a>
+<a class="btn" href="/publish">Create your paywall link →</a>
+<a class="btn ghost" href="/developers">For developers →</a>
 </div>
 
 </header>
-<section id="who-is-it-for" aria-label="Who NanoTab is for" style="max-width:760px;margin:0 auto;padding:44px 28px 0;color:var(--mut);font-size:16px;line-height:1.7">
-<p>It depends on what you're selling. NanoTab is for you if you have an API, dataset, or content feed and want AI agents to pay per call in USDC on Base — no signup, no ETH for gas, you keep 99.9% self-hosting or 98% through the managed gateway. Indie developers, researchers, and small teams can go from endpoint to paid endpoint in an afternoon. It is not for you if you need card payments, subscriptions, or SaaS billing (use Stripe), enterprise KYC and procurement controls (use Skyfire), or a full agent marketplace (use Nevermined). Start with the generator below if that sounds like you.</p>
-</section>
+
 <div class="ecostats" id="eco-stats">
 <div class="ecostats-inner">
 <div class="ecostats-kicker">⚡ The x402 economy · live onchain</div>

@@ -1026,6 +1026,29 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
     else await p.catch(() => {}); // no ctx (e.g. tests) — still don't fail
   } catch { /* waitUntil threw: stats are best-effort */ }
 
+  // Humans who have paid get a readable article; agents keep canonical markdown.
+  if (classifyUnpaid(req) === 'teaser' && (listing.mime === 'text/markdown' || listing.mime === 'text/plain')) {
+    const md = await new Response(obj.body).text();
+    return new Response(articleShell(
+      `${listing.title} — NanoTab`,
+      listing,
+      'NanoTab · unlocked article',
+      `Paid $${gross.toFixed(2)} · unlocked · seller <code>${listing.merchant_wallet.slice(0, 6)}…${listing.merchant_wallet.slice(-4)}</code>`,
+      `<div class="article-body">${mdToHtml(md)}</div>`,
+      '<p class="foot"><a href="/marketplace">Browse marketplace</a> · <a href="/publish">Create your own link</a></p>'
+    ), {
+      status: 200,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'x-content-type-options': 'nosniff',
+        'cache-control': 'private, no-store',
+        'x-nanotab': nanotabHeader,
+        'x-nanotab-settle': settleNote,
+        'access-control-allow-origin': '*',
+      },
+    });
+  }
+
   const headers = new Headers({
     'content-type': listing.mime,
     'x-content-type-options': 'nosniff',
@@ -1106,13 +1129,160 @@ function jsonLdForListing(origin: string, l: Listing, abstract: string): string 
   return JSON.stringify(ld).replace(/</g, '\\u003c');
 }
 
+
+// Minimal, safe markdown renderer for human reading views. Escapes first,
+// then applies inline formatting, so publisher text can never inject HTML.
+function mdToHtml(md: string): string {
+  const src = String(md).replace(/\r\n/g, '\n');
+  const inline = (t: string) =>
+    escHtml(t)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" rel="noopener nofollow">$1</a>');
+  const out: string[] = [];
+  const lines = src.split('\n');
+  let i = 0;
+  let para: string[] = [];
+  let list: 'ul' | 'ol' | null = null;
+  const flushPara = () => {
+    if (para.length) {
+      out.push('<p>' + inline(para.join(' ')) + '</p>');
+      para = [];
+    }
+  };
+  const closeList = () => {
+    if (list) {
+      out.push('</' + list + '>');
+      list = null;
+    }
+  };
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^```/.test(line)) {
+      flushPara(); closeList();
+      const code: string[] = [];
+      i++;
+      while (i < lines.length && !/^```/.test(lines[i])) { code.push(lines[i]); i++; }
+      i++;
+      out.push('<pre><code>' + escHtml(code.join('\n')) + '</code></pre>');
+      continue;
+    }
+    const h = line.match(/^(#{1,6})\s+(.*)$/);
+    if (h) {
+      flushPara(); closeList();
+      const n = Math.min(h[1].length + 1, 6);
+      out.push('<h' + n + '>' + inline(h[2]) + '</h' + n + '>');
+      i++;
+      continue;
+    }
+    if (/^\s*$/.test(line)) { flushPara(); closeList(); i++; continue; }
+    if (/^>\s?/.test(line)) {
+      flushPara(); closeList();
+      const q: string[] = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) { q.push(lines[i].replace(/^>\s?/, '')); i++; }
+      out.push('<blockquote>' + inline(q.join(' ')) + '</blockquote>');
+      continue;
+    }
+    const ul = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (ul) {
+      flushPara();
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+      out.push('<li>' + inline(ul[1]) + '</li>');
+      i++;
+      continue;
+    }
+    const ol = line.match(/^\s*\d+\.\s+(.*)$/);
+    if (ol) {
+      flushPara();
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+      out.push('<li>' + inline(ol[1]) + '</li>');
+      i++;
+      continue;
+    }
+    if (/^(-{3,}|\*{3,})\s*$/.test(line)) { flushPara(); closeList(); out.push('<hr>'); i++; continue; }
+    closeList();
+    para.push(line.trim());
+    i++;
+  }
+  flushPara();
+  closeList();
+  return out.join('\n');
+}
+
+const ARTICLE_CSS = `body{margin:0;background:#0b0d10;color:#f2f5f7;font:17px/1.75 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#3ecf8e}
+.topbar{border-bottom:1px solid #232b36}
+.topbar-in{max-width:760px;margin:0 auto;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-weight:700;color:#f2f5f7;text-decoration:none}
+.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}
+nav{font-size:14px}nav a{margin-left:18px;color:#9fb0c0;text-decoration:none}nav a:hover{color:#f2f5f7}
+.article{max-width:720px;margin:0 auto;padding:44px 20px 64px}
+.kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#3ecf8e;font-weight:600}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.18;letter-spacing:-.02em;margin:12px 0 10px}
+.meta{color:#8fa0b3;font-size:14px;margin-bottom:28px}
+.meta code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:12.5px}
+.article-body{font-size:18px;line-height:1.75;color:#dbe6f0}
+.article-body p{margin:0 0 18px}
+.article-body h2{font-size:24px;line-height:1.3;margin:32px 0 12px;letter-spacing:-.01em}
+.article-body h3{font-size:20px;margin:26px 0 10px}
+.article-body ul,.article-body ol{margin:0 0 18px;padding-left:24px}
+.article-body li{margin:4px 0}
+.article-body code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:15px;font-family:"IBM Plex Mono",monospace}
+.article-body pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:16px;overflow:auto}
+.article-body pre code{border:0;padding:0;font-size:13.5px;line-height:1.6}
+.article-body blockquote{border-left:3px solid #3ecf8e;margin:0 0 18px;padding:2px 0 2px 16px;color:#b7c5d6}
+.article-body hr{border:0;border-top:1px solid #232b36;margin:28px 0}
+.paycard{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:22px;margin:30px 0}
+.payrow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.price{font-size:34px;font-weight:700;letter-spacing:-.02em;color:#3ecf8e;line-height:1}
+.btn{display:inline-block;background:#3ecf8e;color:#06281a;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none}
+.mut{color:#9fb0c0;font-size:14px}
+details{margin-top:14px;border-top:1px solid #232b36;padding-top:12px}
+summary{cursor:pointer;color:#8fa0b3;font-size:13.5px}
+pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;text-align:left;font-size:12.5px;line-height:1.7;white-space:pre-wrap;word-break:break-all;font-family:"IBM Plex Mono",monospace;color:#b7c5d6}
+.foot{color:#7f8fa3;font-size:13px;text-align:center;margin-top:28px}
+.preview-wrap{position:relative}
+.preview-wrap .fade{position:absolute;left:0;right:0;bottom:0;height:70px;background:linear-gradient(180deg,rgba(11,13,16,0),#0b0d10)}`;
+
+function articleShell(title: string, l: Listing, kicker: string, metaHtml: string, bodyHtml: string, footerHtml: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escHtml(title)}</title>
+<meta name="description" content="${escHtml((l as any).abstract ?? l.title)}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>${ARTICLE_CSS}</style></head><body>
+<div class="topbar"><div class="topbar-in"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><nav><a href="/marketplace">Marketplace</a><a href="/publish">Create</a></nav></div></div>
+<div class="article"><div class="kicker">${kicker}</div><h1>${escHtml(l.title)}</h1><p class="meta">${metaHtml}</p>${bodyHtml}${footerHtml}</div></body></html>`;
+}
+
 function publicListingHtml(origin: string, l: Listing, abstract: string, feeBps: number, feeTo: string): string {
   const priceUsd = (Number(l.price_cents) / 100).toFixed(2);
   const netUsd = ((Number(l.price_cents) * (10_000 - feeBps)) / 10_000 / 100).toFixed(2);
   const shortWallet = `${l.merchant_wallet.slice(0, 6)}…${l.merchant_wallet.slice(-4)}`;
   const canonical = `${origin}/p/${l.slug}`;
   const payUrl = `${origin}/r/${l.slug}`;
-  const pageTitle = `${l.title} — NanoTab Pay`;
+  const pageTitle = `${l.title} — NanoTab`;
+  const agentBadge = l.created_by_agent
+    ? ' <span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;vertical-align:2px">Created by agent</span>'
+    : '';
+  const metaHtml = `$${priceUsd} per view · USDC on Base${l.created_by_agent ? " · created by an agent" : ""}`;
+  const bodyHtml = `<div class="preview-wrap"><div class="article-body"><p>${escHtml(abstract)}</p></div><div class="fade"></div></div>
+<div class="paycard">
+  <div class="payrow"><div><div class="price">$${priceUsd}</div><div class="mut">one payment · read the full article</div></div>
+  <a class="btn" href="#unlock">Unlock the full article</a></div>
+  <p class="mut" style="margin:14px 0 0">Pay with USDC on Base — no account, no card. AI agents can pay automatically. Humans can pay with any x402 wallet.</p>
+  <div id="unlock">
+    <details><summary>For AI agents: x402 details</summary>
+      <pre>GET ${escHtml(payUrl)}  →  402 + price in JSON
+Pay $${priceUsd} USDC on Base → ${escHtml(l.merchant_wallet)}
+GET same URL + X-Payment proof  →  200 full content</pre>
+      <p class="mut">Fetch with <code>Accept: application/json</code> for the machine-readable 402, pay, then retry with the <code>X-Payment</code> header.</p>
+    </details>
+  </div>
+  <p class="mut" style="margin-top:14px"><a href="/marketplace">Browse marketplace</a> · <a href="/publish">Create your own link</a></p>
+</div>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escHtml(pageTitle)}</title>
@@ -1120,52 +1290,18 @@ function publicListingHtml(origin: string, l: Listing, abstract: string, feeBps:
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="${escHtml(canonical)}">
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="NanoTab Pay">
+<meta property="og:site_name" content="NanoTab">
 <meta property="og:title" content="${escHtml(l.title)}">
 <meta property="og:description" content="${escHtml(abstract)}">
 <meta property="og:url" content="${escHtml(canonical)}">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="${escHtml(l.title)}">
-<meta name="twitter:description" content="${escHtml(abstract)}">
 <script type="application/ld+json">${jsonLdForListing(origin, l, abstract)}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>body{margin:0;background:#0b0d10;color:#f2f5f7;font:16px/1.65 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-.wrap{max-width:640px;margin:0 auto;padding:56px 20px}
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;font-size:14px}
-.logo{font-weight:700;color:#f2f5f7;text-decoration:none}.logo span{display:inline-flex;width:26px;height:26px;border-radius:7px;background:#3ecf8e;color:#06281a;align-items:center;justify-content:center;margin-right:8px;font-size:14px}
-.card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:32px}
-.kicker{font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#3ecf8e;font-weight:600}
-h1{font-size:28px;letter-spacing:-.02em;line-height:1.2;margin:10px 0 8px}
-.price{font-size:44px;font-weight:700;letter-spacing:-.03em;line-height:1.1;color:#3ecf8e;margin:14px 0 4px}
-.mut{color:#9fb0c0;font-size:14px}a{color:#3ecf8e}code{background:#0e1218;border:1px solid #232b36;padding:1px 6px;border-radius:6px;font-size:13px;font-family:"IBM Plex Mono",monospace}
-pre{background:#0e1218;border:1px solid #232b36;border-radius:10px;padding:14px;text-align:left;font-size:12.5px;line-height:1.7;white-space:pre-wrap;word-break:break-all;font-family:"IBM Plex Mono",monospace;color:#b7c5d6}
-.btn{display:inline-block;background:#3ecf8e;color:#06281a;font-weight:600;padding:12px 22px;border-radius:10px;text-decoration:none;margin:10px 0}
-.preview-label{display:inline-block;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:#0b0d10;background:#3ecf8e;font-weight:700;border-radius:999px;padding:2px 12px;margin:18px 0 10px}
-.abstract{font-size:16.5px;line-height:1.7;color:#dbe6f0}
-.paywall{border-top:1px solid #232b36;margin-top:24px;padding-top:8px}
-.foot{color:#7f8fa3;font-size:13px;text-align:center;margin-top:18px}</style></head><body>
-<div class="wrap"><div class="top"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><a href="/marketplace">Marketplace</a></div><div class="card">
-<div class="kicker">Paywalled content</div>
-<h1>${escHtml(l.title)}</h1>${l.created_by_agent ? '<p class="mut"><span style="display:inline-block;border:1px solid rgba(62,207,142,.45);color:#3ecf8e;border-radius:999px;padding:1px 10px;font-size:12px;font-weight:600">Created by agent</span> <span style="font-size:13px">· approved by the owner</span></p>' : ''}
-<span class="preview-label">Free preview</span>
-<section class="abstract" aria-label="Free preview"><p>${escHtml(abstract)}</p></section>
-<div class="paywall">
-<div class="price">$${priceUsd} USDC</div>
-<p class="mut">per view · on Base · merchant <code>${shortWallet}</code> · seller receives $${netUsd} after ${feeBps / 100}% fee</p>
-<p>The preview above is free. The full content unlocks after payment — an AI agent pays automatically, and a person can pay the same way with a USDC wallet on Base. There is no NanoTab account and no card checkout.</p>
-<p><a class="btn" href="#unlock">Unlock for $${priceUsd} — pay USDC on Base</a></p>
-<div id="unlock">
-<p class="mut" style="margin-bottom:6px">How payment works (x402):</p>
-<pre>GET ${escHtml(payUrl)}  →  402 + price in JSON
-Pay $${priceUsd} USDC on Base → ${escHtml(l.merchant_wallet)}
-GET same URL + X-Payment proof  →  200 full content</pre>
-<p class="mut">Agents: fetch <code>${escHtml(payUrl)}</code> with <code>Accept: application/json</code> for the machine-readable 402, pay, then retry with the <code>X-Payment</code> header. Humans: use any agent or wallet flow that speaks x402 on Base.</p>
-</div>
-<p><a href="/marketplace">Browse marketplace</a> · <a href="/">Create your own link</a> · <a href="${escHtml(payUrl)}" id="j">View machine terms (JSON)</a></p>
-</div>
-</div><p class="foot">${escHtml(l.mime)} · ${l.bytes} bytes · USDC on Base via x402 · NanoTab keeps ${feeBps / 100}% of each payment<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a> · <a href="/about">About</a></p></div>
-<script>document.getElementById('j').onclick=function(e){e.preventDefault();fetch(${JSON.stringify(payUrl)},{headers:{accept:'application/json'}}).then(function(r){return r.text()}).then(function(t){document.body.innerHTML='<pre style="max-width:860px;margin:24px auto;padding:16px;white-space:pre-wrap;word-break:break-all">'+t.replace(/</g,'&lt;').slice(0,4000)+'</pre>'})};</script>
+<style>${ARTICLE_CSS}</style></head><body>
+<div class="topbar"><div class="topbar-in"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><nav><a href="/marketplace">Marketplace</a><a href="/publish">Create</a></nav></div></div>
+<div class="article"><div class="kicker">NanoTab · paywalled article${agentBadge}</div><h1>${escHtml(l.title)}</h1><p class="meta">${metaHtml}</p>${bodyHtml}
+<p class="foot">${escHtml(l.mime)} · USDC on Base via x402<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a></p></div>
 </body></html>`;
 }
 
