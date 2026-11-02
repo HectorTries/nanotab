@@ -26,7 +26,8 @@ export interface PaymentProof {
   network?: string;
   signature: string;
   from?: string;
-  txHash?: string; // optional: payer's on-chain transfer hash for confirmation
+  txHash?: string; // optional: payer's on-chain merchant-transfer hash
+  feeTxHash?: string; // optional: separate on-chain fee-transfer hash (human wallet checkout)
   // Atomic fee-split legs (REQUIRED on every paid call — protocol fee is non-optional).
   // Amounts in USDC base units. feeTo must equal FEE_WALLET, feeAmount +
   // merchantAmount must equal gross, feeAmount must equal feeBps math.

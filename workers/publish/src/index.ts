@@ -29,6 +29,7 @@ import {
   NANOTAB_NETWORK_CAIP2,
   PROTOCOL_FEE_BPS,
   USDC_BASE_MAINNET,
+  ERC20_TRANSFER_TOPIC,
   centsToUnits,
   feeRecipientFor,
   paymentMessage,
@@ -995,7 +996,17 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
   const gross = Number(listing.price_cents) / 100;
   let settleNote: string;
   let nanotabHeader: string;
-  if (proof.txHash) {
+  if (proof.txHash && proof.feeTxHash) {
+    try {
+      await verifyUsdcTransfer(env.BASE_RPC_URL, proof.txHash, listing.merchant_wallet, netUnits);
+      await verifyUsdcTransfer(env.BASE_RPC_URL, proof.feeTxHash, feeTo, feeUnits);
+      settleNote = `buyer transfers confirmed on-chain (net ${netUnits} → ${listing.merchant_wallet} tx ${proof.txHash}; fee ${feeUnits} → ${feeTo} tx ${proof.feeTxHash})`;
+      nanotabHeader = 'settled-onchain';
+      console.log(`[nanotab-publish] settled $${gross.toFixed(2)} (${slug}): ${settleNote}`);
+    } catch (e) {
+      return Response.json({ error: (e as Error).message }, { status: 402 });
+    }
+  } else if (proof.txHash) {
     try {
       const v = await verifyBuyerTx({
         rpcUrl: env.BASE_RPC_URL,
@@ -1073,6 +1084,31 @@ async function handleRead(req: Request, env: Env, ctx: ExecutionContext | undefi
     headers.set('content-security-policy', 'sandbox');
   }
   return new Response(obj.body, { status: 200, headers });
+}
+
+
+// Verify one USDC transfer leg from a wallet transaction receipt. Used by the
+// human wallet checkout, where the buyer sends merchant + fee as two separate
+// transactions (a plain wallet cannot batch ERC-20 transfers).
+async function verifyUsdcTransfer(rpcUrl: string | undefined, txHash: string, to: string, minUnits: bigint): Promise<void> {
+  const rpc = rpcUrl || 'https://mainnet.base.org';
+  const res = await fetch(rpc, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getTransactionReceipt', params: [txHash] }),
+  });
+  const j: any = await res.json();
+  const r = j?.result;
+  if (!r) throw new Error('transaction not found yet (wait for confirmation and retry)');
+  if (r.status !== '0x1') throw new Error('transaction failed on-chain');
+  const padded = '0x' + to.toLowerCase().replace(/^0x/, '').padStart(64, '0');
+  const hit = (r.logs ?? []).some((l: any) =>
+    String(l.address ?? '').toLowerCase() === USDC_BASE_MAINNET.toLowerCase() &&
+    String(l.topics?.[0] ?? '').toLowerCase() === ERC20_TRANSFER_TOPIC &&
+    String(l.topics?.[2] ?? '').toLowerCase() === padded &&
+    BigInt(l.data ?? '0x0') >= minUnits
+  );
+  if (!hit) throw new Error('USDC transfer to the expected recipient not found in that transaction');
 }
 
 function escHtml(s: string): string {
@@ -1282,7 +1318,8 @@ function publicListingHtml(origin: string, l: Listing, abstract: string, feeBps:
   const bodyHtml = `<div class="preview-wrap"><div class="article-body"><p>${escHtml(abstract)}</p></div><div class="fade"></div></div>
 <div class="paycard">
   <div class="payrow"><div><div class="price">$${priceUsd}</div><div class="mut">one payment · read the full article</div></div>
-  <a class="btn" href="#unlock">Unlock the full article</a></div>
+  <button type="button" class="btn" id="unlock-btn">Unlock the full article</button>
+  <div id="pay-status" class="mut" style="margin-top:10px"></div></div>
   <p class="mut" style="margin:14px 0 0">Pay with USDC on Base — no account, no card. AI agents can pay automatically. Humans can pay with any x402 wallet.</p>
   <div id="unlock">
     <details><summary>For AI agents: x402 details</summary>
@@ -1313,6 +1350,46 @@ GET same URL + X-Payment proof  →  200 full content</pre>
 <div class="topbar"><div class="topbar-in"><a class="logo" href="/"><span>N</span>NanoTab Pay</a><nav><a href="/marketplace">Marketplace</a><a href="/publish">Create</a></nav></div></div>
 <div class="article"><div class="kicker">NanoTab · paywalled article${agentBadge}</div><h1>${escHtml(l.title)}</h1><p class="meta">${metaHtml}</p>${bodyHtml}
 <p class="foot">${escHtml(l.mime)} · USDC on Base via x402<br><a href="/terms">Terms</a> · <a href="/privacy">Privacy</a> · <a href="/refunds">Refunds</a> · <a href="/contact">Contact</a></p></div>
+
+<script>
+(function(){
+ var PRICE=${Number(l.price_cents)}, BPS=${feeBps}, MERCHANT='${l.merchant_wallet}', FEE_TO='${feeTo}', SLUG='${l.slug}', ASSET='${USDC_BASE_MAINNET}';
+ var USDC='0x833589fCD6eDb6E08f4c7C32D4f71B54bda02913';
+ var btn=document.getElementById('unlock-btn'), st=document.getElementById('pay-status');
+ function say(m){ if(st) st.textContent=m; }
+ function hexAmt(n){ var h=BigInt(n).toString(16); while(h.length<64) h='0'+h; return h; }
+ function padAddr(a){ var h=a.toLowerCase().replace(/^0x/,''); while(h.length<64) h='0'+h; return h; }
+ function transferData(to,amt){ return '0xa9059cbb'+padAddr(to)+hexAmt(amt); }
+ async function rpc(method,params){ return await window.ethereum.request({method:method,params:params}); }
+ async function waitFor(tx){ for(var i=0;i<90;i++){ var r=await rpc('eth_getTransactionReceipt',[tx]); if(r&&r.status) return r; await new Promise(function(x){setTimeout(x,2000)}); } throw new Error('timed out waiting for the transaction to confirm'); }
+ function utf8Hex(x){ var b=new TextEncoder().encode(x); var out=''; for(var i=0;i<b.length;i++){ out+=b[i].toString(16).padStart(2,'0'); } return '0x'+out; }
+ async function go(){
+   if(!window.ethereum){ say('No wallet found. Open this page inside a wallet browser (Coinbase Wallet, MetaMask) or install a wallet extension.'); return; }
+   try{
+     btn.disabled=true;
+     var accts=await rpc('eth_requestAccounts',[]); var from=accts[0];
+     try { await rpc('wallet_switchEthereumChain',[{chainId:'0x2105'}]); }
+     catch(e){ if(e&&e.code===4902){ await rpc('wallet_addEthereumChain',[{chainId:'0x2105',chainName:'Base',nativeCurrency:{name:'Ether',symbol:'ETH',decimals:18},rpcUrls:['https://mainnet.base.org'],blockExplorerUrls:['https://basescan.org']}]); } else { throw e; } }
+     var gross=BigInt(PRICE)*10000n; var fee=gross*BigInt(BPS)/10000n; var net=gross-fee;
+     var msg='nanotab-x402|network=base|to='+MERCHANT+'|amountCents='+PRICE+'|asset='+ASSET+'|feeTo='+FEE_TO+'|fee='+fee.toString()+'|net='+net.toString();
+     say('Confirm the payment message in your wallet…');
+     var sig=await rpc('personal_sign',[utf8Hex(msg),from]);
+     say('Sending payment to the seller…');
+     var tx1=await rpc('eth_sendTransaction',[{from:from,to:USDC,data:transferData(MERCHANT,net),value:'0x0'}]);
+     await waitFor(tx1);
+     say('Sending the 2% platform fee…');
+     var tx2=await rpc('eth_sendTransaction',[{from:from,to:USDC,data:transferData(FEE_TO,fee),value:'0x0'}]);
+     await waitFor(tx2);
+     say('Payment confirmed. Unlocking…');
+     var proof={amount:String(PRICE),to:MERCHANT,asset:ASSET,network:'base',signature:sig,from:from,txHash:tx1,feeTxHash:tx2,split:{feeTo:FEE_TO,feeAmount:fee.toString(),merchantAmount:net.toString()}};
+     var r=await fetch('/r/'+SLUG,{headers:{'X-Payment':btoa(JSON.stringify(proof)),'Accept':'text/html'}});
+     if(!r.ok){ var t=await r.text(); say('Could not unlock: '+t.slice(0,200)); btn.disabled=false; return; }
+     var html=await r.text(); document.open(); document.write(html); document.close();
+   }catch(e){ say('Payment cancelled or failed: '+(e&&e.message?e.message:String(e))); btn.disabled=false; }
+ }
+ if(btn) btn.addEventListener('click',go);
+})();
+</script>
 </body></html>`;
 }
 
