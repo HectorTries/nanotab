@@ -1026,73 +1026,136 @@ export function demoHtml(): string {
 
 export function publishHtml(): string {
   return head(
-    'Publish your document — NanoTab Pay',
-    'Upload a document or paste your words and NanoTab turns it into a paywalled link. Agents pay in USDC on Base; you keep 98% of every payment. No account needed.'
+    'Publish — NanoTab Pay',
+    'Upload content, set a price, and get paid in USDC on Base when agents read it. No account needed.'
   ) + topbarPlain('/#create', 'Paywall a link') + `
-<div class="wrap" style="max-width:760px">
-<section class="block" style="padding-top:48px">
-<p class="eyebrow">No account needed · Live in about a minute</p>
-<h2 style="font-size:clamp(28px,4vw,38px)">Publish your document</h2>
-<p class="secsub">Upload a file or paste your words below. NanoTab converts it to markdown, mints a paywalled link for it, and pays you <b style="color:var(--txt)">98% of every read</b> in USDC on Base. Keep your link — bookmark it after you publish.</p>
+<style>
+.pub{max-width:640px;margin:0 auto;padding:44px 20px 0}
+.pub h1{font-size:clamp(30px,7vw,40px);line-height:1.08;letter-spacing:-.03em;margin:0;font-weight:700}
+.pub-sub{color:#8fa0b3;font-size:16px;line-height:1.55;margin:10px 0 26px}
+.pub-card{background:#12161c;border:1px solid #232b36;border-radius:14px;padding:26px}
+@media(max-width:560px){.pub{padding-top:32px}.pub-card{padding:20px 16px}}
+.pub-steps{display:flex;gap:20px;align-items:center;margin:0 0 22px;flex-wrap:wrap}
+.pub-step{display:flex;align-items:center;gap:8px;font-size:13px;color:#8fa0b3}
+.pub .wiz-dot{width:22px;height:22px;border-radius:50%;border:1px solid #2d3746;background:transparent;color:#8fa0b3;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-family:"IBM Plex Mono",monospace;flex:none;transition:background .15s,color .15s,border-color .15s}
+.pub .wiz-dot.on{background:#3ecf8e;border-color:#3ecf8e;color:#06281a;font-weight:700}
+.pub-step:has(.wiz-dot.on){color:#f2f5f7}
+.pub-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pub .fld{display:block;font-size:13px;font-weight:600;color:#8fa0b3;margin:22px 0 8px}
+.pub .fld-first{margin-top:0}
+.pub input,.pub textarea{font-size:16px;border-radius:12px;padding:13px 14px}
+.pub input{min-height:50px}
+.pub input[type=checkbox]{min-height:0}
+.pub textarea{min-height:168px;line-height:1.6}
+.pub .hint{font-size:13px;color:#8fa0b3;margin-top:8px;line-height:1.5}
+.pub .dropzone{position:relative;border:1.5px dashed #2d3746;border-radius:14px;padding:30px 16px;background:#0e1218;transition:border-color .15s,background .15s,color .15s}
+.pub .dropzone.over{border-color:#3ecf8e;background:rgba(62,207,142,.06)}
+.pub .dropzone svg{display:block;margin:0 auto 10px;color:#8fa0b3;transition:color .15s}
+.pub .dropzone.over svg{color:#3ecf8e}
+.pub-drop-t{display:block;font-size:15.5px;color:#f2f5f7;font-weight:600}
+.pub-drop-s{display:block;font-size:13px;color:#8fa0b3;margin-top:3px}
+.pub .dropzone input[type=file]{position:absolute;width:1px;height:1px;min-height:0;opacity:0;overflow:hidden;margin:0;padding:0;border:0}
+.pub-or{display:flex;align-items:center;gap:12px;color:#7f8fa3;font-size:12.5px;margin:20px 0 12px}
+.pub-or::before,.pub-or::after{content:"";flex:1;border-top:1px solid #232b36}
+.pub-edrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px;flex-wrap:wrap}
+.pub .seg{margin:0;display:inline-flex;gap:0;background:#0e1218;border:1px solid #232b36;border-radius:999px;padding:3px}
+.pub .seg .ghost{margin:0;border:0;border-radius:999px;padding:7px 16px;font-size:13.5px;min-height:48px;display:inline-flex;align-items:center;justify-content:center;transition:background .15s,color .15s}
+.pub .seg .ghost.on{background:#232b36;color:#f2f5f7;border-color:transparent}
+.pub .counts{margin:0;font-size:12.5px;white-space:nowrap}
+.pub .md-preview{border-radius:12px}
+.pub .freeprev{margin-top:20px}
+.pub .freeprev .out{border-radius:12px;margin-top:8px}
+.pub-prevlabel{font-size:12.5px;font-weight:600;color:#7f8fa3}
+.pub details.advanced{margin-top:18px;border-radius:12px}
+.pub .wiz-nav{display:flex;gap:10px;margin-top:26px}
+.pub .pub-primary{flex:1;min-height:52px;border-radius:12px;font-size:16px;padding:0 24px;background:linear-gradient(180deg,#45d694,#3ecf8e);border-color:#3ecf8e;margin-top:0;transition:opacity .15s}
+.pub .pub-back{min-height:52px;border-radius:12px;padding:0 22px;margin-top:0}
+.pub .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0}
+.pub .chip{min-height:56px;border-radius:12px;font-size:17px;padding:0 8px;margin-top:0;transition:background .15s,border-color .15s,color .15s}
+.pub-pricebox{display:flex;align-items:center;gap:6px;background:#0e1218;border:1px solid #232b36;border-radius:12px;padding:0 16px;min-height:56px;margin-top:12px;transition:border-color .15s}
+.pub-pricebox:focus-within{border-color:#3ecf8e;box-shadow:0 0 0 3px rgba(62,207,142,.16)}
+.pub-pricebox .cur{font-size:18px;color:#8fa0b3}
+.pub-pricebox input{flex:1;min-width:0;min-height:0;border:0;background:none;padding:0;font-size:18px}
+.pub-pricebox input:focus{box-shadow:none;border-color:transparent;outline:none}
+.pub-pricebox .unit{font-size:12.5px;color:#7f8fa3;letter-spacing:.06em}
+.pub .earn-preview{font-size:15px;color:#8fa0b3;margin-top:14px}
+.pub .payto-row{flex-direction:column;gap:10px}
+.pub .payto-row input{min-width:0;font-family:"IBM Plex Mono",monospace}
+.pub .pub-gen{width:100%;min-height:50px;border-radius:12px;background:transparent;border:1px solid #2d3746;color:#f2f5f7;font-weight:600;font-size:15px;margin-top:0;transition:border-color .15s}
+.pub .pub-gen:hover{border-color:#8fa0b3;filter:none}
+.pub .pk-panel{border-radius:14px;padding:18px;margin-top:18px}
+.pub .pk-warn{font-size:14.5px}
+.pub .pk-row input{min-width:0;font-size:16px}
+.pub .pk-row button,.pub .pk-actions button{min-height:48px;border-radius:10px;margin:0}
+.pub .pk-actions{gap:8px}
+@media(max-width:560px){.pub .pk-row input{flex:1 1 100%}.pub .pk-row button{flex:1}.pub .pk-actions button{flex:1}}
+.pub #wallet-addr-note,.pub #wallet-save-note,.pub #wallet-saved-note{overflow-wrap:anywhere}
+.pub-rights{display:flex;gap:11px;align-items:flex-start;margin:22px 0 0;font-size:14px;color:#8fa0b3;line-height:1.55;cursor:pointer}
+.pub-rights input{width:20px;height:20px;margin:1px 0 0;accent-color:#3ecf8e;flex:none;padding:0}
+.pub-rights b{color:#f2f5f7;font-weight:600}
+.pub .out{border-radius:12px}
+.pub-done-t{font-size:17px;font-weight:700;color:#3ecf8e}
+.pub-done-l{font-size:12.5px;font-weight:600;color:#7f8fa3;margin:16px 0 3px}
+.pub-done-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.pub-done-btns button{margin:0;min-height:48px;border-radius:10px}
+.pub-done-note{color:#8fa0b3;font-size:13.5px;margin:14px 0 0;line-height:1.55;word-break:break-word}
+.pub-below{text-align:center;color:#7f8fa3;font-size:13.5px;margin:16px 0 0}
+@media(prefers-reduced-motion:reduce){.pub *{transition:none}}
+</style>
+<div class="pub">
+<h1>Publish in seconds</h1>
+<p class="pub-sub">Upload your content. Set a price. Get paid by agents.</p>
 <form id="f" onsubmit="return false">
-<div class="card">
-<div class="wiz-progress"><span class="wiz-dots" aria-hidden="true"><span class="wiz-dot on" id="f-dot-1"></span><span class="wiz-dot" id="f-dot-2"></span><span class="wiz-dot" id="f-dot-3"></span></span><span id="f-label">Step 1 of 3 — Your document</span></div>
+<div class="pub-card">
+<div class="pub-steps" aria-hidden="true"><span class="pub-step"><span class="wiz-dot on" id="f-dot-1">1</span>Document</span><span class="pub-step"><span class="wiz-dot" id="f-dot-2">2</span>Price</span><span class="pub-step"><span class="wiz-dot" id="f-dot-3">3</span>Get paid</span></div>
+<span class="pub-sr" id="f-label" role="status">Step 1 of 3: Document</span>
 <div class="wiz-panel" id="f-panel-1">
-<label>1 · Your document</label>
-<div class="dropzone" id="f-drop" tabindex="0" role="button" aria-label="Upload a file: PDF, markdown, or text, up to 10 MB"><b>Drop your file here</b> or <b>browse</b><br>PDF, .md, or .txt — up to 10 MB<input id="f-file" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"></div>
-<div class="hint" id="f-hint">Your file is converted to markdown on our server; the original is discarded and never served. <a href="/privacy">Privacy</a></div>
-<div class="seg" role="group" aria-label="Edit or preview"><button type="button" class="ghost on" id="f-write">Write</button><button type="button" class="ghost" id="f-prevbtn">Preview</button></div>
-<textarea id="f-body" placeholder="Or paste your words here — markdown works (headings, lists, links, code blocks, tables)…"></textarea>
-<div class="counts" id="f-counts">0 words · 0 characters</div>
+<div class="dropzone" id="f-drop" tabindex="0" role="button" aria-label="Upload a file: PDF, markdown, or text, up to 10 MB"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4L8 8"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span class="pub-drop-t">Drop a file or browse</span><span class="pub-drop-s">PDF, Markdown or text · up to 10 MB</span><input id="f-file" type="file" accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"></div>
+<div class="hint" id="f-hint">Converted to markdown. The original file is deleted, never served. <a href="/privacy">Privacy</a></div>
+<div class="pub-or">or paste your text</div>
+<div class="pub-edrow"><div class="seg" role="group" aria-label="Edit or preview"><button type="button" class="ghost on" id="f-write">Write</button><button type="button" class="ghost" id="f-prevbtn">Preview</button></div><div class="counts" id="f-counts">0 words · 0 characters</div></div>
+<textarea id="f-body" placeholder="Paste your text — Markdown supported" aria-label="Your document text"></textarea>
 <div class="md-preview hidden" id="f-preview" aria-label="Markdown preview"></div>
-<label for="f-title">Title</label><input id="f-title" maxlength="200" placeholder="e.g. My guide to growing tomatoes">
-<div class="hint">Filled in automatically from your document — edit it if you like.</div>
-<div class="freeprev"><span class="preview-label">Free preview</span><div class="out" id="f-abstract">Your free preview will appear here once you add some words.</div></div>
-<details class="advanced"><summary>Advanced — I already host this</summary>
-<label for="f-link">Link where this already lives (optional)</label>
-<input id="f-link" type="url" placeholder="https://your-site.com/your-article" autocomplete="off" spellcheck="false">
-<div class="hint">Gating only covers the copy served through NanoTab; the original URL remains reachable. For real protection, let the upload above be the only copy.</div>
+<label class="fld" for="f-title">Title</label><input id="f-title" maxlength="200" placeholder="What is it called?">
+<div class="freeprev"><span class="pub-prevlabel">Free preview — shown before payment</span><div class="out" id="f-abstract">Appears as you type.</div></div>
+<details class="advanced"><summary>Already hosted somewhere?</summary>
+<label class="fld" for="f-link">Original link (optional)</label>
+<input id="f-link" type="url" placeholder="https://…" autocomplete="off" spellcheck="false">
+<div class="hint">Only the NanoTab copy is gated — the original stays public.</div>
 </details>
-<div class="wiz-nav"><button type="button" class="btn" id="f-next-1" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+<div class="wiz-nav"><button type="button" class="btn pub-primary" id="f-next-1">Continue</button></div>
 </div>
 <div class="wiz-panel hidden" id="f-panel-2">
-<label for="f-price">2 · Price each time someone reads</label>
+<label class="fld fld-first" for="f-price">Price per read</label>
 <div class="chips" role="group" aria-label="Suggested prices">
 <button type="button" class="chip" data-price="0.05">$0.05</button>
 <button type="button" class="chip on" data-price="0.25">$0.25</button>
 <button type="button" class="chip" data-price="1.00">$1.00</button>
 </div>
-<div class="price-row"><input id="f-price" type="number" min="0.01" max="100" step="0.01" value="0.25"></div>
+<div class="pub-pricebox"><span class="cur">$</span><input id="f-price" type="number" min="0.01" max="100" step="0.01" value="0.25" inputmode="decimal" aria-label="Custom price in US dollars"><span class="unit">USD</span></div>
 <div class="earn-preview" id="f-earn"></div>
-<div class="hint">Tap a price above, or type your own. Prices are in US dollars — readers pay that amount in USDC on Base. NanoTab keeps 2% of each payment; you keep 98%.</div>
-<div class="wiz-nav"><button type="button" class="btn-back" id="f-back-2">← Back</button><button type="button" class="btn" id="f-next-2" style="font-size:16.5px;padding:13px 28px">Continue →</button></div>
+<div class="wiz-nav"><button type="button" class="btn-back pub-back" id="f-back-2">Back</button><button type="button" class="btn pub-primary" id="f-next-2">Continue</button></div>
 </div>
 <div class="wiz-panel hidden" id="f-panel-3">
-<h3 style="margin:4px 0 2px;font-size:17px">3 · Where should we send your money?</h3>
-<label for="p-payto">Your USDC wallet address on Base</label>
-<div class="payto-row"><input id="p-payto" placeholder="0x… (42 characters)" autocomplete="off" spellcheck="false"><button type="button" class="btn-gen" id="btn-generate-wallet">⚡ Generate instant wallet</button></div>
-<div class="hint">Every payment is sent here in <b>USDC on the Base network</b>, split on-chain: 98% to this wallet, 2% to NanoTab. There is no NanoTab balance — the money goes straight to your wallet. Posting needs no account: this address is all we need to pay you.</div>
-<div class="hint">No wallet yet? Tap <b>Generate instant wallet</b> — it creates a wallet in your browser in one click. The wallet is yours and self-custodied: NanoTab never sees the private key. Funds go to the address above in USDC on Base. <b>If you lose the private key, the funds at that address are lost</b> — we cannot recover it. Already have a wallet? Paste its address instead. See our <a href="/wallet-guide">plain-English wallet guide</a> (two minutes, free). NanoTab will never ask you to send a private key anywhere.</div>
+<label class="fld fld-first" for="p-payto">Payout wallet · USDC on Base</label>
+<div class="payto-row"><input id="p-payto" placeholder="0x…" autocomplete="off" spellcheck="false"><button type="button" class="btn-gen pub-gen" id="btn-generate-wallet">Generate wallet</button></div>
+<div class="hint">Payments land here directly — no NanoTab balance. No wallet? Generate one: the key never leaves your browser. <a href="/wallet-guide">Wallet guide</a></div>
 <div id="wallet-panel" class="pk-panel hidden">
-<div class="pk-warn"><b>Your new wallet — save this private key now.</b> This key controls your payouts. Anyone who has it can take the money. Store it in a password manager. We cannot recover it.</div>
-<label for="p-pk">Private key (shown once)</label>
-<div class="pk-row"><input id="p-pk" type="password" readonly value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button type="button" class="ghost" id="btn-pk-toggle">Show</button><button type="button" class="ghost" id="btn-pk-copy">Copy key</button></div>
+<div class="pk-warn"><b>Save this key now.</b> It controls your payouts — store it in a password manager. Anyone with it can take the money, and it can't be recovered.</div>
+<label class="fld" for="p-pk">Private key</label>
+<div class="pk-row"><input id="p-pk" type="password" readonly value="" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button type="button" class="ghost" id="btn-pk-toggle">Show</button><button type="button" class="ghost" id="btn-pk-copy">Copy</button></div>
 <div class="hint" id="wallet-addr-note"></div>
-<div class="pk-actions"><button type="button" class="ghost" id="btn-pk-save">Save on this device</button><button type="button" class="ghost" id="btn-pk-nosave">Don't save on this device</button><button type="button" class="ghost" id="btn-pk-clear">Hide &amp; clear from screen</button></div>
-<div class="hint" id="wallet-save-note">The key is generated in your browser and never sent to any server. It is only saved if you tap Save on this device. Don't save keeps it in this tab's memory until you close the tab.</div>
+<div class="pk-actions"><button type="button" class="ghost" id="btn-pk-save">Save on device</button><button type="button" class="ghost" id="btn-pk-nosave">Don't save</button><button type="button" class="ghost" id="btn-pk-clear">Clear key</button></div>
+<div class="hint" id="wallet-save-note">Made in your browser. Never sent to a server.</div>
 </div>
 <div id="wallet-saved-note" class="hint hidden"></div>
-<label style="display:flex;gap:10px;align-items:flex-start;margin:20px 0 0;font-size:14.5px;color:var(--mut);line-height:1.5"><input type="checkbox" id="f-rights" style="margin-top:3px;width:18px;height:18px;accent-color:#3ecf8e;flex:none"> <span><b style="color:var(--txt)">I own this content, or I have permission to sell access to it.</b> I keep the copyright; NanoTab only hosts and serves it. <a href="/terms">Terms</a></span></label>
-<div class="wiz-nav"><button type="button" class="btn-back" id="f-back-3">← Back</button><button type="button" class="btn" id="f-publish" style="font-size:16.5px;padding:13px 28px">Publish link →</button></div>
+<label class="pub-rights"><input type="checkbox" id="f-rights"> <span><b>I own this content, or I have permission to sell access to it.</b> I keep the copyright; NanoTab only hosts and serves it. <a href="/terms">Terms</a></span></label>
+<div class="wiz-nav"><button type="button" class="btn-back pub-back" id="f-back-3">Back</button><button type="button" class="btn pub-primary" id="f-publish">Publish link</button></div>
 </div>
-<div id="pub-out"></div>
+<div id="pub-out" aria-live="polite"></div>
 </div>
 </form>
-<div class="card">
-<h2>Keep your link — bookmark it</h2>
-<p class="card-sub">There are no accounts and no dashboard. When you publish, save the link from the confirmation and bookmark it — that URL is how you and your readers find the paywall again. Payments go straight to your wallet, so you do not need to come back here to get paid.</p>
-</div>
-</section>
+<p class="pub-below">Bookmark your link after publishing — there's no account to find it in.</p>
 ${FOOTER_PLAIN}
 </div>
 <script>
@@ -1100,23 +1163,24 @@ var $=function(id){return document.getElementById(id)};
 ${walletJs()}
 ${ingestJs()}
 var fStep=1;
-var FLABELS={1:'Step 1 of 3 — Your document',2:'Step 2 of 3 — Your price',3:'Step 3 of 3 — Your wallet'};
+var FLABELS={1:'Step 1 of 3: Document',2:'Step 2 of 3: Price',3:'Step 3 of 3: Get paid'};
 function fShow(n){fStep=n;for(var i=1;i<=3;i++){$('f-panel-'+i).classList.toggle('hidden',i!==n);$('f-dot-'+i).classList.toggle('on',i<=n)}$('f-label').textContent=FLABELS[n]}
 function fCheckDoc(){
  var link=$('f-link').value.trim();
- if(link&&!/^https?:\\/\\//i.test(link))return 'That link needs to start with http:// or https:// — or clear it; your document above is enough.';
- if(!$('f-body').value.trim())return 'Add your document first: upload a file above, or paste your words.';
- if($('f-body').value.length>200000)return 'That document is over 200,000 characters — publish a shorter piece instead.';
- if(!$('f-title').value.trim())return 'Give your document a short title so readers know what it is.';
+ if(link&&!/^https?:\\/\\//i.test(link))return 'That link must start with http:// or https:// — or remove it.';
+ if(!$('f-body').value.trim())return 'Add your document first — upload a file or paste text.';
+ if($('f-body').value.length>200000)return 'Over 200,000 characters — publish something shorter.';
+ if(!$('f-title').value.trim())return 'Add a title.';
  return null;
 }
 function fGo(n){
  if(n>fStep){var e=fCheckDoc();if(e){$('pub-out').innerHTML='<div class="out">'+e+'</div>';fShow(1);return}
-  if(n>=3){var pr=parseFloat($('f-price').value);if(!(pr>0)||pr>100){$('pub-out').innerHTML='<div class="out">Set a price between $0.01 and $100 first.</div>';fShow(2);return}}}
+  if(n>=3){var pr=parseFloat($('f-price').value);if(!(pr>0)||pr>100){$('pub-out').innerHTML='<div class="out">Set a price between $0.01 and $100.</div>';fShow(2);return}}}
  $('pub-out').innerHTML='';fShow(n);
+ if(window.matchMedia&&matchMedia('(max-width:760px)').matches)$('f').scrollIntoView({block:'start'});
 }
 function fMarkChips(){var v=parseFloat($('f-price').value);var s=isNaN(v)?'':v.toFixed(2);var chips=document.querySelectorAll('#f-panel-2 .chip');for(var i=0;i<chips.length;i++){chips[i].classList.toggle('on',Number(chips[i].dataset.price).toFixed(2)===s)}}
-function fUpdateEarn(){var v=parseFloat($('f-price').value);var el=$('f-earn');if(!(v>0)){el.textContent='Type a price above — readers pay that amount each time.';return}el.innerHTML='Readers pay <b>$'+v.toFixed(2)+'</b> in USDC on Base each time. You receive <b>$'+(v*0.98).toFixed(2)+'</b> (98%) straight to your wallet — NanoTab keeps 2% ($'+(v*0.02).toFixed(2)+').'}
+function fUpdateEarn(){var v=parseFloat($('f-price').value);var el=$('f-earn');if(!(v>0)){el.textContent='Enter a price.';return}el.innerHTML='You keep <b>$'+(v*0.98).toFixed(2)+'</b> (98%) of every $'+v.toFixed(2)+' read.'}
 function fPickPrice(v){$('f-price').value=v;fMarkChips();fUpdateEarn()}
 $('f-price').addEventListener('input',function(){fMarkChips();fUpdateEarn()});
 document.querySelectorAll('#f-panel-2 .chip').forEach(function(ch){ch.addEventListener('click',function(){fPickPrice(ch.dataset.price)})});
@@ -1135,34 +1199,36 @@ initIngest({drop:'f-drop',file:'f-file',body:'f-body',title:'f-title',hint:'f-hi
 fMarkChips();fUpdateEarn();fShow(1);
 var fCopies=[];
 async function fCopy(i){var u=fCopies[i]||'';var st=$('f-copy-status');function done(m){if(st)st.textContent=m}
- try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(u);done('Copied — share it anywhere.');return}}catch(e){}
- try{var ta=document.createElement('textarea');ta.value=u;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done('Copied — share it anywhere.')}catch(e2){done('Copy this: '+u)}}
+ try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(u);done('Copied.');return}}catch(e){}
+ try{var ta=document.createElement('textarea');ta.value=u;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done('Copied.')}catch(e2){done('Copy this: '+u)}}
 function fOnNext(){
  var err=fCheckDoc();
  if(err){$('pub-out').innerHTML='<div class="out">'+err+'</div>';fShow(1);return}
  var payto=$('p-payto').value.trim();
- if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">That wallet address does not look right yet. Your USDC wallet address on Base starts with 0x and is 42 characters long — paste your own address, or tap Generate instant wallet above. <a href="/wallet-guide">Wallet guide</a></div>';$('p-payto').focus();return}
- if(genAddr&&payto.toLowerCase()!==genAddr.toLowerCase()&&genPk){if(!confirm('You generated a wallet but changed the payout address. The generated private key will not control the address you publish to. Publish to the changed address anyway?'))return}
+ if(!/^0x[0-9a-fA-F]{40}$/.test(payto)){$('pub-out').innerHTML='<div class="out">Enter a valid Base wallet address (0x…, 42 characters) — or tap Generate wallet. <a href="/wallet-guide">Wallet guide</a></div>';$('p-payto').focus();return}
+ if(genAddr&&payto.toLowerCase()!==genAddr.toLowerCase()&&genPk){if(!confirm('You changed the payout address — the generated key will not control it. Publish anyway?'))return}
  fPublish();
 }
 async function fPublish(){
  var rights=$('f-rights');
- if(!rights||!rights.checked){$('pub-out').innerHTML='<div class="out">Please confirm that you own this content or have permission to sell access to it.</div>';if(rights)rights.focus();return}
+ if(!rights||!rights.checked){$('pub-out').innerHTML='<div class="out">Confirm you own this content or have permission to sell it.</div>';if(rights)rights.focus();return}
  var title=$('f-title').value.trim(),link=$('f-link').value.trim(),price=parseFloat($('f-price').value),payto=$('p-payto').value.trim(),body=$('f-body').value;
  if(!title&&link){try{title=new URL(link).hostname.replace(/^www\\./,'')}catch(e){}}
  $('f-publish').disabled=true;
+ $('f-publish').textContent='Publishing…';
  var b64=btoa(unescape(encodeURIComponent(body)));
  var mime=/^\\s*[\\{\\[]/.test(body)?'application/json':'text/markdown';
- var payload={title:title,mime:mime,price_cents:Math.round(price*100),body_b64:b64};
+ var payload={title:title,mime:mime,price_cents:Math.round(price*100),body_b64:b64,rights_confirmed:true};
  payload[['merchant','wal'+'let'].join('_')]=payto;
  if(link)payload.source_url=link;
  var r=await fetch('/v1/publish',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
  var j=null;try{j=await r.json()}catch(e){}
  $('f-publish').disabled=false;
- if(!r.ok||!j||!j.url){$('pub-out').innerHTML='<div class="out">'+((j&&j.error)?mdEsc(j.error):'Something went wrong just now. Please try again in a moment.')+'</div>';return}
+ $('f-publish').textContent='Publish link';
+ if(!r.ok||!j||!j.url){$('pub-out').innerHTML='<div class="out">'+((j&&j.error)?mdEsc(j.error):'Something went wrong. Try again.')+'</div>';return}
  var agentCurl='curl -i -H "Accept: application/json" '+j.url;
  fCopies=[j.page_url,j.url,agentCurl];
- $('pub-out').innerHTML='<div class="out"><b>Your paywall is live.</b><br>Human page (free preview): <a href="'+j.page_url+'">'+j.page_url+'</a><br>Agent paywall link (HTTP 402): <a href="'+j.url+'">'+j.url+'</a><br><button type="button" class="ghost" data-copy="0">Copy page link</button> <button type="button" class="ghost" data-copy="1">Copy paywall link</button> <button type="button" class="ghost" data-copy="2">Copy test curl</button> <span id="f-copy-status" style="color:var(--mut)"></span><div class="agent-curl">'+mdEsc(agentCurl)+'</div><span style="color:var(--mut)">Try it now: an unpaid request returns <b style="color:var(--txt)">402</b> with the price ($'+price.toFixed(2)+' USDC on Base, pay to '+payto+'). Pay, then the same link with an X-Payment proof returns <b style="color:var(--txt)">200</b> with your content. Payouts go to '+payto+' in USDC on Base — you keep 98%, NanoTab keeps 2%. Share the links anywhere. Keep your link — bookmark it, there is no account to find it in later.</span><div class="freeprev"><span class="preview-label">Free preview</span><div class="out" style="margin-top:0">'+mdEsc(j.abstract||'(no preview)')+'</div></div></div>';
+ $('pub-out').innerHTML='<div class="out"><div class="pub-done-t">✓ Your link is live</div><div class="pub-done-l">Preview page</div><a href="'+j.page_url+'">'+j.page_url+'</a><div class="pub-done-l">Paywall link for agents</div><a href="'+j.url+'">'+j.url+'</a><div class="pub-done-btns"><button type="button" class="ghost" data-copy="0">Copy page link</button><button type="button" class="ghost" data-copy="1">Copy paywall link</button><button type="button" class="ghost" data-copy="2">Copy test curl</button></div><span id="f-copy-status" class="hint" style="display:block"></span><div class="agent-curl">'+mdEsc(agentCurl)+'</div><p class="pub-done-note">Bookmark these links — there is no account to find them later. Unpaid requests get a 402 at $'+price.toFixed(2)+'; you keep 98% ($'+(price*0.98).toFixed(2)+') per read, paid to '+payto+' in USDC on Base.</p><div class="freeprev"><span class="pub-prevlabel">Free preview</span><div class="out">'+mdEsc(j.abstract||'(no preview)')+'</div></div></div>';
  document.querySelectorAll('#pub-out [data-copy]').forEach(function(b){b.addEventListener('click',function(){fCopy(+b.dataset.copy)})});
 }
 refreshSavedWalletNote();
