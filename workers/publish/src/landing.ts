@@ -229,7 +229,7 @@ function topbarPlain(ctaHref: string, ctaLabel: string): string {
 </div></header>`;
 }
 
-const FOOTER_PLAIN = `<footer>NanoTab Pay · <a href="/#how">How it works</a> · <a href="/#faq">Questions</a> · <a href="/marketplace">Browse links</a> · <a href="/developers">For developers</a> · <a href="https://nanotab.dev">nanotab.dev</a><br>Paywall any link in seconds. You set the price. You keep 98% of every payment (NanoTab keeps 2%).<br>${TRUST_LINKS}</footer>`;
+const FOOTER_PLAIN = `<footer>NanoTab Pay · <a href="/#how">How it works</a> · <a href="/#faq">Questions</a> · <a href="/marketplace">Browse links</a> · <a href="/developers">For developers</a> · <a href="https://nanotab.dev">nanotab.dev</a><br>Create a paywall link for agents in seconds. You set the price, keep 98% of every payment (NanoTab keeps 2%).<br>${TRUST_LINKS}</footer>`;
 
 export function walletJs(): string {
   return `/* Instant wallet: standard EVM keypair generated IN THE BROWSER. Mirrors
@@ -532,18 +532,18 @@ function initIngest(cfg){
 
 export function landingHtml(): string {
   return head(
-    'NanoTab Pay — Paywall Any Link in seconds',
-    'Paywall any link in seconds. AI agents pay to read it. You get paid every time. You set the price — paid automatically, no account needed for readers.'
-  ) + topbarPlain('#create', 'Paywall a link') + `
+    'NanoTab Pay — Create a Paywall Link for Agents in Seconds',
+    'Create a paywall link for agents in seconds. Upload your content, set a price — AI agents pay per view in USDC on Base, straight to your wallet.'
+  ) + topbarPlain('#create', 'Create a paywall link') + `
 <div class="wrap">
 <div class="hero">
 <div>
 <div class="badge">Free to start &nbsp;·&nbsp; Takes about a minute</div>
-<h1>Paywall any link <span class="accent">in seconds.</span></h1>
+<h1>Create a paywall link for agents <span class="accent">in seconds.</span></h1>
 <p class="sub"><b>AI agents pay to read your link; humans can too.</b> Same link, same price. <b>You get paid every time.</b></p>
 <p class="sub" style="font-size:16px">You set the price. Readers pay in USDC on Base — you keep 98% of every payment, NanoTab keeps 2%.</p>
 <p class="who-line">For <b>writers</b> with articles and guides, <b>experts</b> with reports and research, and <b>anyone</b> with a useful list or know-how worth reading.</p>
-<div class="hero-ctas"><a class="btn" href="#create">Paywall a link</a><a class="btn secondary" href="#how">See how it works</a></div>
+<div class="hero-ctas"><a class="btn" href="#create">Create your paywall link</a><a class="btn secondary" href="#how">See how it works</a></div>
 <p class="hero-note"><a href="/r/DemoSample">Try it: pay $0.05 to read a sample</a> · <a href="/demo">What is this demo?</a></p>
 <p class="hero-note" id="hero-stats">Live now — we are new, so early sellers stand out. <a href="/stats">See live stats</a></p>
 <p class="hero-note">Nobody needs a NanoTab account — not readers, not you. Agents pay automatically; a person pays with a USDC wallet on Base. No card checkout. Posting needs no account either: paste, price, publish.</p>
