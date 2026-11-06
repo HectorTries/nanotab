@@ -10,7 +10,7 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-circle-wallets (published 2026-10-28)
 - [x] nanotab-vs-payman (published 2026-11-02)
 - [x] nanotab-vs-request-network (published 2026-11-04)
-- [ ] nanotab-vs-biconomy
+- [x] nanotab-vs-biconomy (published 2026-11-06)
 - [ ] nanotab-vs-superfluid
 - [ ] nanotab-vs-fetch-agentverse
 - [ ] nanotab-vs-ocean-protocol
