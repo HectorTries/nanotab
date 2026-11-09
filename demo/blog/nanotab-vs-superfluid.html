@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs Superfluid: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs Superfluid compared for 2026: per-call micropayments vs per-second money streaming, fees, Super Tokens vs USDC, setup, and who each is for. Direct answer for agent builders.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs Superfluid: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">9 November 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or Superfluid for AI agent payments?</strong> If your agents pay per API call — a few cents each time they hit an endpoint — use NanoTab. If you need continuous money flows like streaming salaries, subscriptions, or token vesting, use Superfluid.</p>
+
+<p>These two solve different halves of the programmable-money problem. Superfluid (live since 2020, raised ~$9M, SUP governance token launched late 2025) is the pioneer of real-time token streaming: open a stream and money flows to the recipient every second until you cancel it. NanoTab (open-source, 2026) is an x402 paywall: each HTTP request carries its own instant USDC micropayment. One is a river, the other is a tollbooth. Here's the honest breakdown.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>Superfluid</th></tr>
+<tr><td><strong>Payment model</strong></td><td>Per-request micropayments (HTTP 402)</td><td>Per-second streaming (open-ended flows)</td></tr>
+<tr><td><strong>Asset</strong></td><td>Native USDC on Base</td><td>Super Tokens (wrapped ERC-20s, e.g. USDCx)</td></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>No protocol fee on streams (gas only)</td></tr>
+<tr><td><strong>Chains</strong></td><td>Base only</td><td>10+ EVM chains incl. Base, Ethereum, Arbitrum, Polygon, Optimism</td></tr>
+<tr><td><strong>Setup</strong></td><td>Minutes — wrap any HTTP endpoint</td><td>Minutes to open a stream · SDK integration for apps</td></tr>
+<tr><td><strong>MCP-native?</strong></td><td>Yes — MCP server included</td><td>No — general DeFi primitive, no agent layer</td></tr>
+<tr><td><strong>Best for</strong></td><td>Per-API-call agent payments</td><td>Salaries, subscriptions, vesting, DAO flows</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early (live on Base mainnet, 2026)</td><td>Established (live since 2020, audited)</td></tr>
+</table>
+
+<h2>Payment model: discrete calls vs continuous flows</h2>
+<p>This is the fundamental difference, and it decides everything else. With NanoTab, every payment is tied to one HTTP request: your agent calls an endpoint, the response demands <code>402 Payment Required</code>, the agent pays $0.05 in USDC, the request completes. Payment and delivery are atomic — no payment, no data.</p>
+<p>With Superfluid, you open a stream at a flow rate (say, 1 USDC per hour) and value accrues to the recipient every second. The recipient's balance visibly climbs in real time. The stream runs until someone cancels it or the sender's balance hits zero. There is no per-request linkage — the money flows whether or not any API is being called.</p>
+<p>For pay-per-use APIs, the stream model is the wrong shape. You don't want to open, meter, and close a money stream for every $0.03 inference call — you'd need flow-rate negotiation, buffer deposits, and stream lifecycle management around each request. NanoTab's one-payment-per-call maps exactly onto how APIs already work.</p>
+
+<h2>Assets: native USDC vs Super Tokens</h2>
+<p>NanoTab settles in plain USDC on Base — the asset your agent wallet already holds. No wrapping, no conversion, no extra step.</p>
+<p>Superfluid streams Super Tokens: wrapped versions of ERC-20s (USDC becomes USDCx) that carry the streaming logic. Wrapping is a one-click step in their dashboard, but it is a step — both sides need to understand that the streamed asset is the wrapped variant, and unwrapping is needed to use the underlying token elsewhere. For long-lived flows like payroll this friction is negligible. For one-off agent micropayments it would be pure overhead on every transaction.</p>
+
+<h2>Fees: both cheap, different cost shapes</h2>
+<p>Superfluid charges no protocol fee on streams themselves — you pay gas to open, update, and close a stream, plus a buffer deposit locked while the stream runs. For a salary stream that runs for months, the amortized cost is near zero.</p>
+<p>NanoTab self-hosted takes 0.1% per payment — on a $0.05 API call that's a twentieth of a cent. The managed gateway is 2% with nothing to run. Neither side is expensive; the costs just live in different places. Streams amortize setup cost over time; per-call payments scale linearly with usage. At 100,000 API calls a month, NanoTab's percentage is the honest price of atomic pay-per-call — Superfluid simply isn't priced for that shape because it was never built for it.</p>
+
+<h2>Chains and reach</h2>
+<p>Superfluid wins on breadth: 10+ EVM chains including Ethereum, Base, Arbitrum, Polygon, and Optimism, with bridging for Super Tokens across chains. If your payroll or subscriptions span ecosystems, that's real coverage from a six-year-old audited protocol.</p>
+<p>NanoTab is USDC-on-Base only, by design. One chain, one asset, sub-second settlement, zero gas for the seller. That's a constraint if your buyers live elsewhere — but for agent micropayments, Base's low fees and deep USDC liquidity make it the natural home, and one chain means one integration path.</p>
+
+<h2>Agent fit: MCP-native vs DIY</h2>
+<p>NanoTab ships an MCP server out of the box: any MCP-compatible agent can discover a paid endpoint and pay for it through the standard tool-call flow. The payment is part of the request cycle the agent already understands.</p>
+<p>Superfluid is a general DeFi primitive with SDKs and subgraphs — powerful, but there's no agent layer. An agent that needs to open a stream must be taught the flow-rate math, the wrap/unwrap steps, buffer management, and stream lifecycle. Totally doable for a standing subscription ("stream my $20/month data plan"), but heavy machinery for paying $0.04 for one search call.</p>
+
+<h2>Where Superfluid clearly wins</h2>
+<p>Honesty demands it: for anything that is genuinely continuous, Superfluid is the better tool and it isn't close. Streaming salaries to contributors, per-second subscriptions, investor vesting schedules, DAO treasury flows — these are Superfluid's home turf, battle-tested since 2020. NanoTab has no streaming primitive and no plans to build one; bolting open-ended flows onto a per-request paywall would be the wrong abstraction.</p>
+<p>Superfluid's maturity matters too. Six years on mainnet, multiple audits, a $9M raise, and a live governance token is a very different trust profile from a 2026 open-source project. If you're moving payroll, that track record counts.</p>
+
+<h2>Verdict: river or tollbooth?</h2>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> agents pay per API call; you want atomic pay-per-request in native USDC; you value MCP-native discovery and minutes-long setup; per-call fees under 1% matter.</p>
+<p><strong>Use Superfluid if:</strong> you need continuous flows — salaries, subscriptions, vesting, treasury streams; you want multi-chain EVM coverage; you value six years of audited mainnet history.</p>
+<p><strong>Use both if:</strong> your agent business has both shapes — Superfluid streaming your team's salaries and NanoTab metering your API per call. They complement each other cleanly.</p>
+</div>
+
+<p>The programmable-money stack is big enough for rivers and tollbooths. Pick the shape that matches your cash flow, ship it, iterate. (As of November 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>
