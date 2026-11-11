@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs Fetch.ai Agentverse: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs Fetch.ai Agentverse compared for 2026: discovery marketplace vs per-call paywall, FET vs USDC settlement, setup complexity, and who each is for. Direct answer for agent builders.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs Fetch.ai Agentverse: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">11 November 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or Fetch.ai Agentverse for AI agent payments?</strong> If you want your agent discoverable inside a large agent ecosystem with built-in messaging and identity, list it on Agentverse. If you already have buyers or traffic and just want to charge per API call in USDC this afternoon, use NanoTab.</p>
+
+<p>This comparison is slightly unusual because the two products solve different halves of the problem. Agentverse — built by Fetch.ai (founded 2017) and now operated under the Artificial Superintelligence Alliance alongside SingularityNET and CUDOS — is a discovery marketplace and hosting platform for autonomous agents: you build with the uAgents framework, register on the Almanac smart contract, and other agents can find and message yours. NanoTab is a per-call paywall: it wraps any HTTP endpoint so callers pay USDC per request on Base. One is the phone book and the post office; the other is the tollbooth. Here's the honest breakdown.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>Fetch.ai Agentverse</th></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>No stated % take; FET gas + registration costs</td></tr>
+<tr><td><strong>Model</strong></td><td>Open-source paywall (MIT), any HTTP endpoint</td><td>Ecosystem: uAgents framework + marketplace + hosting</td></tr>
+<tr><td><strong>Settlement</strong></td><td>USDC on Base (x402 protocol)</td><td>AI-to-AI payments in USDC and FET (since Dec 2025)</td></tr>
+<tr><td><strong>Discovery</strong></td><td>None — you bring your own traffic</td><td>Almanac registry + agent search + mailboxes</td></tr>
+<tr><td><strong>Setup time</strong></td><td>Minutes (one prompt / one config)</td><td>Hours (uAgents SDK, wallet, registration, FET)</td></tr>
+<tr><td><strong>MCP-native?</strong></td><td>Yes — MCP server included</td><td>Yes — MCP integration layer available</td></tr>
+<tr><td><strong>Best for</strong></td><td>Devs with an API who want to charge per call</td><td>Devs who want agents found inside an ecosystem</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early (live on Base mainnet, 2026)</td><td>Established (Fetch.ai since 2017; ~2.7M agents claimed mid-2026)</td></tr>
+</table>
+
+<h2>Discovery and marketplace: Agentverse's whole reason to exist</h2>
+<p>Agentverse's core value is that agents can find each other. You register your agent on the Almanac contract on the Fetch.ai chain, and it becomes searchable: other agents query the registry, discover your capabilities, and message you through asynchronous mailboxes. With a claimed ~2.7 million agents hosted by mid-2026 across travel, retail, finance and more, the network effect is the product. If your strategy is "build an agent and let other agents stumble on it," there is no substitute for being listed where agents look.</p>
+<p>NanoTab does none of this. It has no registry, no search, no messaging layer. It assumes you already have buyers — your own agent fleet, an existing API with traffic, a distribution channel — and gives you exactly one thing: the ability to charge per call. If you need discovery, NanoTab alone leaves you invisible.</p>
+
+<h2>Payments and settlement: tollbooth vs ecosystem rail</h2>
+<p>Fetch.ai rolled out AI-to-AI payments in December 2025: agents settling with each other on-chain in USDC and FET. That's a genuine payments capability, and for agent-to-agent commerce inside the ecosystem it works. But payments are one feature of a large platform, not the product — pricing is denominated in ecosystem mechanics (FET for registration, gas, staking; ASI-1 inference billed in FET), and configuring what you charge per interaction means working inside the uAgents/contract model.</p>
+<p>NanoTab inverts this: payments are the entire product. You set a USDC price per call, buyers pay over the x402 HTTP-402 flow on Base, funds land in your wallet in seconds. No token to hold, no staking, no registration contract. The tradeoff is scope — it's USDC on Base only, with no messaging, identity, or discovery attached.</p>
+
+<h2>Setup complexity: minutes vs an afternoon</h2>
+<p>NanoTab's pitch is one prompt: point it at your HTTP endpoint and it generates the paywall middleware. No account, no framework lock-in, no token acquisition. Any HTTP endpoint in any language works.</p>
+<p>Agentverse asks more of you: install the uAgents framework, build or wrap your agent in its patterns, create a Fetch wallet, acquire FET for registration and gas, register on the Almanac contract, and deploy (self-hosted or on Agentverse hosting). None of this is unreasonable for joining an ecosystem — it's comparable to shipping an app to an app store — but it's an afternoon of work, not minutes, and your agent now lives inside Fetch.ai's idioms.</p>
+
+<h2>Agent-framework fit</h2>
+<p>Both speak MCP, which is good news: MCP-compatible agents (Claude, Cursor, custom harnesses) can consume a NanoTab-paywalled endpoint through the standard tool-call flow, and Agentverse exposes an MCP integration layer too. The difference is direction. NanoTab meets your agent where it already is — any HTTP client can pay. Agentverse wants your agent to live in its world — uAgents SDK, Almanac identity, mailbox messaging — and rewards you with discoverability for doing so. Framework-agnostic tollbooth versus framework-native ecosystem.</p>
+
+<h2>Chains and assets</h2>
+<p>NanoTab is deliberately narrow: USDC on Base, via the x402 protocol. One chain, one asset, sub-second settlement, zero gas for the seller. If your buyers hold USDC on Base — increasingly the default for agent wallets — it's frictionless. Agentverse is Fetch-chain-centric with FET as the utility token (registration, gas, staking, ASI-1 inference), plus USDC support for AI-to-AI payments since late 2025. Broader in principle, but your buyers need to be inside or adjacent to the Fetch.ai economy.</p>
+
+<h2>Verdict: directory or tollbooth?</h2>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> you already have an API with buyers or traffic; you want per-call USDC payments live today; you value open-source, framework-agnostic tooling; you don't want to hold or stake a token.</p>
+<p><strong>Use Agentverse if:</strong> you want your agent discovered by other agents; you're building agent-to-agent services and want the Almanac registry, mailboxes, and ecosystem; you're comfortable building on uAgents and holding FET.</p>
+<p><strong>Use both if:</strong> you list your agent on Agentverse for discovery and put a NanoTab paywall in front of your HTTP endpoint for monetisation. Discovery from one, dollars per call from the other — they stack cleanly.</p>
+</div>
+
+<p>The agentic economy needs both phone books and tollbooths. Pick based on which half of the problem you actually have: being found, or being paid. (As of November 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>

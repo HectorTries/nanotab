@@ -12,6 +12,6 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-request-network (published 2026-11-04)
 - [x] nanotab-vs-biconomy (published 2026-11-06)
 - [x] nanotab-vs-superfluid (published 2026-11-09)
-- [ ] nanotab-vs-fetch-agentverse
+- [x] nanotab-vs-fetch-agentverse (published 2026-11-11)
 - [ ] nanotab-vs-ocean-protocol
 - [ ] nanotab-vs-singularitynet
