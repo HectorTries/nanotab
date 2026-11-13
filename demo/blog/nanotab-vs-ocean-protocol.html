@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs Ocean Protocol: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs Ocean Protocol compared for 2026: datatokens vs per-call x402 payments, fees, setup, chains (OCEAN/ASI vs USDC on Base), MCP fit, and who each is for.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs Ocean Protocol: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">13 November 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or Ocean Protocol for AI agent payments?</strong> If you want agents paying per API call this afternoon with near-zero fees, use NanoTab. If you want to sell access to datasets, models, or data feeds in a decentralized marketplace, use Ocean Protocol.</p>
+
+<p>Both touch machine-to-machine payments, but they operate at different layers. Ocean Protocol (founded 2017 by Bruce Pon and Trent McConaghy) is the veteran decentralized data marketplace: publishers tokenize datasets as datatokens and data NFTs, buyers pay — typically in OCEAN — for access rights, and compute-to-data lets buyers run algorithms against private data without ever seeing the raw files. NanoTab (open-source MIT, live 2026) is a lightweight x402 paywall: wrap any HTTP endpoint so agents pay USDC per call on Base, keep 99.9%, done. Think of Ocean as the data bazaar and NanoTab as the tollbooth — and they stack nicely.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>Ocean Protocol</th></tr>
+<tr><td><strong>What you sell</strong></td><td>Calls to any HTTP endpoint</td><td>Access to datasets, models, feeds</td></tr>
+<tr><td><strong>Primitive</strong></td><td>Per-call x402 payment (USDC on Base)</td><td>Datatokens + data NFTs, compute-to-data</td></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>~0.1–0.3% marketplace swap fees + gas</td></tr>
+<tr><td><strong>Revenue shape</strong></td><td>Micropayments per request</td><td>Access sales, often subscription/ongoing</td></tr>
+<tr><td><strong>Chains</strong></td><td>Base only (USDC)</td><td>Ethereum, Polygon, BSC, and others</td></tr>
+<tr><td><strong>KYC / identity</strong></td><td>None — wallet-to-wallet</td><td>None — permissionless marketplace</td></tr>
+<tr><td><strong>Setup time</strong></td><td>Minutes (one prompt / one config)</td><td>Hours (publish, price, list, optionally compute jobs)</td></tr>
+<tr><td><strong>MCP-native?</strong></td><td>Yes — MCP server included</td><td>No — marketplace-first, agents buy like anyone</td></tr>
+<tr><td><strong>Best for</strong></td><td>Metering live APIs per call</td><td>Selling data assets with ownership + discovery</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early (live on Base mainnet, 2026)</td><td>Established (live since 2017, ASI Alliance member)</td></tr>
+</table>
+
+<h2>Data tokenization vs per-call payments</h2>
+<p>Ocean's core primitive is the datatoken. Publishing a dataset mints a data NFT (ownership of the asset) and fungible datatokens (redeemable for access, or bundled into subscriptions). Buyers discover you on Ocean Market, swap OCEAN or other tokens for datatokens, and consume the data or run compute-to-data jobs. It shines for training datasets, archives, curated research data, and — via Predictoor's crowd-sourced prediction feeds — live streams with OCEAN rewards for accurate predictors.</p>
+<p>NanoTab's primitive is the paid HTTP call. No token to mint, no listing to maintain: wrap an endpoint, set a per-call USDC price, and every request settles wallet-to-wallet on Base via x402. It fits anything callable — inference, scrapers, search, geocoding — where the unit is one request, not dataset access.</p>
+<p>If your product IS data, Ocean gives you ownership, licensing, and discovery. If it DOES something per request, NanoTab gives you metering without marketplace overhead.</p>
+
+<h2>Fees: marketplace swaps vs micropayment tolls</h2>
+<p>Both are cheap, in different ways. Ocean's marketplace swap fees run roughly 0.1–0.3% (exact fees vary by market and pool configuration), plus gas on your publish chain — Ethereum, Polygon, BNB Chain, and others. Buyers purchase access rights, often subscriptions, so revenue looks like data sales, not micropayment streams.</p>
+<p>NanoTab self-hosted takes a flat 0.1% per call; the managed gateway takes 2%. Settlement is USDC on Base with sub-second finality and ~zero seller gas — purpose-built for the $0.01–$1.00 per-call range where agentic payments live.</p>
+<p>Pick by revenue shape — access rights vs endpoint usage — not by basis points.</p>
+
+<h2>Setup complexity: publishing a dataset vs paywalling an endpoint</h2>
+<p>Ocean publishing is a real workflow: prepare and host your dataset, mint the data NFT and datatokens, set pricing and access terms, list on Ocean Market, and — for privacy-preserving compute — configure compute-to-data. Expect hours before your first sale: you're listing an asset in a bazaar, and merchandising matters.</p>
+<p>NanoTab's pitch is one prompt: point it at your HTTP endpoint and it generates the x402 paywall middleware. No account, no signup, no listing. Buyer agents pay USDC on Base per call; funds land in your wallet. Genuine minutes-to-live.</p>
+
+<h2>Chains and assets</h2>
+<p>Ocean is multi-chain: Ethereum, Polygon, BNB Chain, and others (check current docs), with OCEAN as the ecosystem token now on a path toward the ASI token after the 2024 ASI Alliance merger with Fetch.ai and SingularityNET. Buyers pay in crypto — typically OCEAN or datatoken swaps — plus gas.</p>
+<p>NanoTab is deliberately narrow: USDC on Base only, via x402. One chain, one asset, ~zero seller gas, no KYC. Frictionless if buyers hold USDC on Base (the emerging agent-wallet default); a hurdle if they don't.</p>
+
+<h2>Agent fit and MCP</h2>
+<p>Ocean predates the agent boom but maps well: Predictoor feeds are machine-consumable streams, compute-to-data suits agents needing answers without raw data, and the ASI Alliance targets decentralized AI. Still, Ocean is marketplace-first — no native MCP server or per-call metering; agents buy access like anyone.</p>
+<p>NanoTab ships MCP-native: an MCP server out of the box, so any MCP-compatible agent discovers and pays for your endpoint through the standard tool-call flow. For agents making thousands of small calls, that's the native idiom — no datatokens, no subscriptions.</p>
+
+<h2>Who wins where</h2>
+<p>Sell datasets on Ocean; meter APIs with NanoTab; do both when data is served through an API. Honest caveat: Ocean has run since 2017 with a large ecosystem; NanoTab is early-stage — live on Base mainnet in 2026, USDC-on-Base only, no KYC.</p>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> you run a live HTTP endpoint; you want per-call USDC micropayments; your buyers are agents making many small requests; you value minutes-long setup and MCP-native discovery.</p>
+<p><strong>Use Ocean if:</strong> you sell datasets, models, or feeds; you want tokenized ownership, licensing, and marketplace discovery; you need compute-to-data for private data; you want multi-chain reach and OCEAN/ASI ecosystem buyers.</p>
+<p><strong>Use both if:</strong> your dataset is served through an API — list access rights on Ocean Market AND meter the live endpoint per call with NanoTab. Bazaar plus tollbooth.</p>
+</div>
+
+<p>Different layers, not rivals: put your data assets in the bazaar, put a tollbooth on your endpoints, and let agents pay however they arrive. (As of November 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>
