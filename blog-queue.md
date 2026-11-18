@@ -15,3 +15,4 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-fetch-agentverse (published 2026-11-11)
 - [x] nanotab-vs-ocean-protocol (published 2026-11-13)
 - [x] nanotab-vs-singularitynet (published 2026-11-16)
+- [x] nanotab-vs-coinbase-agentkit (published 2026-11-18)
