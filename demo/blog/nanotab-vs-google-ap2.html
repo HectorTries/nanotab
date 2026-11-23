@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs Google AP2: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs Google AP2 compared for 2026: live per-call USDC paywall vs Google's open agent-payments protocol, fees (0.1% self-host / 2% gateway), setup, mandates, and who each is for.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs Google AP2: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">23 November 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or Google AP2 for AI agent payments?</strong> If you want agents paying per API call today with near-zero fees, use NanoTab — it's live on Base mainnet now. If you're planning an enterprise agent-commerce roadmap where signed payment mandates, card rails, and stablecoin rails all interoperate, follow AP2 — it's the open protocol Google launched in 2026 with 60+ partners including Mastercard, Amex, PayPal, and Coinbase.</p>
+
+<p>These two operate at different layers, and that's the whole point of this comparison. AP2 (Agent Payments Protocol) is an open standard: it defines how agents, users, and merchants exchange cryptographically signed mandates — Intent, Cart, and Payment mandates — so any compliant wallet, merchant, or network can interoperate. NanoTab is a working product: a lightweight x402 paywall that lets any HTTP endpoint charge USDC per call on Base. One is the rulebook; the other is a game you can play today. Here's the honest breakdown.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>Google AP2</th></tr>
+<tr><td><strong>What it is</strong></td><td>Product: per-call paywall + MCP server</td><td>Open protocol: mandate standard for agent payments</td></tr>
+<tr><td><strong>Status</strong></td><td>Live on Base mainnet (2026)</td><td>Spec public, ecosystem rolling out (2026)</td></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>No protocol fee — costs set by networks/wallets that implement it</td></tr>
+<tr><td><strong>Settlement</strong></td><td>USDC on Base (x402 protocol)</td><td>Rail-agnostic: cards, stablecoins, bank transfers via extensions</td></tr>
+<tr><td><strong>Trust model</strong></td><td>Wallet-to-wallet, opt-in SafeSpend risk scoring</td><td>Signed mandates: human approval + non-repudiable authorisation chain</td></tr>
+<tr><td><strong>Setup time</strong></td><td>Minutes (one prompt / one config)</td><td>Days–weeks (implement or integrate a compliant stack)</td></tr>
+<tr><td><strong>MCP-native?</strong></td><td>Yes — MCP server included</td><td>Complementary — works alongside MCP and Google's A2A</td></tr>
+<tr><td><strong>Best for</strong></td><td>Indie devs monetising APIs now</td><td>Enterprises and platforms building interoperable agent commerce</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early product, live transactions</td><td>Early protocol, growing partner list</td></tr>
+</table>
+
+<h2>Protocol vs product: the key distinction</h2>
+<p>AP2 doesn't move money itself. It standardises the <em>conversation</em> around money: the user signs an Intent mandate ("my agent may spend up to $50 on flights"), the agent and merchant agree a Cart mandate ("this exact basket at this price"), and a Payment mandate authorises the actual transfer on whatever rail both sides support. Disputes get resolved against signed evidence rather than log archaeology. It's genuinely good design — the kind of thing only a platform-scale player with card-network partners could push.</p>
+<p>But a protocol doesn't give you a paywall. Today, if you run an API and want agents paying $0.05 per call this afternoon, AP2 gives you a spec to read, not a button to press. NanoTab gives you the button: point it at your endpoint, get x402 middleware, receive USDC on Base. Different jobs.</p>
+
+<h2>Fees: NanoTab has a price; AP2 doesn't (yet)</h2>
+<p>NanoTab self-hosted takes 0.1% — a fraction of a cent on a typical $0.05 call — or 2% through the managed gateway. Simple, published, predictable.</p>
+<p>AP2 as a protocol charges nothing; it's open-source under the Linux Foundation-style governance Google set up. Your costs will come from whichever network, wallet, or processor you use to execute AP2 mandates — card interchange if you settle by card, gas and provider fees if you settle in stablecoins. For micropayments in the $0.01–$1.00 range, card-rail settlement through AP2 will likely cost far more per transaction than NanoTab's USDC-on-Base path. For $500 agent-booked purchases, the reverse is true: cards are the only sane rail, and NanoTab can't help you.</p>
+
+<h2>Trust and authorisation: AP2 wins clearly</h2>
+<p>This is where honesty demands credit to AP2. NanoTab's trust model is wallet-to-wallet: the buyer pays, the seller receives, and an opt-in SafeSpend scorer offers advisory risk signals. There's no human-in-the-loop approval chain and no signed proof of what was agreed.</p>
+<p>AP2's mandate chain is purpose-built for the "my agent spent $2,000 and I never approved it" problem. Human-signed Intent mandates cap what agents can do; Cart mandates pin exact terms; everything is non-repudiable. If your buyers are consumers or enterprises who need to see — and constrain — what their agents authorise, AP2's model is the right answer, and NanoTab doesn't compete with it.</p>
+
+<h2>Settlement rails</h2>
+<p>NanoTab is deliberately narrow: USDC on Base, via the x402 HTTP-402 flow. One chain, one asset, sub-second settlement, zero gas for the seller. If your buyers hold USDC on Base — increasingly the default for agent wallets — it's frictionless. If they pay by card, it's a non-starter.</p>
+<p>AP2 is deliberately broad: the core spec is payment-method agnostic, with extensions for cards, stablecoins, and bank transfers. Partners like Coinbase are building x402-flavoured stablecoin execution under AP2 mandates, while card networks handle the fiat side. Breadth is the selling point — and the implementation burden.</p>
+
+<h2>MCP and agent-framework fit</h2>
+<p>NanoTab ships an MCP server out of the box: any MCP-compatible agent discovers and pays for your endpoint through the standard tool-call flow. AP2 is designed to sit alongside MCP and Google's A2A protocol — discovery and communication handled there, payment authorisation handled by AP2 mandates. They're complementary layers, not competitors, and in principle a future NanoTab could accept AP2-signed mandates as its authorisation mechanism.</p>
+
+<h2>Verdict: different layers, different timelines</h2>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> you're an indie dev, researcher, or small team; you want per-call USDC payments live today; you value open-source and self-hosting; your buyers are agents holding crypto.</p>
+<p><strong>Follow AP2 if:</strong> you're an enterprise or platform; you need human-approved spending mandates with audit-grade evidence; you must support cards alongside stablecoins; you're planning 2027 agent-commerce infrastructure.</p>
+<p><strong>Use both if:</strong> you monetise APIs for agents now with NanoTab while designing your AP2-compliant checkout for card-paying customers later. The per-call tollbooth and the mandate-based checkout serve different transactions.</p>
+</div>
+
+<p>The agentic-payments space is early enough that "which approach" matters less than "are you charging agents at all." Ship the paywall today; adopt the standard as it matures. (As of November 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>

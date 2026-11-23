@@ -17,3 +17,4 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-singularitynet (published 2026-11-16)
 - [x] nanotab-vs-coinbase-agentkit (published 2026-11-18)
 - [x] nanotab-vs-crossmint (published 2026-11-20)
+- [x] nanotab-vs-google-ap2 (published 2026-11-23)
