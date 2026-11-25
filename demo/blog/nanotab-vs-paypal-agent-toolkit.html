@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0THZ48CWKF"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag("js", new Date());
+gtag("config", "G-0THZ48CWKF");
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NanoTab vs PayPal Agent Toolkit: Which Should You Use for AI Agent Payments? (2026)</title>
+<meta name="description" content="NanoTab vs PayPal Agent Toolkit compared for 2026: fees (0.1% self-host / 2% gateway vs ~2.9%+), direction of money, setup complexity, rails, KYC, and who each is for.">
+<style>
+:root{--bg:#0a0d14;--fg:#f2f5f9;--mut:#9aa7b8;--acc:#5df2b8;--line:#1c2330;--card:#111623}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,sans-serif;line-height:1.7}
+.wrap{max-width:820px;margin:0 auto;padding:24px 20px 80px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;border-bottom:1px solid var(--line)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px;margin-left:20px}nav a:hover{color:var(--fg)}
+.brand{font-weight:800;font-size:18px;color:var(--fg);text-decoration:none}
+h1{font-size:32px;margin:40px 0 8px;line-height:1.2}
+h2{font-size:23px;margin:44px 0 8px}
+.date{color:var(--mut);font-size:14px;margin-bottom:8px}
+p,li{color:#cfd8e3;font-size:15.5px}
+code{background:#1a2230;padding:2px 7px;border-radius:6px;font-size:14px;color:var(--acc)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;font-size:14px}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:28px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:9px 10px;text-align:left;color:#cfd8e3}
+th{background:var(--card);color:var(--fg)}
+.verdict{background:var(--card);border:1px solid rgba(93,242,184,.3);border-radius:12px;padding:20px 22px;margin:32px 0}
+.verdict p{margin:6px 0}
+.cta{text-align:center;margin:48px 0 16px}
+.cta a{display:inline-block;background:var(--acc);color:#0a0d14;font-weight:800;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:16px}
+.cta a:hover{opacity:.9}
+a{color:var(--acc)}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer a{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="Primary">
+<a class="brand" href="/">NanoTab</a>
+<div><a href="/blog/">Blog</a><a href="/#generate">Generator</a><a href="/agents.html">Agents</a><a href="https://github.com/HectorTries/nanotab">GitHub</a></div>
+</nav>
+
+<h1>NanoTab vs PayPal Agent Toolkit: Which Should You Use for AI Agent Payments?</h1>
+<div class="date">25 November 2026 · 6 min read</div>
+
+<p><strong>Should you use NanoTab or PayPal's Agent Toolkit for AI agent payments?</strong> If your agent needs to <em>spend</em> money buying things on the existing internet with buyer protection, use PayPal. If you need agents to <em>charge per API call</em> with near-zero fees and no signup, use NanoTab. They point in opposite directions: PayPal moves money from agents to merchants; NanoTab moves money from buyers to your endpoint.</p>
+
+<p>PayPal's Agent Toolkit (launched late 2025, part of its agentic-commerce push alongside "Pay with PayPal" checkout for AI assistants) gives agents MCP servers and APIs to shop, check out, and manage PayPal transactions programmatically — backed by PayPal's 400M+ accounts, dispute resolution, and fiat rails. NanoTab (open-source, 2026) is a lightweight x402 paywall: wrap any HTTP endpoint so agents pay USDC per call on Base, keep 99.9%, done. Here's the honest breakdown.</p>
+
+<h2>At a glance</h2>
+<table>
+<tr><th></th><th>NanoTab</th><th>PayPal Agent Toolkit</th></tr>
+<tr><td><strong>Direction</strong></td><td>Agents pay <em>you</em> per API call</td><td><em>Your</em> agent pays merchants (shopping/checkout)</td></tr>
+<tr><td><strong>Fee</strong></td><td>0.1% self-hosted · 2% via managed gateway</td><td>Standard PayPal rails (~2.9% + fixed fee, market-dependent)</td></tr>
+<tr><td><strong>Model</strong></td><td>Open-source, self-hostable (MIT)</td><td>Proprietary platform, PayPal account required</td></tr>
+<tr><td><strong>Settlement</strong></td><td>USDC on Base (x402 protocol), sub-second</td><td>Fiat + PayPal balance, PYUSD stablecoin options</td></tr>
+<tr><td><strong>KYC / identity</strong></td><td>None — wallet-to-wallet</td><td>Full — PayPal account, business verification for sellers</td></tr>
+<tr><td><strong>Micropayments</strong></td><td>Yes — $0.01 calls are the core use case</td><td>No — fixed per-transaction fees kill sub-$1 payments</td></tr>
+<tr><td><strong>Buyer protection</strong></td><td>None — settlement is final</td><td>Yes — disputes, chargebacks, Purchase Protection</td></tr>
+<tr><td><strong>Best for</strong></td><td>Indie devs monetising APIs to agents</td><td>Agents buying goods/services on the existing web</td></tr>
+<tr><td><strong>Maturity</strong></td><td>Early (live on Base mainnet, 2026)</td><td>Grown (PayPal-scale infra, toolkit new in 2025)</td></tr>
+</table>
+
+<h2>Direction of money: the key difference</h2>
+<p>This comparison is slightly asymmetric, and honesty requires saying so upfront. PayPal's Agent Toolkit is a <em>spender-side</em> tool: your agent uses it to buy things — check out on merchant sites, pay invoices, manage subscriptions — drawing on a PayPal account with all the dispute and refund machinery that implies. NanoTab is a <em>seller-side</em> tool: you wrap your API so other agents pay you per call.</p>
+<p>In practice many builders need both: an agent that sells inference via NanoTab and buys training data or SaaS via PayPal. They stack rather than compete. But if you only have budget to integrate one this week, the question is simple: are you collecting money or spending it?</p>
+
+<h2>Fees: micropayments vs card-rail economics</h2>
+<p>NanoTab self-hosted takes 0.1% — on a $0.05 API call that's a fraction of a cent, which is the entire point: per-call agent pricing only works when fees round to zero. PayPal's standard commercial pricing (~2.9% + a fixed ~$0.30-style fee depending on market) is fine for a $40 checkout initiated by an agent, and ruinous for a $0.05 inference call, where the fixed fee alone is 600% of the transaction.</p>
+<p>Flip it around: for larger agent-initiated purchases, PayPal's fee buys you something real — fraud screening, dispute resolution, and a merchant network that already accepts it. NanoTab offers none of that; USDC settlement on Base is final.</p>
+
+<h2>Setup complexity: one prompt vs one account</h2>
+<p>NanoTab's pitch is one prompt: point it at your HTTP endpoint and it generates the x402 paywall middleware. No account, no signup, no KYB. Funds land in your wallet in USDC on Base.</p>
+<p>The PayPal Agent Toolkit requires a PayPal developer account, app credentials, and (for receiving money) business verification — plus your agent handles OAuth-scoped permissions for spending. That's the right tradeoff when real consumer money moves: guardrails, spending limits, and user approval flows are features, not friction. For a weekend experiment in agent-to-agent micropayments, it's heavyweight.</p>
+
+<h2>Trust and protection: PayPal wins clearly</h2>
+<p>Here's where credit is due. If an agent buys the wrong item, gets scammed, or a merchant never delivers, PayPal's Purchase Protection and dispute process give the buyer recourse. That matters enormously for agents autonomously spending user money — the blast radius of a rogue purchase is capped by refunds and chargebacks.</p>
+<p>NanoTab has no chargebacks by design: wallet-to-wallet USDC transfers are irreversible. It ships an opt-in risk gate (SafeSpend) that scores transactions, but that's advisory, not enforcement. Don't route money through NanoTab that you might need back.</p>
+
+<h2>Rails: fiat ubiquity vs crypto finality</h2>
+<p>PayPal settles in fiat across 200+ markets with PYUSD stablecoin options — your agent can buy from merchants who have never heard of crypto. NanoTab is USDC-on-Base only, built on the x402 HTTP-402 protocol: one chain, one asset, zero gas for the seller, sub-second finality. If your buyers hold USDC on Base (increasingly the default for agent wallets), it's frictionless. If they hold a PayPal balance and want a refund path, it isn't.</p>
+
+<h2>MCP and agent-framework fit</h2>
+<p>Both ship MCP-native interfaces: PayPal's toolkit exposes shopping, checkout, invoicing, and transaction tools as MCP servers any compatible agent can call; NanoTab ships an MCP server so agents can discover and pay for your endpoint through the standard tool-call flow. On framework fit it's a draw — the difference is what the tools do, not how they're called.</p>
+
+<h2>Verdict: collect with NanoTab, spend with PayPal</h2>
+<div class="verdict">
+<p><strong>Use NanoTab if:</strong> you're monetising an API to agent buyers; per-call prices under ~$1; you want open-source, self-hosting, and sub-1% fees; irreversible settlement is acceptable.</p>
+<p><strong>Use PayPal Agent Toolkit if:</strong> your agent buys goods and services on the existing web; you need buyer protection, refunds, and fiat rails; your users already have PayPal accounts.</p>
+<p><strong>Use both if:</strong> your agent is a business — it earns via NanoTab's paywall and spends via PayPal's checkout. Revenue in, expenses out, each on the rail built for it.</p>
+</div>
+
+<p>The agentic-payments space is early enough that "which platform" matters less than "are your agents transacting at all." Pick the rail that matches the direction of your money, ship it, iterate. (As of November 2026.)</p>
+
+<div class="cta">
+<a href="/#generate">Turn your API into a paid endpoint →</a>
+</div>
+<p style="text-align:center">Open-source on <a href="https://github.com/HectorTries/nanotab">github.com/HectorTries/nanotab</a> · Live on Base mainnet · More comparisons in the <a href="/blog/">NanoTab blog</a></p>
+
+<footer><span>NanoTab — live on Base mainnet.</span><span><a href="/llms.txt">llms.txt</a> · <a href="https://github.com/HectorTries/nanotab">Source</a> · <a href="https://gateway.nanotab.dev/keyword?q=solar">Live gateway</a></span></footer>
+</div>
+</body>
+</html>
