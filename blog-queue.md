@@ -19,3 +19,4 @@ Template: direct-answer structure (question answered in first 2 sentences → co
 - [x] nanotab-vs-crossmint (published 2026-11-20)
 - [x] nanotab-vs-google-ap2 (published 2026-11-23)
 - [x] nanotab-vs-paypal-agent-toolkit (published 2026-11-25)
+- [x] nanotab-vs-visa-intelligent-commerce (published 2026-11-27)
